@@ -71,6 +71,18 @@ function collectHeadings(body) {
 }
 const LANGMAP = { ts: 'typescript', js: 'javascript', sh: 'bash', yml: 'yaml', dockerfile: 'dockerfile', psql: 'sql', pgsql: 'sql', text: 'plaintext', txt: 'plaintext', http: 'http', json: 'json' };
 
+// "Parts 5–8, 61" from [5,6,7,8,61] — collapses consecutive runs into ranges
+function rangeLabel(nums) {
+  const s = [...nums].sort((a, b) => a - b);
+  const runs = []; let start = s[0], prev = s[0];
+  for (let i = 1; i <= s.length; i++) {
+    if (i < s.length && s[i] === prev + 1) { prev = s[i]; continue; }
+    runs.push(start === prev ? `${start}` : `${start}–${prev}`);
+    start = prev = s[i];
+  }
+  return (runs.length === 1 && !runs[0].includes('–') ? 'Part ' : 'Parts ') + runs.join(', ');
+}
+
 function renderBody(md, headings) {
   let cursor = 0; const extra = new Map();
   const renderer = new marked.Renderer();
@@ -133,13 +145,16 @@ function sidebar(activeVol) {
 }
 
 function page({ title, activeVol, main }) {
+  const isVol = activeVol >= 0;
+  // desktop floating controls (top-right of the reading column)
+  const controls = `<div class="controls">${isVol ? '<a class="ctl" href="index.html" title="Back to all volumes">← All volumes</a>' : ''}<button class="ctl" id="theme" title="Toggle light / dark">◑ Theme</button></div>`;
   return `<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(title)}</title>
 <link rel="stylesheet" href="assets/site.css">
 </head><body>
-<div class="topbar"><button id="menu" aria-label="Menu">☰</button><span class="tbrand">Backend Handbook</span><button id="theme" aria-label="Theme">◑</button></div>
-<div class="layout">${sidebar(activeVol)}<main>${main}</main></div>
+<div class="topbar"><button id="menu" aria-label="Menu">☰</button><span class="tbrand">Backend Handbook</span>${isVol ? '<a class="tb-back" href="index.html" title="Back to all volumes">←</a>' : ''}<button id="theme-m" class="tb-theme" aria-label="Theme">◑</button></div>
+<div class="layout">${sidebar(activeVol)}<main>${controls}${main}</main></div>
 <script src="assets/mermaid.min.js"></script>
 <script src="assets/site.js"></script>
 </body></html>`;
@@ -152,7 +167,7 @@ const hubCards = VOLUMES.map(v => {
     <div class="card-vol">Volume ${v.n}</div>
     <div class="card-title">${escapeHtml(v.title)}</div>
     <div class="card-blurb">${escapeHtml(v.blurb)}</div>
-    <div class="card-meta">${partsList.length} parts · Parts ${partsList[0]}–${partsList[partsList.length - 1]}</div>
+    <div class="card-meta">${partsList.length} parts · ${rangeLabel(partsList)}</div>
   </a>`;
 }).join('');
 const totalParts = Object.keys(partsMap).length;
@@ -254,8 +269,14 @@ ${hljsCss}
 .nav-vol li{margin:0}
 .nav-vol li a{display:block;color:var(--fg);opacity:.82;padding:.22rem .5rem;line-height:1.35}
 .nav-vol li a:hover{opacity:1;text-decoration:none;color:var(--accent)}
-main{padding:2.4rem 3.4rem 7rem;max-width:860px}
+main{padding:2.4rem 3.4rem 7rem;max-width:860px;position:relative}
 .topbar{display:none}
+
+/* ---- desktop controls (back + theme), top-right of reading column ---- */
+.controls{display:flex;justify-content:flex-end;gap:.5rem;margin:-.8rem 0 1.2rem}
+.ctl{display:inline-flex;align-items:center;gap:.3rem;font-family:-apple-system,system-ui,sans-serif;font-size:.82rem;
+  padding:.35rem .7rem;border:1px solid var(--border);border-radius:7px;background:var(--paper);color:var(--fg);cursor:pointer}
+.ctl:hover{text-decoration:none;border-color:var(--accent);color:var(--accent)}
 
 /* ---- hub ---- */
 .hub-h1{font-size:2.4rem;margin:.5rem 0 .4rem}
@@ -282,9 +303,13 @@ kbd{background:var(--kbd);border:1px solid var(--border);border-radius:4px;paddi
   .topbar{display:flex;gap:.7rem;align-items:center;position:sticky;top:0;background:var(--paper);border-bottom:1px solid var(--border);padding:.6rem 1rem;z-index:20}
   .topbar button{padding:.35rem .7rem;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--fg);font-size:1rem}
   .tbrand{font-weight:700;font-family:-apple-system,system-ui,sans-serif}
-  #theme{margin-left:auto}
+  .tb-back{margin-left:auto;font-size:1.2rem;color:var(--fg);text-decoration:none;padding:.2rem .5rem}
+  .tb-theme{margin-left:.3rem}
   main{padding:1.2rem 1.1rem 4rem}
+  .controls{display:none}
 }
+.tb-back,.tb-theme{display:none}
+@media (max-width:980px){.tb-back,.tb-theme{display:inline-flex}}
 `;
 fs.writeFileSync(path.join(ASSETS, 'site.css'), css);
 
@@ -294,8 +319,9 @@ const js = `
   try{var t=localStorage.getItem('bh-theme'); if(t) document.documentElement.setAttribute('data-theme',t);}catch(e){}
   function flip(){var cur=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
     document.documentElement.setAttribute('data-theme',cur); try{localStorage.setItem('bh-theme',cur);}catch(e){}}
-  document.addEventListener('click',function(e){if(e.target&&e.target.id==='theme')flip();
-    if(e.target&&e.target.id==='menu')document.getElementById('sidebar').classList.toggle('open');});
+  document.addEventListener('click',function(e){var id=e.target&&e.target.id;
+    if(id==='theme'||id==='theme-m')flip();
+    if(id==='menu')document.getElementById('sidebar').classList.toggle('open');});
 })();
 // mermaid, theme-aware
 (function(){ if(!window.mermaid) return;

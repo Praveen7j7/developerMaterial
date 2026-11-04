@@ -4,8 +4,9 @@
   try{var t=localStorage.getItem('bh-theme'); if(t) document.documentElement.setAttribute('data-theme',t);}catch(e){}
   function flip(){var cur=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
     document.documentElement.setAttribute('data-theme',cur); try{localStorage.setItem('bh-theme',cur);}catch(e){}}
-  document.addEventListener('click',function(e){if(e.target&&e.target.id==='theme')flip();
-    if(e.target&&e.target.id==='menu')document.getElementById('sidebar').classList.toggle('open');});
+  document.addEventListener('click',function(e){var id=e.target&&e.target.id;
+    if(id==='theme'||id==='theme-m')flip();
+    if(id==='menu')document.getElementById('sidebar').classList.toggle('open');});
 })();
 // mermaid, theme-aware
 (function(){ if(!window.mermaid) return;

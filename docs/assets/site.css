@@ -178,8 +178,14 @@ code.hljs {
 .nav-vol li{margin:0}
 .nav-vol li a{display:block;color:var(--fg);opacity:.82;padding:.22rem .5rem;line-height:1.35}
 .nav-vol li a:hover{opacity:1;text-decoration:none;color:var(--accent)}
-main{padding:2.4rem 3.4rem 7rem;max-width:860px}
+main{padding:2.4rem 3.4rem 7rem;max-width:860px;position:relative}
 .topbar{display:none}
+
+/* ---- desktop controls (back + theme), top-right of reading column ---- */
+.controls{display:flex;justify-content:flex-end;gap:.5rem;margin:-.8rem 0 1.2rem}
+.ctl{display:inline-flex;align-items:center;gap:.3rem;font-family:-apple-system,system-ui,sans-serif;font-size:.82rem;
+  padding:.35rem .7rem;border:1px solid var(--border);border-radius:7px;background:var(--paper);color:var(--fg);cursor:pointer}
+.ctl:hover{text-decoration:none;border-color:var(--accent);color:var(--accent)}
 
 /* ---- hub ---- */
 .hub-h1{font-size:2.4rem;margin:.5rem 0 .4rem}
@@ -206,6 +212,10 @@ kbd{background:var(--kbd);border:1px solid var(--border);border-radius:4px;paddi
   .topbar{display:flex;gap:.7rem;align-items:center;position:sticky;top:0;background:var(--paper);border-bottom:1px solid var(--border);padding:.6rem 1rem;z-index:20}
   .topbar button{padding:.35rem .7rem;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--fg);font-size:1rem}
   .tbrand{font-weight:700;font-family:-apple-system,system-ui,sans-serif}
-  #theme{margin-left:auto}
+  .tb-back{margin-left:auto;font-size:1.2rem;color:var(--fg);text-decoration:none;padding:.2rem .5rem}
+  .tb-theme{margin-left:.3rem}
   main{padding:1.2rem 1.1rem 4rem}
+  .controls{display:none}
 }
+.tb-back,.tb-theme{display:none}
+@media (max-width:980px){.tb-back,.tb-theme{display:inline-flex}}
