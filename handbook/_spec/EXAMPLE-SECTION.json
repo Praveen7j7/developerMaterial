@@ -1,0 +1,88 @@
+{
+  "section": "Smoke Test",
+  "order": 0,
+  "subtitle": "Renderer check for every visual type",
+  "parts": [11, 12],
+  "slides": [
+    {
+      "title": "Flow horizontal: request path",
+      "part": "4",
+      "points": ["Client resolves DNS then opens TCP and TLS", "Load balancer picks a healthy pod", "NestJS runs middleware, guards, pipes, handler", "PostgreSQL answers in 2 ms on a warm cache"],
+      "visual": { "type": "flow", "direction": "h", "nodes": ["Client", "Load balancer", "NestJS", "PostgreSQL"], "labels": ["HTTPS", "HTTP/1.1", "TCP 5432"] },
+      "example": "A 220 ms request spent 90 ms in TLS setup because keep-alive was disabled on the client.",
+      "takeaway": "Every hop costs a round trip; keep connections alive and measure where the time goes."
+    },
+    {
+      "title": "Flow vertical: event loop phases",
+      "part": "3",
+      "points": ["Timers run first", "Then pending callbacks", "Then poll for I/O", "Then check for setImmediate", "Close callbacks last", "Microtasks drain between every phase"],
+      "visual": { "type": "flow", "direction": "v", "nodes": ["timers", "pending callbacks", "poll", "check", "close callbacks"] },
+      "takeaway": "process.nextTick and promises always run before the loop moves on."
+    },
+    {
+      "title": "Stack: reference architecture",
+      "part": "5",
+      "points": ["Stateless API pods behind a load balancer", "Redis for cache, locks and rate limits", "PostgreSQL is the source of truth", "Kafka feeds background workers"],
+      "visual": { "type": "stack", "rows": [["Client"], ["API Gateway / LB"], ["NestJS API", "NestJS Workers"], ["Redis", "PostgreSQL", "Kafka"]] },
+      "example": "The same layout served 500 RPS on three pods and one db.r6g.large for a mid-size store.",
+      "takeaway": "Start with this shape; split services only when a boundary proves itself."
+    },
+    {
+      "title": "Table: isolation levels in PostgreSQL",
+      "part": "13",
+      "points": ["Read Committed is the default and re-reads see new commits", "Repeatable Read gives a snapshot per transaction", "Serializable detects conflicts and aborts", "Retry on 40001 is mandatory at the two upper levels"],
+      "visual": { "type": "table", "headers": ["Level", "Dirty read", "Non-repeatable", "Phantom", "Write skew"], "rows": [["Read Committed", "No", "Yes", "Yes", "Yes"], ["Repeatable Read", "No", "No", "No", "Yes"], ["Serializable", "No", "No", "No", "No"]] },
+      "takeaway": "Pick the level per transaction, not per application."
+    },
+    {
+      "title": "Compare: modular monolith vs microservices",
+      "part": "5",
+      "points": ["A monolith can still have hard module boundaries", "Microservices buy independent deploys at the price of partial failure", "Most teams under 30 engineers ship faster with a monolith"],
+      "visual": { "type": "compare", "left": { "title": "Modular monolith", "items": ["One deploy", "In-process calls", "One DB, schema per module", "Refactor across modules easily"] }, "right": { "title": "Microservices", "items": ["Deploy per service", "Network calls + partial failure", "DB per service, sagas", "Contracts and versioning"] } },
+      "takeaway": "Split when a boundary has a different scaling or deploy cadence, not for fashion."
+    },
+    {
+      "title": "Steps: what happens on POST /orders",
+      "part": "4",
+      "points": ["Each step can time out independently", "Only the database step holds a connection"],
+      "visual": { "type": "steps", "items": ["DNS resolves api.shop.com", "TCP handshake (1 RTT)", "TLS 1.3 handshake (1 RTT)", "HTTP request bytes on the wire", "LB picks a healthy pod", "NestJS guards, pipes, handler", "PostgreSQL insert in a transaction", "Response + keep-alive reuse"] },
+      "takeaway": "Trace one request end to end before you optimise anything."
+    },
+    {
+      "title": "Graph: order state machine",
+      "part": "6",
+      "points": ["Only listed transitions are legal", "Illegal transitions throw a domain error", "Persist every transition in order_events"],
+      "visual": { "type": "graph", "nodes": [{ "id": "c", "label": "CREATED" }, { "id": "p", "label": "PAID" }, { "id": "s", "label": "SHIPPED" }, { "id": "d", "label": "DELIVERED" }, { "id": "x", "label": "CANCELLED" }], "edges": [["c", "p", "payment captured"], ["p", "s", "picked up"], ["s", "d", "delivered"], ["c", "x", "timeout"], ["p", "x", "refund"]] },
+      "takeaway": "A state machine table beats scattered if-statements every time."
+    },
+    {
+      "title": "Cycle: the debugging loop",
+      "part": "42",
+      "points": ["Mitigate first, then diagnose", "Change one thing at a time", "Write it down while it is fresh"],
+      "visual": { "type": "cycle", "items": ["Measure", "Hypothesise", "Change one thing", "Verify", "Document"] },
+      "takeaway": "The loop is the method; tools are just accelerators."
+    },
+    {
+      "title": "Code: claim a job with SKIP LOCKED",
+      "part": "36",
+      "points": ["Rows locked by other workers are skipped, not waited on", "The UPDATE and the SELECT happen in one statement", "Workers never see the same job twice"],
+      "code": { "lang": "sql", "text": "UPDATE jobs SET status = 'RUNNING', locked_until = now() + interval '5 min'\nWHERE id = (\n  SELECT id FROM jobs\n  WHERE status = 'PENDING' AND run_at <= now()\n  ORDER BY priority DESC, run_at\n  FOR UPDATE SKIP LOCKED\n  LIMIT 1\n)\nRETURNING *;" },
+      "example": "A 12-worker fleet claimed 4,000 jobs/min from one table with zero duplicates.",
+      "takeaway": "PostgreSQL is a perfectly good job queue until you need more than ~10k jobs/min."
+    },
+    {
+      "title": "Code: TypeScript transaction with the manager",
+      "part": "13",
+      "points": ["Use the manager passed to the callback, never the injected repository", "The callback either commits or rolls back", "Keep external calls outside the transaction"],
+      "code": { "lang": "ts", "text": "await this.dataSource.transaction(async (manager) => {\n  const order = await manager.findOneOrFail(Order, {\n    where: { id }, lock: { mode: 'pessimistic_write' },\n  });\n  order.markPaid(paymentId);        // domain invariant\n  await manager.save(order);\n  await manager.insert(OutboxEvent, {\n    type: 'OrderPaid', payload: { id },\n  });\n});" },
+      "takeaway": "One transaction, one aggregate, one outbox row."
+    },
+    {
+      "title": "No visual: how a senior thinks about indexes",
+      "part": "12",
+      "points": ["Every index is a tax on every write to that table", "Ask which query the index serves and how selective it is", "Composite order is equality, then range, then sort", "Check pg_stat_user_indexes monthly and drop unused ones", "Create with CONCURRENTLY in production, always"],
+      "example": "A 40-index table wrote at a quarter of the speed of the same table with 8 well-chosen indexes.",
+      "takeaway": "Index for queries you have measured, not for columns you imagine filtering."
+    }
+  ]
+}
