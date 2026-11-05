@@ -58,7 +58,7 @@ Every statement takes a table-level lock on each table it touches, mostly to kee
 | `SHARE` | `CREATE INDEX` (non-concurrent) | writes |
 | `ACCESS EXCLUSIVE` | `DROP TABLE`, `TRUNCATE`, `VACUUM FULL`, most `ALTER TABLE` | everything, including `SELECT` |
 
-The dangerous mechanic is the *lock queue*. Table locks are granted in order. If a two-hour report holds `ACCESS SHARE` on `orders`, an `ALTER TABLE orders ADD COLUMN` queues behind it for `ACCESS EXCLUSIVE`, and every new `SELECT` on `orders` queues behind the `ALTER`. One idle migration can take the whole API down while blocking nothing itself. Always run DDL with `SET lock_timeout = '3s'` and retry; Part 23 — Safe Schema Migrations covers this in depth.
+The dangerous mechanic is the *lock queue*. Table locks are granted in order. If a two-hour report holds `ACCESS SHARE` on `orders`, an `ALTER TABLE orders ADD COLUMN` queues behind it for `ACCESS EXCLUSIVE`, and every new `SELECT` on `orders` queues behind the `ALTER`. One idle migration can take the whole API down while blocking nothing itself. Always run DDL with `SET lock_timeout = '3s'` and retry; Part 23 — Database Migrations and Zero-Downtime Schema Changes covers this in depth.
 
 ### 20.4.3 The lock escalation myth
 

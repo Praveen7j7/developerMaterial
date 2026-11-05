@@ -173,7 +173,7 @@ Four concrete reasons, all of which you will meet.
 
 1. **Staleness.** A job enqueued at 14:02 may run at 14:09 after a retry. Between those times the order was cancelled, the address was corrected, the price was adjusted. A payload-carrying job emails the customer the old address. An id-carrying job reloads the row and sees the truth.
 2. **Size.** Redis holds every job in memory. A 40 KB payload times 200,000 queued jobs is 8 GB of RAM, and Redis is not a database you want to run at 8 GB for this. An id is 24 bytes.
-3. **Schema evolution.** Payloads are serialized contracts. If you change the shape of `order` and deploy, the jobs already sitting in the queue carry the old shape, and your new worker code crashes on all of them. Ids never change shape. (This is the same compatibility problem as Part 24 — Backward and Forward Compatibility.)
+3. **Schema evolution.** Payloads are serialized contracts. If you change the shape of `order` and deploy, the jobs already sitting in the queue carry the old shape, and your new worker code crashes on all of them. Ids never change shape. (This is the same compatibility problem as Part 24 — Backward Compatibility: APIs, Schemas, Events and Clients.)
 4. **Secrets.** Whole objects tend to carry emails, phone numbers, addresses. Redis is often less protected than PostgreSQL, is dumped to RDB files, and appears in Bull Board screenshots pasted into Slack. Do not put personal data in job payloads.
 
 #### Practical example

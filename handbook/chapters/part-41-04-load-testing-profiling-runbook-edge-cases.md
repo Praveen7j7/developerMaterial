@@ -86,7 +86,7 @@ Record the knee in the runbook: "orders-api: 6 pods, knee at about 650 RPS, bott
 
 #### Soak tests for leaks
 
-Run at 60% of peak for eight hours with `nodejs_heap_size_used_bytes`, `pg_pool_total`, open file descriptors and pod memory on a dashboard. A healthy service shows a sawtooth heap (grows, GC drops it) with a flat baseline. A rising baseline is a leak: unbounded in-memory cache, event listeners added per request, `Map` keyed by request id never cleared, `setInterval` created per request. A pool total that climbs to `max` and stays there while traffic is flat means connections are not released on an error path. Part 9 — Operating Systems and Node.js Internals covers heap snapshot diffing to find the retained objects.
+Run at 60% of peak for eight hours with `nodejs_heap_size_used_bytes`, `pg_pool_total`, open file descriptors and pod memory on a dashboard. A healthy service shows a sawtooth heap (grows, GC drops it) with a flat baseline. A rising baseline is a leak: unbounded in-memory cache, event listeners added per request, `Map` keyed by request id never cleared, `setInterval` created per request. A pool total that climbs to `max` and stays there while traffic is flat means connections are not released on an error path. Part 9 — Operating Systems and the Node.js Runtime covers heap snapshot diffing to find the retained objects.
 
 #### Never load test production without a plan
 

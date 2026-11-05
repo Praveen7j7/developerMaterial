@@ -2,7 +2,7 @@
 
 #### Concept
 
-An operation is idempotent when doing it twice has the same effect as doing it once. In reliability terms, idempotency is what makes *every other pattern in this part safe*. Timeouts leave you with unknown outcomes; retries re-send; failover reconnects mid-write; graceful shutdown re-delivers the last Kafka batch; degradation queues work for later replay. Every one of those produces duplicates, and idempotency is the property that turns a duplicate from a double charge into a no-op. Part 29 — Idempotency and Exactly-Once Semantics covers the mechanics in depth; this section places it in the reliability toolbox.
+An operation is idempotent when doing it twice has the same effect as doing it once. In reliability terms, idempotency is what makes *every other pattern in this part safe*. Timeouts leave you with unknown outcomes; retries re-send; failover reconnects mid-write; graceful shutdown re-delivers the last Kafka batch; degradation queues work for later replay. Every one of those produces duplicates, and idempotency is the property that turns a duplicate from a double charge into a no-op. Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency covers the mechanics in depth; this section places it in the reliability toolbox.
 
 #### Why does it exist?
 

@@ -41,7 +41,7 @@ flowchart LR
 ```
 
 1. The API validates the request and writes the order to PostgreSQL. This is the only thing the customer is waiting for.
-2. The API publishes `OrderPlaced` to a topic. (How to do that without losing or duplicating the event is the outbox pattern; see 27.11 and Part 29 — Transactional Outbox and Inbox.)
+2. The API publishes `OrderPlaced` to a topic. (How to do that without losing or duplicating the event is the outbox pattern; see 27.11 and Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency.)
 3. The API responds. Total time: one database transaction plus one publish, about 40 ms.
 4. Each consumer group reads the event independently. Payments captures the card and publishes its own event. Inventory reserves stock. Email sends a confirmation. Analytics records the sale. If email is down for an hour, three of the four still happen, and email catches up later.
 

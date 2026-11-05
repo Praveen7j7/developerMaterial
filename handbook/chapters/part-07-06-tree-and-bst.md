@@ -474,7 +474,7 @@ Planning Time: 0.142 ms
 Execution Time: 2.031 ms
 ```
 
-Three internal pages plus four leaf pages found 1,466 row pointers; the remaining 1,480 or so buffer hits are the heap pages holding the rows themselves. The tree walk is a rounding error; the heap fetches are the cost, which is why covering indexes (`INCLUDE (total_cents)`) exist. Part 19 — Indexes builds on exactly this.
+Three internal pages plus four leaf pages found 1,466 row pointers; the remaining 1,480 or so buffer hits are the heap pages holding the rows themselves. The tree walk is a rounding error; the heap fetches are the cost, which is why covering indexes (`INCLUDE (total_cents)`) exist. Part 19 — Database Indexing builds on exactly this.
 
 #### TypeORM example
 

@@ -339,7 +339,7 @@ static publishOnCommit(instance: Order, options: UpdateOptions): void {
 }
 ```
 
-`afterCommit` fixes the ordering, not the durability. If the process dies between `COMMIT` and the publish, the event is lost forever and no retry exists. For anything a downstream system depends on, write an **outbox row inside the same transaction** and let a relay publish it (Part 27 — Message Queues, and Part 20, section 20.8). `afterCommit` is right for cache invalidation and best-effort notifications; the outbox is right for money.
+`afterCommit` fixes the ordering, not the durability. If the process dies between `COMMIT` and the publish, the event is lost forever and no retry exists. For anything a downstream system depends on, write an **outbox row inside the same transaction** and let a relay publish it (Part 27 — Messaging: Queues, Topics, Kafka, RabbitMQ and SQS, and Part 20, section 20.8). `afterCommit` is right for cache invalidation and best-effort notifications; the outbox is right for money.
 
 #### Edge cases & failure modes
 

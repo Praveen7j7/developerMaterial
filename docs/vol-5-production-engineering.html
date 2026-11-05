@@ -8190,7 +8190,7 @@ jest.<span class="hljs-title function_">advanceTimersByTime</span>(<span class="
   <span class="hljs-keyword">const</span> gone = <span class="hljs-keyword">await</span> ds.<span class="hljs-title function_">query</span>(<span class="hljs-string">`SELECT 1 FROM information_schema.columns WHERE table_name = &#x27;orders&#x27; AND column_name = &#x27;currency&#x27;`</span>);
   <span class="hljs-title function_">expect</span>(gone).<span class="hljs-title function_">toHaveLength</span>(<span class="hljs-number">0</span>);
 });</code></pre>
-<p>To assert on lock behaviour, run the migration in one connection while a second connection holds a short transaction on the table and assert the migration either waits less than <code>lock_timeout</code> or fails fast (<code>SET lock_timeout = &#39;2s&#39;</code> inside the migration is a production best practice; see Part 21 — Schema Design and Migrations).</p>
+<p>To assert on lock behaviour, run the migration in one connection while a second connection holds a short transaction on the table and assert the migration either waits less than <code>lock_timeout</code> or fails fast (<code>SET lock_timeout = &#39;2s&#39;</code> inside the migration is a production best practice; see Part 23 — Database Migrations and Zero-Downtime Schema Changes).</p>
 <h4 id="edge-cases-failure-modes-x9">Edge cases &amp; failure modes</h4>
 <ul>
 <li><code>CREATE INDEX</code> without <code>CONCURRENTLY</code> inside a transaction blocks writes for the whole build; a migration test on 200k rows will show hundreds of milliseconds where you expected metadata-only.</li>
@@ -9123,7 +9123,7 @@ concurrency = throughput × latency</code></pre>
 }</code></pre>
 <p>Label by route <em>template</em> (<code>/orders/:id</code>), never by the actual path; otherwise every order id becomes a time series and the metrics backend falls over.</p>
 <h4 id="slos-on-p99-x">SLOs on p99</h4>
-<p>An SLO of &quot;p99 &lt; 300 ms over 30 days&quot; means that in a rolling 30-day window, 99% of requests completed under 300 ms. The <strong>error budget</strong> is the 1% you may spend. A deploy that pushes p99 to 350 ms for two hours burns budget; alerting on <em>burn rate</em> (how fast the budget is being consumed) pages on real degradation and stays quiet on one slow minute. See Part 48 — Observability and SRE for the alerting math.</p>
+<p>An SLO of &quot;p99 &lt; 300 ms over 30 days&quot; means that in a rolling 30-day window, 99% of requests completed under 300 ms. The <strong>error budget</strong> is the 1% you may spend. A deploy that pushes p99 to 350 ms for two hours burns budget; alerting on <em>burn rate</em> (how fast the budget is being consumed) pages on real degradation and stays quiet on one slow minute. See Part 48 — Site Reliability Engineering for the alerting math.</p>
 <h4 id="production-scenario-x2">Production scenario</h4>
 <p>A product listing page called 14 services. Each had p99 = 120 ms and everyone was proud. The page&#39;s p99 was 900 ms and nobody understood why. Tracing showed the max-of-14 effect plus two serial hops. The fix was a BFF endpoint that batched 9 of the calls into one and cached the two slowest (category tree, promotions). Page p99 fell to 260 ms without changing any of the 14 services&#39; own p99.</p>
 <h4 id="edge-cases-failure-modes-x2">Edge cases &amp; failure modes</h4>
@@ -9182,7 +9182,7 @@ concurrency = throughput × latency</code></pre>
 <p>Common CPU sinks in NestJS services: <code>class-transformer</code> on large payloads, <code>JSON.stringify</code> of big responses, synchronous crypto, <code>Array.prototype.sort</code> on 100k rows fetched from the DB (sort in SQL instead), regex-based validation on long strings, and logging objects with <code>JSON.stringify</code> at debug level in production.</p>
 <h4 id="memory-heap-limits-gc-pauses-and-leaks-x">Memory: heap limits, GC pauses and leaks</h4>
 <p>V8 has a default old-space limit that depends on the machine (typically around 2–4 GB on 64-bit; check <code>node -e &quot;console.log(v8.getHeapStatistics().heap_size_limit/1e6)&quot;</code>). In a container with a 512 MB limit and no <code>--max-old-space-size</code>, V8 may try to grow beyond the container and get OOMKilled. Set <code>--max-old-space-size</code> to roughly 75% of the container memory limit so V8 collects before the kernel kills.</p>
-<p>Garbage collection pauses the event loop. Minor (scavenge) GCs are sub-millisecond; major (mark-sweep-compact) GCs on a 1.5 GB heap can pause for 50–300 ms and show up as p99 spikes with no corresponding slow query. Watch <code>nodejs_gc_duration_seconds</code> (prom-client default metrics) and correlate with latency spikes. Leaks (caches without bounds, listeners added per request, closures holding request bodies) show as a heap that grows across hours and a GC that gets slower and slower. Part 9 — Operating Systems and Node.js Internals covers heap snapshots and leak hunting in depth.</p>
+<p>Garbage collection pauses the event loop. Minor (scavenge) GCs are sub-millisecond; major (mark-sweep-compact) GCs on a 1.5 GB heap can pause for 50–300 ms and show up as p99 spikes with no corresponding slow query. Watch <code>nodejs_gc_duration_seconds</code> (prom-client default metrics) and correlate with latency spikes. Leaks (caches without bounds, listeners added per request, closures holding request bodies) show as a heap that grows across hours and a GC that gets slower and slower. Part 9 — Operating Systems and the Node.js Runtime covers heap snapshots and leak hunting in depth.</p>
 <h4 id="io-the-databases-disk-x">I/O: the database&#39;s disk</h4>
 <p>Your Node process rarely touches disk. PostgreSQL does. The metrics that matter: cache hit ratio (<code>pg_stat_database.blks_hit / (blks_hit + blks_read)</code>; below 99% on an OLTP workload means the working set does not fit in <code>shared_buffers</code> plus OS cache), <code>EXPLAIN (ANALYZE, BUFFERS)</code> showing <code>read=</code> blocks instead of <code>hit=</code>, checkpoint spikes (<code>checkpoint_write_time</code>), and WAL volume during bulk writes. A query that reads 20,000 buffers from disk on a cloud volume with 3,000 IOPS takes seconds no matter how good your Node code is.</p>
 <h4 id="network-round-trips-are-the-cost-not-bytes-x">Network: round trips are the cost, not bytes</h4>
@@ -9349,7 +9349,7 @@ LIMIT <span class="hljs-number">10</span>;</code></pre>
 </ol>
 <h2 id="416-query-optimisation">41.6 Query optimisation</h2>
 <h4 id="concept-x6">Concept</h4>
-<p>A slow query is the most common cause of a slow API. Query optimisation is a loop: find the expensive queries, read their plans, change the query or the indexes, re-read the plan, measure again. Part 19 — Indexing and Part 20 — Database Transactions cover the mechanics in depth; this section is the performance engineer&#39;s recap and the traps that cost the most in practice.</p>
+<p>A slow query is the most common cause of a slow API. Query optimisation is a loop: find the expensive queries, read their plans, change the query or the indexes, re-read the plan, measure again. Part 19 — Database Indexing and Part 20 — Database Transactions cover the mechanics in depth; this section is the performance engineer&#39;s recap and the traps that cost the most in practice.</p>
 <h4 id="how-it-works-the-explain-workflow-x">How it works — the EXPLAIN workflow</h4>
 <ol>
 <li>Find candidates with <code>pg_stat_statements</code> sorted by <strong>total</strong> time (a 2 ms query called 10,000 times a minute beats a 2 s report query called hourly).</li>
@@ -9411,7 +9411,7 @@ EXPLAIN (FORMAT JSON) <span class="hljs-keyword">SELECT</span> <span class="hljs
 </ol>
 <h2 id="417-caching-and-batch-processing">41.7 Caching and batch processing</h2>
 <h4 id="caching-measure-the-hit-ratio-then-decide-x">Caching: measure the hit ratio, then decide</h4>
-<p>Caching is covered in depth in Part 26 — Caching Strategies. The performance-engineering view is arithmetic. For a lookup that costs <code>T_origin</code> at the database and <code>T_cache</code> at Redis, with hit ratio <code>h</code>:</p>
+<p>Caching is covered in depth in Part 26 — Caching and Redis. The performance-engineering view is arithmetic. For a lookup that costs <code>T_origin</code> at the database and <code>T_cache</code> at Redis, with hit ratio <code>h</code>:</p>
 <pre class="code"><code class="hljs language-plaintext">avg_latency = h × T_cache + (1 - h) × (T_cache + T_origin)</code></pre>
 <p>With <code>T_cache = 0.5 ms</code>, <code>T_origin = 12 ms</code>: at h = 0.5 the average is 6.75 ms (barely worth the complexity); at h = 0.95 it is 1.1 ms; at h = 0.99 it is 0.62 ms. The hit ratio decides whether a cache is a win, and the hit ratio depends on the <em>access pattern</em>, not on your code. Measure it before building: log the keys requested for an hour and compute how many repeats you would have had with a given TTL. Product catalog, category trees, feature flags, exchange rates and permissions are usually 95%+; user-specific order lists are often under 30% and not worth caching.</p>
 <p>Also count what a cache does to the tail: a miss now costs <code>T_cache + T_origin</code>, so p99 can get <em>worse</em> for low hit ratios, and a cache stampede on expiry (thousands of misses at once) is a self-inflicted incident. Part 26 covers stampede protection (single-flight locks, early refresh, jittered TTLs).</p>
@@ -9459,7 +9459,7 @@ EXPLAIN (FORMAT JSON) <span class="hljs-keyword">SELECT</span> <span class="hljs
 <pre class="code"><code class="hljs language-typescript"><span class="hljs-keyword">await</span> m.<span class="hljs-title function_">query</span>(sql, [updates.<span class="hljs-title function_">map</span>(<span class="hljs-function">(<span class="hljs-params">u</span>) =&gt;</span> u.<span class="hljs-property">sku</span>), updates.<span class="hljs-title function_">map</span>(<span class="hljs-function">(<span class="hljs-params">u</span>) =&gt;</span> u.<span class="hljs-property">stock</span>)]);</code></pre>
 <p>One round trip, one plan, and the index on <code>sku</code> is used for the join.</p>
 <p><strong>Batching external API calls.</strong> Most providers offer batch endpoints (fetch 100 prices, send 1,000 push notifications). When they do not, run calls concurrently with a <em>bounded</em> concurrency (a <code>p-limit</code> of 8–16) so you do not open 5,000 sockets at once, and honour their rate limit with a token bucket. A sequential loop of 500 HTTP calls at 40 ms each is 20 s; with concurrency 16 it is about 1.3 s.</p>
-<p><strong>Batching Kafka publishes.</strong> <code>producer.send({ topic, messages: [...] })</code> with many messages in one call produces one batch per partition, dramatically cheaper than one <code>send</code> per message (each <code>send</code> awaits a broker acknowledgement). The outbox relay in Part 39 — Event-Driven Architecture reads up to 500 rows and publishes them in one <code>send</code>. librdkafka-based clients expose <code>linger.ms</code> and <code>batch.size</code> to batch automatically; kafkajs batches only what you pass in a single call, so batch in your code.</p>
+<p><strong>Batching Kafka publishes.</strong> <code>producer.send({ topic, messages: [...] })</code> with many messages in one call produces one batch per partition, dramatically cheaper than one <code>send</code> per message (each <code>send</code> awaits a broker acknowledgement). The outbox relay in Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency reads up to 500 rows and publishes them in one <code>send</code>. librdkafka-based clients expose <code>linger.ms</code> and <code>batch.size</code> to batch automatically; kafkajs batches only what you pass in a single call, so batch in your code.</p>
 <h4 id="edge-cases-failure-modes-x5">Edge cases &amp; failure modes</h4>
 <ul>
 <li>One bad row in a 5,000-row chunk fails the whole chunk; for imports, validate first, or insert per chunk in savepoints and retry failing chunks row by row.</li>
@@ -9469,7 +9469,7 @@ EXPLAIN (FORMAT JSON) <span class="hljs-keyword">SELECT</span> <span class="hljs
 </ul>
 <h2 id="418-pagination-and-streaming">41.8 Pagination and streaming</h2>
 <h4 id="keyset-pagination-and-response-size-x">Keyset pagination and response size</h4>
-<p><code>OFFSET</code> gets slower with every page; keyset pagination (<code>WHERE (created_at, id) &lt; (:cursor_created_at, :cursor_id) ORDER BY created_at DESC, id DESC LIMIT 20</code>) is constant time at any depth because the index is entered at the cursor. Part 30 — API Design covers cursor encoding. Two performance rules beyond the query:</p>
+<p><code>OFFSET</code> gets slower with every page; keyset pagination (<code>WHERE (created_at, id) &lt; (:cursor_created_at, :cursor_id) ORDER BY created_at DESC, id DESC LIMIT 20</code>) is constant time at any depth because the index is entered at the cursor. Part 14 — API Design (REST first) covers cursor encoding. Two performance rules beyond the query:</p>
 <ul>
 <li>Cap page size at the server (<code>LIMIT 100</code> maximum regardless of what the client asks); a <code>?limit=10000</code> request is a denial of service against your own database and serializer.</li>
 <li>Keep list responses thin: ids, names, a few fields. A list of 50 orders should be 10–20 KB, not 400 KB of nested items and customer objects. Measure with <code>content-length</code> in access logs and alert on p99 response size.</li>
@@ -9680,7 +9680,7 @@ server.<span class="hljs-property">headersTimeout</span> = <span class="hljs-num
 <h2 id="4110-async-offloading-nodenestjs-tuning-and-the-client-facing-edge">41.10 Async offloading, Node/NestJS tuning and the client-facing edge</h2>
 <h3 id="41101-move-work-off-the-request-path">41.10.1 Move work off the request path</h3>
 <h4 id="concept-x10">Concept</h4>
-<p>Anything the client does not need in the response goes to a queue: sending the confirmation email, rendering the invoice PDF, generating thumbnails, syncing to the CRM, updating search indexes. The request writes the order and an outbox row; a worker does the rest. Part 35 — Background Jobs and Queues covers the machinery (BullMQ, retries, idempotent workers). The performance effect is direct: a <code>POST /orders</code> that awaited a 400 ms email API now returns in 90 ms, and the email provider&#39;s outage no longer becomes your outage.</p>
+<p>Anything the client does not need in the response goes to a queue: sending the confirmation email, rendering the invoice PDF, generating thumbnails, syncing to the CRM, updating search indexes. The request writes the order and an outbox row; a worker does the rest. Part 35 — Background Jobs and Schedulers covers the machinery (BullMQ, retries, idempotent workers). The performance effect is direct: a <code>POST /orders</code> that awaited a 400 ms email API now returns in 90 ms, and the email provider&#39;s outage no longer becomes your outage.</p>
 <pre class="code"><code class="hljs language-typescript"><span class="hljs-comment">// Request path: enqueue, do not await the side effect</span>
 <span class="hljs-keyword">await</span> <span class="hljs-variable language_">this</span>.<span class="hljs-property">ds</span>.<span class="hljs-title function_">transaction</span>(<span class="hljs-keyword">async</span> (m) =&gt; {
   <span class="hljs-keyword">await</span> m.<span class="hljs-title function_">save</span>(order);
@@ -9837,7 +9837,7 @@ server.<span class="hljs-property">headersTimeout</span> = <span class="hljs-num
 </ul>
 <p>Record the knee in the runbook: &quot;orders-api: 6 pods, knee at about 650 RPS, bottleneck pool; safe peak 400 RPS&quot;. Re-measure after every significant change and monthly.</p>
 <h4 id="soak-tests-for-leaks-x">Soak tests for leaks</h4>
-<p>Run at 60% of peak for eight hours with <code>nodejs_heap_size_used_bytes</code>, <code>pg_pool_total</code>, open file descriptors and pod memory on a dashboard. A healthy service shows a sawtooth heap (grows, GC drops it) with a flat baseline. A rising baseline is a leak: unbounded in-memory cache, event listeners added per request, <code>Map</code> keyed by request id never cleared, <code>setInterval</code> created per request. A pool total that climbs to <code>max</code> and stays there while traffic is flat means connections are not released on an error path. Part 9 — Operating Systems and Node.js Internals covers heap snapshot diffing to find the retained objects.</p>
+<p>Run at 60% of peak for eight hours with <code>nodejs_heap_size_used_bytes</code>, <code>pg_pool_total</code>, open file descriptors and pod memory on a dashboard. A healthy service shows a sawtooth heap (grows, GC drops it) with a flat baseline. A rising baseline is a leak: unbounded in-memory cache, event listeners added per request, <code>Map</code> keyed by request id never cleared, <code>setInterval</code> created per request. A pool total that climbs to <code>max</code> and stays there while traffic is flat means connections are not released on an error path. Part 9 — Operating Systems and the Node.js Runtime covers heap snapshot diffing to find the retained objects.</p>
 <h4 id="never-load-test-production-without-a-plan-x">Never load test production without a plan</h4>
 <p>Production load tests are legitimate (they are the only way to test real infrastructure, real data sizes and real third-party sandboxes) and dangerous. The plan: a named owner and an abort switch; a time window announced to on-call and dependent teams; a tenant or synthetic account whose data is excluded from analytics and billing; third parties in sandbox or mocked at the edge; rate limits and autoscaling max verified; a rollback for any config changed for the test; and the test tagged in traces (<code>x-load-test: 1</code>) so its traffic is separable in every dashboard. Without those, a load test is an outage with a scheduled start.</p>
 <h4 id="performance-budgets-and-regression-tests-in-ci-x">Performance budgets and regression tests in CI</h4>
@@ -11833,7 +11833,7 @@ duration.<span class="hljs-title function_">observe</span>({
 </ol>
 <p>Everything else, per-route breakdowns, per-pod detail, database internals, lives one click down.</p>
 <h4 id="runbook-links-from-alerts-x">Runbook links from alerts</h4>
-<p>Every alert carries <code>runbook_url</code>. The runbook is short: what the alert means, the dashboard to open, the three most likely causes with the query that confirms each, the mitigation for each, and who to escalate to. It is a checklist, not an essay. It is stored next to the code, reviewed in PRs, and updated in the incident retrospective. Part 48 — Incident Response and On-Call covers the runbook format and the incident process; here the rule is simply that no alert ships without one.</p>
+<p>Every alert carries <code>runbook_url</code>. The runbook is short: what the alert means, the dashboard to open, the three most likely causes with the query that confirms each, the mitigation for each, and who to escalate to. It is a checklist, not an essay. It is stored next to the code, reviewed in PRs, and updated in the incident retrospective. Part 48 — Site Reliability Engineering covers the runbook format and the incident process; here the rule is simply that no alert ships without one.</p>
 <h4 id="incident-style-example-x">Incident-style example</h4>
 <p>At 02:14 the pager fires: <code>OrdersApiHighErrorBurn</code>. The runbook link opens the orders overview dashboard with the time range preset to the last hour. Row 1 shows error ratio at 6 percent since 02:09, a deploy annotation at 02:08. Row 2 shows nothing unusual. Row 3 shows <code>db_pool_connections{state=&quot;waiting&quot;}</code> at 20 on every pod and DB query p99 at 4 seconds for <code>operation=&quot;select_orders&quot;</code>. The runbook&#39;s &quot;pool exhausted after a deploy&quot; branch says: check <code>pg_stat_statements</code> for a new slow query, roll back if found. The query is a new <code>SELECT ... WHERE lower(email) = $1</code> with no index. Roll back at 02:19, error ratio recovers at 02:21. Total time: seven minutes, no exploring, no guessing. The retrospective adds the missing index and a lint rule for functions on indexed columns.</p>
 <h2 id="429-cost-control">42.9 Cost control</h2>
@@ -12978,7 +12978,7 @@ docker compose <span class="hljs-built_in">exec</span> postgres psql -U orders -
 <li><strong>Port already allocated.</strong> Two Compose projects publishing <code>5432:5432</code> collide on the host; use different host ports or none.</li>
 <li><strong>IPv6 and <code>localhost</code>.</strong> Node 17+ resolves <code>localhost</code> to <code>::1</code> first; a server bound to <code>0.0.0.0</code> (IPv4 only) refuses it. Bind to <code>::</code> to accept both, or use <code>127.0.0.1</code> explicitly in clients.</li>
 <li><strong>Alpine DNS behaviour.</strong> musl&#39;s resolver historically lacked TCP fallback for large responses and handles <code>search</code> domains differently; long service names or many search domains in Kubernetes can produce intermittent <code>ENOTFOUND</code>. glibc images are more forgiving.</li>
-<li><strong>Connection limits from many containers.</strong> Every container&#39;s pool counts toward <code>max_connections</code> in PostgreSQL; 20 containers with <code>max: 20</code> is 400 connections. See Part 18 — PostgreSQL Architecture and Connections.</li>
+<li><strong>Connection limits from many containers.</strong> Every container&#39;s pool counts toward <code>max_connections</code> in PostgreSQL; 20 containers with <code>max: 20</code> is 400 connections. See Part 18 — PostgreSQL Internals.</li>
 <li><strong>Bridge MTU.</strong> VPNs on the host can shrink MTU; large responses stall inside containers. Rare but memorable.</li>
 </ul>
 <h4 id="how-a-senior-backend-engineer-thinks-about-this-x7">How a Senior Backend Engineer thinks about this</h4>
@@ -14454,7 +14454,7 @@ loopDelay.<span class="hljs-title function_">enable</span>();
 <li><strong>Container clock skew.</strong> The container has no clock of its own; a host with broken NTP (or a Docker Desktop VM that slept) is minutes off. JWTs are rejected as &quot;not yet valid&quot;, TLS handshakes fail, distributed locks expire early. Notice: <code>date</code> inside the container versus a trusted source; auth errors that appear on one node only. Fix: NTP/chrony on hosts, restart the Desktop VM, never trust wall-clock differences across machines for ordering (see Part 10 and Part 30).</li>
 <li><strong><code>HEALTHCHECK</code> assumed to drive Kubernetes.</strong> The pod has no probes; a wedged process keeps receiving traffic. Notice: <code>kubectl describe pod</code> shows no probes. Fix: define liveness/readiness probes in the pod spec (Part 44).</li>
 <li><strong>Restart loop hiding a config error.</strong> <code>restart: always</code> masks a service that exits in 200 ms because <code>DATABASE_URL</code> is missing. Notice: <code>RestartCount</code> in the hundreds; CPU spent on booting. Fix: config validation with a clear error, alert on restart count, <code>CrashLoopBackOff</code> visibility in Kubernetes.</li>
-<li><strong>Pool multiplied by replicas exhausts PostgreSQL.</strong> 30 containers with <code>max: 20</code> want 600 connections; <code>max_connections</code> is 200. Notice: <code>FATAL: sorry, too many clients already</code> during a scale-out. Fix: size pools per replica count, PgBouncer, or a lower <code>max</code> (see Part 18 — PostgreSQL Architecture and Connections).</li>
+<li><strong>Pool multiplied by replicas exhausts PostgreSQL.</strong> 30 containers with <code>max: 20</code> want 600 connections; <code>max_connections</code> is 200. Notice: <code>FATAL: sorry, too many clients already</code> during a scale-out. Fix: size pools per replica count, PgBouncer, or a lower <code>max</code> (see Part 18 — PostgreSQL Internals).</li>
 <li><strong>Zombie processes from spawned children.</strong> Puppeteer or ImageMagick children never reaped because node is PID 1 without <code>tini</code>. Notice: <code>ps</code> inside the container shows <code>&lt;defunct&gt;</code> entries; <code>pids.max</code> reached. Fix: <code>tini</code> (with <code>-g</code> for process groups) (43.4).</li>
 <li><strong>Build context includes <code>.git</code>.</strong> Slow builds, and the whole repository history in a layer if <code>COPY . .</code> runs. Notice: &quot;Sending build context&quot; measured in hundreds of MB. Fix: <code>.dockerignore</code> (43.3).</li>
 </ul>
@@ -18580,8 +18580,8 @@ kubectl -n shop describe pod orders-api-old-xxxxx | <span class="hljs-built_in">
 kubectl describe node ip-10-0-3-14 | grep -A5 Conditions      <span class="hljs-comment"># MemoryPressure, DiskPressure</span></code></pre>
 <p>Evicted pods stay in the list as Failed objects until cleaned up. The two common causes: memory pressure evicting <code>BestEffort</code> or over-request pods (fix by setting requests, which also improves your QoS class), and ephemeral storage from logging to a file or writing large temporary uploads (fix by logging to stdout and setting <code>sizeLimit</code> on <code>emptyDir</code>).</p>
 <p><strong>CPU throttling:</strong></p>
-<pre class="code"><code class="hljs language-promql">rate(container_cpu_cfs_throttled_periods_total{pod=~&quot;orders-api.*&quot;}[5m])
-  / rate(container_cpu_cfs_periods_total{pod=~&quot;orders-api.*&quot;}[5m])</code></pre>
+<pre class="code"><code class="hljs language-promql"><span class="hljs-built_in">rate</span>(container_cpu_cfs_throttled_periods_total{<span class="hljs-attr">pod</span><span class="hljs-operator">=~</span><span class="hljs-string">&quot;orders-api.*&quot;</span>}<span class="hljs-number">[5m]</span>)
+  / <span class="hljs-built_in">rate</span>(container_cpu_cfs_periods_total{<span class="hljs-attr">pod</span><span class="hljs-operator">=~</span><span class="hljs-string">&quot;orders-api.*&quot;</span>}<span class="hljs-number">[5m]</span>)</code></pre>
 <p>Above 0.25 and your latency graph is a picture of the CPU limit, not of your code. See 44.12 and the incident in 44.17.</p>
 <p><strong>DNS failures inside the cluster:</strong></p>
 <pre class="code"><code class="hljs language-bash">kubectl -n shop run dnsutils --<span class="hljs-built_in">rm</span> -it --image=registry.k8s.io/e2e-test-images/jessie-dnsutils:1.7 -- bash
@@ -19212,7 +19212,7 @@ kubectl -n shop <span class="hljs-built_in">cp</span> orders-api-b41c9d2-x7k2p:/
 <h4 id="how-it-works-x4">How it works</h4>
 <p><strong>Instance classes.</strong> <code>db.t4g</code> burstable for dev and small workloads; <code>db.m7g</code> and <code>db.m6g</code> general purpose; <code>db.r7g</code> and <code>db.r6g</code> memory optimized, which is what production PostgreSQL usually wants because <code>shared_buffers</code> and the OS page cache are what make queries fast. A <code>db.r6g.xlarge</code> has 4 vCPUs and 32 GB and costs about $0.48 per hour single-AZ in <code>us-east-1</code>.</p>
 <p><strong>Multi-AZ instance deployment.</strong> A synchronous standby in a second AZ receives every WAL record before the primary acknowledges the commit (adding about 1 to 3 ms per commit). The standby is not readable. On failure of the primary (or its AZ, or during your patch window) RDS promotes the standby and repoints the DNS endpoint. Failover takes 60 to 120 seconds, during which writes fail. The cost is exactly double the instance price. The newer <strong>Multi-AZ DB cluster</strong> deployment uses one writer and two readable standbys with semi-synchronous replication, fails over in about 35 seconds, and exposes a reader endpoint; it is the better default when the budget allows three instances.</p>
-<p><strong>Read replicas.</strong> Asynchronous streaming replicas (up to 15, in-region or cross-region) with their own endpoints. Lag is normally tens of milliseconds, but a long-running report query on the replica or a burst of writes on the primary can push it to seconds or minutes (the mechanics and <code>hot_standby_feedback</code> are in Part 22 — Scaling PostgreSQL). Replicas can be promoted to standalone instances, which is a manual disaster-recovery path, not automatic failover.</p>
+<p><strong>Read replicas.</strong> Asynchronous streaming replicas (up to 15, in-region or cross-region) with their own endpoints. Lag is normally tens of milliseconds, but a long-running report query on the replica or a burst of writes on the primary can push it to seconds or minutes (the mechanics and <code>hot_standby_feedback</code> are in Part 22 — Database Scaling). Replicas can be promoted to standalone instances, which is a manual disaster-recovery path, not automatic failover.</p>
 <p><strong>Parameter groups.</strong> The RDS way to edit <code>postgresql.conf</code>. A parameter group is attached to an instance; dynamic parameters apply immediately, static ones (<code>shared_buffers</code>, <code>max_connections</code>, <code>wal_level</code>) need a reboot. Defaults worth knowing: <code>shared_buffers</code> is 25% of memory, <code>max_connections</code> is derived from memory as <code>LEAST(DBInstanceClassMemory / 9531392, 5000)</code> (about 1,700 for 16 GB, about 400 for 4 GB), <code>rds.force_ssl</code> forces TLS, and <code>log_min_duration_statement</code> is off by default, so slow-query logging must be turned on by you.</p>
 <p><strong>Performance Insights.</strong> A dashboard of database load measured in average active sessions, broken down by wait event and by SQL. It answers &quot;what was the database doing at 14:05&quot; better than any ad hoc query, and the seven-day retention tier is free. Enhanced Monitoring adds OS-level metrics (per-process CPU, actual free memory) at one-second granularity.</p>
 <p><strong>Backups and PITR.</strong> RDS takes a daily snapshot and ships transaction logs to S3 every five minutes. With a retention of 1 to 35 days you can restore to any second within that window (the latest restorable time is usually about five minutes behind now). A restore creates a <em>new</em> instance with a <em>new</em> endpoint; it does not roll the existing one back, and it takes from ten minutes to well over an hour depending on data size. Manual snapshots persist until deleted and can be copied cross-region. Practice a restore quarterly; a backup you have never restored is a hope, not a plan.</p>
@@ -19225,7 +19225,7 @@ kubectl -n shop <span class="hljs-built_in">cp</span> orders-api-b41c9d2-x7k2p:/
 <li>Aurora Serverless v2 scales capacity in units of ACUs within seconds; Aurora Global Database replicates to another region with typical lag under a second.</li>
 </ul>
 <p>Aurora is not always the right choice: instance prices are about 20% higher, I/O charges can surprise write-heavy workloads on the standard tier, and some PostgreSQL extensions and features lag behind RDS. Pick Aurora when failover time and replica lag matter, or when read scaling is the bottleneck; pick RDS PostgreSQL when you want the closest thing to vanilla PostgreSQL.</p>
-<p><strong>RDS Proxy.</strong> A managed pooler in front of either engine (section 45.3 covered the Lambda motivation). It also helps container fleets: 40 tasks with a pool of 10 each is 400 connections; through the proxy the database sees perhaps 60. It shortens failover disruption because the proxy tracks the new primary itself. PgBouncer on your own cluster is cheaper and more configurable (see Part 18 — PostgreSQL Architecture and Connections); RDS Proxy is the answer when you would rather not run PgBouncer.</p>
+<p><strong>RDS Proxy.</strong> A managed pooler in front of either engine (section 45.3 covered the Lambda motivation). It also helps container fleets: 40 tasks with a pool of 10 each is 400 connections; through the proxy the database sees perhaps 60. It shortens failover disruption because the proxy tracks the new primary itself. PgBouncer on your own cluster is cheaper and more configurable (see Part 18 — PostgreSQL Internals); RDS Proxy is the answer when you would rather not run PgBouncer.</p>
 <h4 id="practical-example-x4">Practical example</h4>
 <p>The orders database for the 1,000 RPS platform: <code>db.r6g.xlarge</code> Multi-AZ (writes, about 2,000 queries per second at peak), one <code>db.r6g.large</code> read replica for product-catalogue and order-history reads, 500 GiB <code>gp3</code> (past the 400 GiB threshold on purpose for the 12,000 IOPS baseline), 14-day backup retention, Performance Insights on, <code>log_min_duration_statement = 500</code>, <code>idle_in_transaction_session_timeout = 30000</code>, <code>statement_timeout</code> set per role rather than globally so migrations can run long.</p>
 <h4 id="nestjs-example-x3">NestJS example</h4>
@@ -20446,10 +20446,10 @@ LIMIT <span class="hljs-number">1000</span>;</code></pre>
 <p><strong>WAF.</strong> Attached to the CloudFront distribution, not the ALB, so bad traffic is dropped at the edge and never costs you an ALB LCU or a Fargate CPU cycle. Managed rule groups (core rule set, known bad inputs, IP reputation), a rate-based rule at 2,000 requests per 5 minutes per IP, and a size-constraint rule on request bodies. Every custom rule starts in count mode for a week before it blocks anything.</p>
 <p><strong>ALB.</strong> Public subnets across three AZs, listener on 443 with an ACM certificate, target group of ECS tasks with <code>/health/ready</code> as the health check path, <code>deregistration_delay</code> of 30 seconds so draining tasks finish their requests, and an idle timeout of 60 seconds that must be <strong>less</strong> than the Node server&#39;s <code>keepAliveTimeout</code> (45.17 explains what happens when it is not).</p>
 <p><strong>ECS Fargate: the API service.</strong> Private subnets, no public IP, egress through NAT gateways. One task definition, one container plus the ADOT sidecar, a task role scoped to exactly the S3 prefix, SQS queues, and secrets it needs. Autoscaling on ALB request count per target with a target of 120 RPS per task, plus a scheduled minimum before known peaks.</p>
-<p><strong>ECS Fargate: the worker services.</strong> Separate services and separate task definitions from the API, deliberately. Workers doing 20-second jobs must not share an event loop, a deploy cadence or a scaling policy with a latency-sensitive API, and a blocked worker must not fail an API health check (Part 30 — Resilience Patterns).</p>
+<p><strong>ECS Fargate: the worker services.</strong> Separate services and separate task definitions from the API, deliberately. Workers doing 20-second jobs must not share an event loop, a deploy cadence or a scaling policy with a latency-sensitive API, and a blocked worker must not fail an API health check (Part 30 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure).</p>
 <p><strong>RDS PostgreSQL Multi-AZ, plus a read replica.</strong> The primary and its standby are in different AZs with synchronous replication; the read replica is asynchronous and serves reports and the heavier read paths. RDS Proxy sits in front if Lambda functions also connect. Automated backups with a 7-day window, <code>performance_insights_enabled = true</code>, and a parameter group in Terraform (18.13).</p>
 <p><strong>ElastiCache Redis.</strong> Cluster mode disabled, primary plus one replica in another AZ, automatic failover on, <code>maxmemory-policy = allkeys-lru</code> for the cache instance. If sessions and rate limits also live in Redis, they belong on a separate instance from the cache, because a cache eviction storm should not delete anyone&#39;s session.</p>
-<p><strong>SQS (or MSK).</strong> SQS standard queues with a dead-letter queue after 5 receives, a visibility timeout of 6x the p99 job duration, and long polling. MSK only if you need replay, ordering per key, or fan-out to multiple independent consumer groups (Part 27 — Message Brokers).</p>
+<p><strong>SQS (or MSK).</strong> SQS standard queues with a dead-letter queue after 5 receives, a visibility timeout of 6x the p99 job duration, and long polling. MSK only if you need replay, ordering per key, or fan-out to multiple independent consumer groups (Part 27 — Messaging: Queues, Topics, Kafka, RabbitMQ and SQS).</p>
 <p><strong>S3.</strong> One bucket for user uploads (presigned PUT, block public access, versioning, lifecycle to Intelligent-Tiering at 30 days), one for exports with a 7-day expiry lifecycle rule, one for logs.</p>
 <p><strong>Secrets Manager and Parameter Store.</strong> Database credentials with rotation in Secrets Manager; non-secret configuration in Parameter Store as it is roughly free. Injected into the task definition as <code>secrets</code>, which means they arrive as environment variables at task start and are <strong>not</strong> re-read when rotated (45.17).</p>
 <p><strong>CloudWatch and OpenTelemetry.</strong> The ADOT collector sidecar receives OTLP from the NestJS process, exports traces to X-Ray and metrics to CloudWatch; structured JSON logs go to CloudWatch Logs with a retention policy set in Terraform.</p>
@@ -20652,7 +20652,7 @@ LIMIT <span class="hljs-number">1000</span>;</code></pre>
 <td>Very high; a permanent design tax</td>
 </tr>
 </tbody></table></div>
-<p><strong>The honest recommendation for most teams.</strong> Run Multi-AZ for the database, the cache and the compute, spread across three AZs, and stop there. Add automated cross-region backup copies so a region loss is recoverable, and write down and rehearse the restore. Multi-region active-passive is worth building when you have a contractual RTO measured in minutes, a regulatory requirement, or genuine users on another continent whose latency justifies it. Multi-region active-active is worth building when you have a business that loses more money in an hour of downtime than a dedicated platform team costs in a year, and even then you should expect the conflict-resolution design to be the hardest thing your team does. Most teams that build multi-region before they have mastered Multi-AZ end up with two regions that both fail, because the complexity itself became the outage cause. Part 49 — Disaster Recovery and Business Continuity covers RTO/RPO targets, backup verification and the failover runbook in depth.</p>
+<p><strong>The honest recommendation for most teams.</strong> Run Multi-AZ for the database, the cache and the compute, spread across three AZs, and stop there. Add automated cross-region backup copies so a region loss is recoverable, and write down and rehearse the restore. Multi-region active-passive is worth building when you have a contractual RTO measured in minutes, a regulatory requirement, or genuine users on another continent whose latency justifies it. Multi-region active-active is worth building when you have a business that loses more money in an hour of downtime than a dedicated platform team costs in a year, and even then you should expect the conflict-resolution design to be the hardest thing your team does. Most teams that build multi-region before they have mastered Multi-AZ end up with two regions that both fail, because the complexity itself became the outage cause. Part 49 — Backup, Restore and Disaster Recovery covers RTO/RPO targets, backup verification and the failover runbook in depth.</p>
 <pre class="mermaid">flowchart LR
     U[&quot;Users&quot;] --&gt; R53[&quot;Route 53 with health checks&quot;]
     R53 --&gt;|&quot;primary&quot;| RA[&quot;Region A: ALB, ECS, RDS primary&quot;]
@@ -21991,7 +21991,7 @@ terraform show -no-color tfplan &gt; plan.txt   <span class="hljs-comment"># pos
 <li><strong>Canary that passes at low traffic and fails at peak.</strong> The 5% slice never triggers the connection-pool exhaustion that 100% will. Include a load-proportional step or hold at 50% through a peak.</li>
 <li><strong>Shadow traffic writing to production.</strong> Duplicate orders, duplicate emails, double charges. This has happened, more than once, at well-known companies.</li>
 <li><strong>Shadow doubling load on a shared dependency.</strong> The mirrored traffic hits the same third-party API and you exhaust its rate limit.</li>
-<li><strong>Blue/green with connection-limited dependencies.</strong> Both environments hold full connection pools; 24 pods times 20 connections exceeds <code>max_connections</code> (Part 18 — PostgreSQL Architecture and Connections).</li>
+<li><strong>Blue/green with connection-limited dependencies.</strong> Both environments hold full connection pools; 24 pods times 20 connections exceeds <code>max_connections</code> (Part 18 — PostgreSQL Internals).</li>
 <li><strong>Long-running requests during a switch.</strong> A 90-second report request is killed mid-flight when blue scales down 30 seconds later.</li>
 <li><strong>In-flight Kafka messages.</strong> A consumer group rebalance during a rolling update pauses consumption; with a large partition count the rebalance can take longer than the rollout.</li>
 </ul>
@@ -25355,16 +25355,16 @@ SLI   = good / valid</code></pre>
 <h3 id="4823-real-promql">48.2.3 Real PromQL</h3>
 <p>Assume <code>nginx-ingress</code> exposes <code>nginx_ingress_controller_requests</code> with <code>status</code>, <code>ingress</code> and <code>path</code> labels, and your NestJS service exposes <code>http_request_duration_seconds</code> as a histogram with a <code>route</code> label (Part 42 — Observability).</p>
 <p><strong>Availability SLI at the edge, over 30 days:</strong></p>
-<pre class="code"><code class="hljs language-promql"># Fraction of checkout requests that did not return 5xx, measured at the ingress.
-sum(rate(nginx_ingress_controller_requests{ingress=&quot;checkout&quot;, status!~&quot;5..&quot;}[30d]))
+<pre class="code"><code class="hljs language-promql"><span class="hljs-comment"># Fraction of checkout requests that did not return 5xx, measured at the ingress.</span>
+<span class="hljs-built_in">sum</span>(<span class="hljs-built_in">rate</span>(nginx_ingress_controller_requests{<span class="hljs-attr">ingress</span>=<span class="hljs-string">&quot;checkout&quot;</span>, <span class="hljs-attr">status</span><span class="hljs-operator">!~</span><span class="hljs-string">&quot;5..&quot;</span>}<span class="hljs-number">[30d]</span>))
 /
-sum(rate(nginx_ingress_controller_requests{ingress=&quot;checkout&quot;}[30d]))</code></pre>
+<span class="hljs-built_in">sum</span>(<span class="hljs-built_in">rate</span>(nginx_ingress_controller_requests{<span class="hljs-attr">ingress</span>=<span class="hljs-string">&quot;checkout&quot;</span>}<span class="hljs-number">[30d]</span>))</code></pre>
 <p>Note what is excluded and what is not. 4xx stays in the denominator but counts as <em>good</em>: a <code>400 Bad Request</code> for a malformed payload is the client&#39;s problem, not an availability failure. But be careful — <code>429 Too Many Requests</code> because <em>you</em> under-provisioned is your failure, and <code>401</code> storms because your token service is down are your failure. Decide these deliberately and write them in the SLO document, because this line is where teams accidentally define away their own outages.</p>
 <p><strong>Latency SLI as a ratio:</strong></p>
-<pre class="code"><code class="hljs language-promql"># Fraction of checkout requests served in under 800 ms.
-sum(rate(http_request_duration_seconds_bucket{route=&quot;/checkout&quot;,le=&quot;0.8&quot;}[30d]))
+<pre class="code"><code class="hljs language-promql"><span class="hljs-comment"># Fraction of checkout requests served in under 800 ms.</span>
+<span class="hljs-built_in">sum</span>(<span class="hljs-built_in">rate</span>(http_request_duration_seconds_bucket{<span class="hljs-attr">route</span>=<span class="hljs-string">&quot;/checkout&quot;</span>,<span class="hljs-attr">le</span>=<span class="hljs-string">&quot;0.8&quot;</span>}<span class="hljs-number">[30d]</span>))
 /
-sum(rate(http_request_duration_seconds_count{route=&quot;/checkout&quot;}[30d]))</code></pre>
+<span class="hljs-built_in">sum</span>(<span class="hljs-built_in">rate</span>(http_request_duration_seconds_count{<span class="hljs-attr">route</span>=<span class="hljs-string">&quot;/checkout&quot;</span>}<span class="hljs-number">[30d]</span>))</code></pre>
 <p>The <code>le=&quot;0.8&quot;</code> bucket must actually exist. Histogram buckets are chosen at instrumentation time, so <strong>define your buckets around your SLO thresholds</strong>. If your SLO is 800 ms and your buckets are <code>[0.5, 1, 2.5]</code>, you cannot compute this SLI without interpolation error. Add 0.8.</p>
 <pre class="code"><code class="hljs language-typescript"><span class="hljs-comment">// Buckets chosen to bracket the SLO thresholds we actually promise.</span>
 <span class="hljs-keyword">new</span> <span class="hljs-title class_">Histogram</span>({
@@ -25374,15 +25374,15 @@ sum(rate(http_request_duration_seconds_count{route=&quot;/checkout&quot;}[30d]))
   <span class="hljs-attr">buckets</span>: [<span class="hljs-number">0.025</span>, <span class="hljs-number">0.05</span>, <span class="hljs-number">0.1</span>, <span class="hljs-number">0.2</span>, <span class="hljs-number">0.4</span>, <span class="hljs-number">0.8</span>, <span class="hljs-number">1.5</span>, <span class="hljs-number">3</span>, <span class="hljs-number">8</span>],  <span class="hljs-comment">// 0.8 and 1.5 are SLO edges</span>
 });</code></pre>
 <p><strong>Correctness SLI</strong>, exported by a checker job rather than by the request path:</p>
-<pre class="code"><code class="hljs language-promql"># Fraction of paid orders in the last hour that have a matching payment record.
-sum(rate(order_payment_reconciled_total{result=&quot;matched&quot;}[30d]))
+<pre class="code"><code class="hljs language-promql"><span class="hljs-comment"># Fraction of paid orders in the last hour that have a matching payment record.</span>
+<span class="hljs-built_in">sum</span>(<span class="hljs-built_in">rate</span>(order_payment_reconciled_total{<span class="hljs-attr">result</span>=<span class="hljs-string">&quot;matched&quot;</span>}<span class="hljs-number">[30d]</span>))
 /
-sum(rate(order_payment_reconciled_total[30d]))</code></pre>
+<span class="hljs-built_in">sum</span>(<span class="hljs-built_in">rate</span>(order_payment_reconciled_total<span class="hljs-number">[30d]</span>))</code></pre>
 <p><strong>Freshness SLI</strong> for the search index:</p>
-<pre class="code"><code class="hljs language-promql"># Fraction of product updates indexed within 60 seconds.
-sum(rate(search_index_lag_seconds_bucket{le=&quot;60&quot;}[30d]))
+<pre class="code"><code class="hljs language-promql"><span class="hljs-comment"># Fraction of product updates indexed within 60 seconds.</span>
+<span class="hljs-built_in">sum</span>(<span class="hljs-built_in">rate</span>(search_index_lag_seconds_bucket{<span class="hljs-attr">le</span>=<span class="hljs-string">&quot;60&quot;</span>}<span class="hljs-number">[30d]</span>))
 /
-sum(rate(search_index_lag_seconds_count[30d]))</code></pre>
+<span class="hljs-built_in">sum</span>(<span class="hljs-built_in">rate</span>(search_index_lag_seconds_count<span class="hljs-number">[30d]</span>))</code></pre>
 <p><strong>Recording rules</strong>, because a <code>[30d]</code> range query over raw series will time out and hammer Prometheus. Pre-compute the ratio at short intervals and aggregate the recorded series:</p>
 <pre class="code"><code class="hljs language-yaml"><span class="hljs-attr">groups:</span>
   <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">slo-checkout</span>
@@ -25683,12 +25683,12 @@ SLA  = the external promise     &quot;we guarantee 99.9 %&quot;  -&gt; triggers 
 <p>Prefer request-based for your SLO. Expect your SLA to be time-based because contracts are. Compute both; they will disagree, and knowing by how much is useful.</p>
 <h4 id="the-budget-as-a-graph-x">The budget as a graph</h4>
 <p>The one graph every team should have on the wall:</p>
-<pre class="code"><code class="hljs language-promql"># Remaining error budget as a fraction, over a rolling 30 days.
-# 1 - (observed error ratio / allowed error ratio)
-1 - (
-  (1 - sli:checkout_availability:ratio_rate5m_30d)
+<pre class="code"><code class="hljs language-promql"><span class="hljs-comment"># Remaining error budget as a fraction, over a rolling 30 days.</span>
+<span class="hljs-comment"># 1 - (observed error ratio / allowed error ratio)</span>
+<span class="hljs-number">1</span> - (
+  (<span class="hljs-number">1</span> - sli:checkout_availability:ratio_rate5m_30d)
   /
-  (1 - 0.9995)
+  (<span class="hljs-number">1</span> - <span class="hljs-number">0.9995</span>)
 )</code></pre>
 <p>It starts each window at 1.0 and walks down. When it hits zero you have spent the month&#39;s allowance. When it goes negative you have breached the SLO. Plot it with a straight line from 1.0 to 0.0 across the window as the &quot;spending at exactly the allowed rate&quot; reference; being above the line is healthy, below it is a warning.</p>
 <h3 id="4852-burn-rate">48.5.2 Burn rate</h3>
@@ -25985,7 +25985,7 @@ Repeated exhaustion (2 of 3 consecutive windows)
 <h3 id="4863-what-actually-fixes-it">48.6.3 What actually fixes it</h3>
 <p>Three levers, in order of effectiveness.</p>
 <p><strong>1. Remove the dependency from the synchronous path.</strong> This is the biggest win and it is an architecture decision, not an infrastructure purchase. The email provider was in the chain until we queued it (Part 35); now its availability does not appear in the product at all. Ask of every box in the diagram: does the <em>response</em> depend on it?</p>
-<p><strong>2. Make failure non-fatal.</strong> A dependency you can degrade around drops out of the multiplication. If Redis being down means you read from PostgreSQL more slowly instead of returning 500, Redis contributes nothing to your unavailability. If the recommendation service being down means the recommendations panel is empty rather than the page failing, same. This is graceful degradation (Part 30 — Resilience Patterns) and it is worth more than another nine on any single component.</p>
+<p><strong>2. Make failure non-fatal.</strong> A dependency you can degrade around drops out of the multiplication. If Redis being down means you read from PostgreSQL more slowly instead of returning 500, Redis contributes nothing to your unavailability. If the recommendation service being down means the recommendations panel is empty rather than the page failing, same. This is graceful degradation (Part 30 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure) and it is worth more than another nine on any single component.</p>
 <p><strong>3. Add real redundancy.</strong> For components in <strong>parallel</strong>, where either one serving the request is enough, unavailabilities multiply instead:</p>
 <pre class="code"><code class="hljs language-plaintext">A_parallel = 1 - (1 - A1) x (1 - A2)</code></pre>
 <p>Two payment gateways at 99.9 percent each, with automatic failover:</p>
@@ -28386,7 +28386,7 @@ aws rds promote-read-replica \
 <li>Aurora Global Database &quot;managed planned failover&quot; is clean and lossless, but &quot;failover&quot; during an actual regional outage is a different, potentially lossy operation. Know which one you are doing.</li>
 </ul>
 <h4 id="how-a-senior-backend-engineer-thinks-about-this-x6">How a Senior Backend Engineer thinks about this</h4>
-<p>They design the application to survive a database restart <em>as a normal event</em>, not an incident. Failover then becomes 90 seconds of retries rather than a page. That means timeouts, bounded retries with jitter, idempotent writes and a circuit breaker (Part 30 — Resilience Patterns).</p>
+<p>They design the application to survive a database restart <em>as a normal event</em>, not an incident. Failover then becomes 90 seconds of retries rather than a page. That means timeouts, bounded retries with jitter, idempotent writes and a circuit breaker (Part 30 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure).</p>
 <p>They fence before they promote. Always. It is one command and it prevents the worst class of DR incident.</p>
 <p>They record the replication lag at the moment of promotion, in the incident channel, before doing anything else. That number is the RPO of this event and everyone will need it later.</p>
 <p>They are deeply suspicious of failback urgency. &quot;Region A is back&quot; is not a reason to move production twice in one day.</p>
@@ -29134,15 +29134,15 @@ AFTER
 <ol>
 <li><strong>Enforce at creation.</strong> An AWS Organizations tag policy plus a Service Control Policy that denies resource creation without required tags. Or, more practically, enforce in Terraform with <code>default_tags</code> at the provider level so every resource inherits them automatically:</li>
 </ol>
-<pre class="code"><code class="hljs language-hcl">provider &quot;aws&quot; {
-  region = &quot;us-east-1&quot;
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-keyword">provider</span> <span class="hljs-string">&quot;aws&quot;</span> {
+  <span class="hljs-attr">region</span> = <span class="hljs-string">&quot;us-east-1&quot;</span>
   default_tags {
-    tags = {
-      service     = var.service_name
-      team        = var.team
-      env         = var.environment
-      cost-center = var.cost_center
-      managed-by  = &quot;terraform&quot;
+    <span class="hljs-attr">tags</span> = {
+      <span class="hljs-attr">service</span>     = <span class="hljs-built_in">var</span>.service_name
+      <span class="hljs-attr">team</span>        = <span class="hljs-built_in">var</span>.team
+      <span class="hljs-attr">env</span>         = <span class="hljs-built_in">var</span>.environment
+      <span class="hljs-attr">cost-center</span> = <span class="hljs-built_in">var</span>.cost_center
+      <span class="hljs-attr">managed-by</span>  = <span class="hljs-string">&quot;terraform&quot;</span>
     }
   }
 }</code></pre>
@@ -30955,33 +30955,33 @@ the company survives.</code></pre>
 <h4 id="mental-model-x2">Mental model</h4>
 <p>Terraform is like a meticulous contractor working from a blueprint. You hand over the blueprint (your declarations) describing the finished building. The contractor compares it to what is currently built (the current state), produces a punch list of exactly what will be added, changed or demolished (the plan), shows you that list for approval, and then does precisely that work (apply). You describe the end result; the contractor handles the ordering and the mechanics and never acts without showing you the plan first.</p>
 <h4 id="how-it-works-x2">How it works</h4>
-<pre class="code"><code class="hljs language-hcl"># A provider: which platform, and its configuration.
-provider &quot;aws&quot; {
-  region = &quot;us-east-1&quot;
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># A provider: which platform, and its configuration.</span>
+<span class="hljs-keyword">provider</span> <span class="hljs-string">&quot;aws&quot;</span> {
+  <span class="hljs-attr">region</span> = <span class="hljs-string">&quot;us-east-1&quot;</span>
 }
 
-# A resource: a declaration of something you want to exist.
-resource &quot;aws_db_instance&quot; &quot;orders&quot; {
-  identifier              = &quot;orders-db&quot;
-  engine                  = &quot;postgres&quot;
-  engine_version          = &quot;17&quot;
-  instance_class          = &quot;db.r6g.large&quot;
-  allocated_storage       = 100
-  backup_retention_period = 30          # declared, reviewed, cannot be quietly disabled
-  multi_az                = true
-  db_subnet_group_name    = aws_db_subnet_group.orders.name   # private subnets (64.14)
-  vpc_security_group_ids  = [aws_security_group.orders_db.id]
-  username                = &quot;orders_admin&quot;
-  manage_master_user_password = true    # RDS generates the password in Secrets Manager (64.13)
-  storage_encrypted       = true
-  deletion_protection     = true        # AWS refuses to delete it, whatever Terraform says (64.15)
+<span class="hljs-comment"># A resource: a declaration of something you want to exist.</span>
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_db_instance&quot;</span> <span class="hljs-string">&quot;orders&quot;</span> {
+  <span class="hljs-attr">identifier</span>              = <span class="hljs-string">&quot;orders-db&quot;</span>
+  <span class="hljs-attr">engine</span>                  = <span class="hljs-string">&quot;postgres&quot;</span>
+  <span class="hljs-attr">engine_version</span>          = <span class="hljs-string">&quot;17&quot;</span>
+  <span class="hljs-attr">instance_class</span>          = <span class="hljs-string">&quot;db.r6g.large&quot;</span>
+  <span class="hljs-attr">allocated_storage</span>       = <span class="hljs-number">100</span>
+  <span class="hljs-attr">backup_retention_period</span> = <span class="hljs-number">30</span>          <span class="hljs-comment"># declared, reviewed, cannot be quietly disabled</span>
+  <span class="hljs-attr">multi_az</span>                = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">db_subnet_group_name</span>    = aws_db_subnet_group.orders.name   <span class="hljs-comment"># private subnets (64.14)</span>
+  <span class="hljs-attr">vpc_security_group_ids</span>  = [aws_security_group.orders_db.id]
+  <span class="hljs-attr">username</span>                = <span class="hljs-string">&quot;orders_admin&quot;</span>
+  <span class="hljs-attr">manage_master_user_password</span> = <span class="hljs-literal">true</span>    <span class="hljs-comment"># RDS generates the password in Secrets Manager (64.13)</span>
+  <span class="hljs-attr">storage_encrypted</span>       = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">deletion_protection</span>     = <span class="hljs-literal">true</span>        <span class="hljs-comment"># AWS refuses to delete it, whatever Terraform says (64.15)</span>
 }
 
-# Variables parameterize the config across environments.
-variable &quot;environment&quot; { type = string }
+<span class="hljs-comment"># Variables parameterize the config across environments.</span>
+<span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;environment&quot;</span> { <span class="hljs-attr">type</span> = string }
 
-# Outputs expose values (e.g. the database endpoint) for other code to use.
-output &quot;db_endpoint&quot; { value = aws_db_instance.orders.endpoint }</code></pre>
+<span class="hljs-comment"># Outputs expose values (e.g. the database endpoint) for other code to use.</span>
+<span class="hljs-keyword">output</span> <span class="hljs-string">&quot;db_endpoint&quot;</span> { <span class="hljs-attr">value</span> = aws_db_instance.orders.endpoint }</code></pre>
 <pre class="code"><code class="hljs language-bash">terraform init      <span class="hljs-comment"># download providers and set up the working directory</span>
 terraform plan      <span class="hljs-comment"># show what Terraform WOULD change (no changes made) -- review this</span>
 terraform apply     <span class="hljs-comment"># make the changes (after you confirm the plan)</span></code></pre>
@@ -31057,35 +31057,35 @@ Drift:
   -&gt; the drift is visible; you codify the change or let Terraform reconcile it</code></pre>
 <h4 id="practical-example-x2">Practical example</h4>
 <p>The backend for the production network and data layer of the orders service, plus the bucket that holds it (the bucket itself is created once by a small bootstrap configuration with local state, then never touched):</p>
-<pre class="code"><code class="hljs language-hcl"># envs/production/data/backend.tf
-terraform {
-  required_version = &quot;&gt;= 1.10.0&quot;
-  backend &quot;s3&quot; {
-    bucket       = &quot;acme-tfstate-prod-111122223333&quot;
-    key          = &quot;orders/production/data.tfstate&quot;   # one state file per root configuration
-    region       = &quot;ap-south-1&quot;
-    encrypt      = true
-    kms_key_id   = &quot;arn:aws:kms:ap-south-1:111122223333:key/0a1b2c3d-4e5f-6789-abcd-ef0123456789&quot;
-    use_lockfile = true                               # S3-native locking (Terraform 1.10+)
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># envs/production/data/backend.tf</span>
+<span class="hljs-keyword">terraform</span> {
+  <span class="hljs-attr">required_version</span> = <span class="hljs-string">&quot;&gt;= 1.10.0&quot;</span>
+  <span class="hljs-keyword">backend</span> <span class="hljs-string">&quot;s3&quot;</span> {
+    <span class="hljs-attr">bucket</span>       = <span class="hljs-string">&quot;acme-tfstate-prod-111122223333&quot;</span>
+    <span class="hljs-attr">key</span>          = <span class="hljs-string">&quot;orders/production/data.tfstate&quot;</span>   <span class="hljs-comment"># one state file per root configuration</span>
+    <span class="hljs-attr">region</span>       = <span class="hljs-string">&quot;ap-south-1&quot;</span>
+    <span class="hljs-attr">encrypt</span>      = <span class="hljs-literal">true</span>
+    <span class="hljs-attr">kms_key_id</span>   = <span class="hljs-string">&quot;arn:aws:kms:ap-south-1:111122223333:key/0a1b2c3d-4e5f-6789-abcd-ef0123456789&quot;</span>
+    <span class="hljs-attr">use_lockfile</span> = <span class="hljs-literal">true</span>                               <span class="hljs-comment"># S3-native locking (Terraform 1.10+)</span>
   }
 }</code></pre>
-<pre class="code"><code class="hljs language-hcl"># bootstrap/state-bucket.tf
-resource &quot;aws_s3_bucket&quot; &quot;tfstate&quot; {
-  bucket = &quot;acme-tfstate-prod-111122223333&quot;
-  lifecycle { prevent_destroy = true }
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># bootstrap/state-bucket.tf</span>
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_s3_bucket&quot;</span> <span class="hljs-string">&quot;tfstate&quot;</span> {
+  <span class="hljs-attr">bucket</span> = <span class="hljs-string">&quot;acme-tfstate-prod-111122223333&quot;</span>
+  <span class="hljs-keyword">lifecycle</span> { <span class="hljs-attr">prevent_destroy</span> = <span class="hljs-literal">true</span> }
 }
 
-resource &quot;aws_s3_bucket_versioning&quot; &quot;tfstate&quot; {
-  bucket = aws_s3_bucket.tfstate.id
-  versioning_configuration { status = &quot;Enabled&quot; }      # every state write is a recoverable version
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_s3_bucket_versioning&quot;</span> <span class="hljs-string">&quot;tfstate&quot;</span> {
+  <span class="hljs-attr">bucket</span> = aws_s3_bucket.tfstate.id
+  versioning_configuration { <span class="hljs-attr">status</span> = <span class="hljs-string">&quot;Enabled&quot;</span> }      <span class="hljs-comment"># every state write is a recoverable version</span>
 }
 
-resource &quot;aws_s3_bucket_public_access_block&quot; &quot;tfstate&quot; {
-  bucket                  = aws_s3_bucket.tfstate.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_s3_bucket_public_access_block&quot;</span> <span class="hljs-string">&quot;tfstate&quot;</span> {
+  <span class="hljs-attr">bucket</span>                  = aws_s3_bucket.tfstate.id
+  <span class="hljs-attr">block_public_acls</span>       = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">block_public_policy</span>     = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">ignore_public_acls</span>      = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">restrict_public_buckets</span> = <span class="hljs-literal">true</span>
 }</code></pre>
 <p>Useful state commands, all of which take the lock: <code>terraform state list</code> (what is managed), <code>terraform state show aws_db_instance.orders</code> (what Terraform believes), <code>terraform plan -refresh-only</code> (show drift without proposing to change real resources), and <code>terraform force-unlock &lt;LOCK_ID&gt;</code> (only after confirming the holder is truly dead).</p>
 <h4 id="failure-scenario-x2">Failure scenario</h4>
@@ -31126,53 +31126,53 @@ resource &quot;aws_s3_bucket_public_access_block&quot; &quot;tfstate&quot; {
 <h4 id="mental-model-x4">Mental model</h4>
 <p>A module is a recipe card in a restaurant chain. Head office writes &quot;the standard burger&quot; once; every branch cooks from the same card and only changes what the card allows (the size, the sauce). When head office improves the recipe, they print version 2 and branches switch when they are ready, test kitchen first. Copy-pasted Terraform is every branch improvising its own burger from memory.</p>
 <h4 id="how-it-works-x4">How it works</h4>
-<pre class="code"><code class="hljs language-hcl"># A reusable module: infra/modules/postgres/main.tf (trimmed to the essentials)
-variable &quot;name&quot;              { type = string }
-variable &quot;environment&quot;       { type = string }
-variable &quot;instance_class&quot;    { type = string }
-variable &quot;subnet_ids&quot;        { type = list(string) }
-variable &quot;security_group_id&quot; { type = string }
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># A reusable module: infra/modules/postgres/main.tf (trimmed to the essentials)</span>
+<span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;name&quot;</span>              { <span class="hljs-attr">type</span> = string }
+<span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;environment&quot;</span>       { <span class="hljs-attr">type</span> = string }
+<span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;instance_class&quot;</span>    { <span class="hljs-attr">type</span> = string }
+<span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;subnet_ids&quot;</span>        { <span class="hljs-attr">type</span> = <span class="hljs-title function_">list</span>(string) }
+<span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;security_group_id&quot;</span> { <span class="hljs-attr">type</span> = string }
 
-variable &quot;multi_az&quot; {
-  type    = bool
-  default = true                                    # safe default: callers must opt out
+<span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;multi_az&quot;</span> {
+  <span class="hljs-attr">type</span>    = bool
+  <span class="hljs-attr">default</span> = <span class="hljs-literal">true</span>                                    <span class="hljs-comment"># safe default: callers must opt out</span>
 }
 
-resource &quot;aws_db_subnet_group&quot; &quot;this&quot; {
-  name       = &quot;${var.name}-${var.environment}&quot;
-  subnet_ids = var.subnet_ids
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_db_subnet_group&quot;</span> <span class="hljs-string">&quot;this&quot;</span> {
+  <span class="hljs-attr">name</span>       = <span class="hljs-string">&quot;<span class="hljs-subst">${var.name}</span>-<span class="hljs-subst">${var.environment}</span>&quot;</span>
+  <span class="hljs-attr">subnet_ids</span> = <span class="hljs-built_in">var</span>.subnet_ids
 }
 
-resource &quot;aws_db_instance&quot; &quot;this&quot; {
-  identifier                  = &quot;${var.name}-${var.environment}&quot;
-  engine                      = &quot;postgres&quot;
-  engine_version              = &quot;17&quot;
-  instance_class              = var.instance_class
-  allocated_storage           = 100
-  username                    = &quot;${var.name}_admin&quot;
-  manage_master_user_password = true
-  db_subnet_group_name        = aws_db_subnet_group.this.name
-  vpc_security_group_ids      = [var.security_group_id]
-  multi_az                    = var.multi_az
-  backup_retention_period     = 30
-  deletion_protection         = true
-  lifecycle { prevent_destroy = true }
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_db_instance&quot;</span> <span class="hljs-string">&quot;this&quot;</span> {
+  <span class="hljs-attr">identifier</span>                  = <span class="hljs-string">&quot;<span class="hljs-subst">${var.name}</span>-<span class="hljs-subst">${var.environment}</span>&quot;</span>
+  <span class="hljs-attr">engine</span>                      = <span class="hljs-string">&quot;postgres&quot;</span>
+  <span class="hljs-attr">engine_version</span>              = <span class="hljs-string">&quot;17&quot;</span>
+  <span class="hljs-attr">instance_class</span>              = <span class="hljs-built_in">var</span>.instance_class
+  <span class="hljs-attr">allocated_storage</span>           = <span class="hljs-number">100</span>
+  <span class="hljs-attr">username</span>                    = <span class="hljs-string">&quot;<span class="hljs-subst">${var.name}</span>_admin&quot;</span>
+  <span class="hljs-attr">manage_master_user_password</span> = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">db_subnet_group_name</span>        = aws_db_subnet_group.this.name
+  <span class="hljs-attr">vpc_security_group_ids</span>      = [<span class="hljs-built_in">var</span>.security_group_id]
+  <span class="hljs-attr">multi_az</span>                    = <span class="hljs-built_in">var</span>.multi_az
+  <span class="hljs-attr">backup_retention_period</span>     = <span class="hljs-number">30</span>
+  <span class="hljs-attr">deletion_protection</span>         = <span class="hljs-literal">true</span>
+  <span class="hljs-keyword">lifecycle</span> { <span class="hljs-attr">prevent_destroy</span> = <span class="hljs-literal">true</span> }
 }
 
-output &quot;endpoint&quot; { value = aws_db_instance.this.endpoint }</code></pre>
-<pre class="code"><code class="hljs language-hcl"># Per-environment usage: infra/environments/production/main.tf
-module &quot;orders_db&quot; {
-  source            = &quot;git::https://github.com/acme/terraform-modules.git//postgres?ref=v2.3.0&quot;  # pinned version
-  name              = &quot;orders&quot;
-  environment       = &quot;production&quot;
-  instance_class    = &quot;db.r6g.large&quot;               # bigger in production
-  subnet_ids        = module.network.private_data_subnet_ids
-  security_group_id = aws_security_group.orders_db.id
+<span class="hljs-keyword">output</span> <span class="hljs-string">&quot;endpoint&quot;</span> { <span class="hljs-attr">value</span> = aws_db_instance.this.endpoint }</code></pre>
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># Per-environment usage: infra/environments/production/main.tf</span>
+<span class="hljs-built_in">module</span> <span class="hljs-string">&quot;orders_db&quot;</span> {
+  <span class="hljs-attr">source</span>            = <span class="hljs-string">&quot;git::https://github.com/acme/terraform-modules.git//postgres?ref=v2.3.0&quot;</span>  <span class="hljs-comment"># pinned version</span>
+  <span class="hljs-attr">name</span>              = <span class="hljs-string">&quot;orders&quot;</span>
+  <span class="hljs-attr">environment</span>       = <span class="hljs-string">&quot;production&quot;</span>
+  <span class="hljs-attr">instance_class</span>    = <span class="hljs-string">&quot;db.r6g.large&quot;</span>               <span class="hljs-comment"># bigger in production</span>
+  <span class="hljs-attr">subnet_ids</span>        = <span class="hljs-built_in">module</span>.network.private_data_subnet_ids
+  <span class="hljs-attr">security_group_id</span> = aws_security_group.orders_db.id
 }
 
-# infra/environments/staging/main.tf instantiates the SAME module with smaller inputs
-# (instance_class = &quot;db.t4g.medium&quot;, multi_az = false), so staging and production
-# share one definition and stay consistent.</code></pre>
+<span class="hljs-comment"># infra/environments/staging/main.tf instantiates the SAME module with smaller inputs</span>
+<span class="hljs-comment"># (instance_class = &quot;db.t4g.medium&quot;, multi_az = false), so staging and production</span>
+<span class="hljs-comment"># share one definition and stay consistent.</span></code></pre>
 <p>The structure: a <code>modules/</code> directory (or a separate modules repository, as in the <code>source</code> above) of reusable building blocks, and an <code>environments/</code> directory that instantiates them with per-environment inputs. This keeps environments consistent (same module, different sizes) and changes DRY (fix the module once). <strong>Module versioning</strong> — referencing a module by a version tag rather than always the latest — lets you adopt a change to the standard pattern environment by environment, so a module update does not instantly and simultaneously alter every environment (a safety and rollout control, the same compatibility thinking as Part 24). Section 51.8 covers layout, blast radius and why Terraform workspaces are a poor way to separate staging from production.</p>
 <h4 id="failure-scenario-x3">Failure scenario</h4>
 <p>A platform team changed the shared <code>ecs-service</code> module so every service got a new target-group health check path, and because twelve services referenced the module by <code>?ref=main</code> rather than a tag, the next apply of each service picked up the change. Four services did not serve <code>/health/ready</code>; their targets went unhealthy within a minute of apply and the ALB returned 503s for those services until the change was reverted 25 minutes later. The fix was to pin every module source to a tag, release module changes with a changelog, and roll them out staging-first. The lesson: an unpinned module is a deploy to every environment that nobody reviewed.</p>
@@ -31293,11 +31293,11 @@ module &quot;orders_db&quot; {
   6. Merge -&gt; the apply pipeline runs `terraform apply` with controlled credentials
   7. The change is recorded (who, what, when, the plan)</code></pre>
 <p>The key safety steps: the <strong>plan on the pull request</strong> makes the effect visible and reviewable before merge; <strong>policy as code</strong> (51.5.2) auto-blocks disallowed or dangerous changes; an <strong>approval gate</strong> requires human sign-off; the <strong>apply runs in the pipeline</strong>, not on a laptop, with scoped credentials and an audit trail. <strong>Preventing destructive changes</strong> specifically means guarding stateful resources — Terraform&#39;s <code>prevent_destroy</code> lifecycle flag on a database, required extra approval for any plan containing a destroy, and policy that blocks destruction of production data stores.</p>
-<pre class="code"><code class="hljs language-hcl"># Guard a stateful resource against accidental destruction.
-resource &quot;aws_db_instance&quot; &quot;orders&quot; {
-  # ...
-  lifecycle {
-    prevent_destroy = true   # a plan that would destroy this fails -&gt; no accidental DB deletion
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># Guard a stateful resource against accidental destruction.</span>
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_db_instance&quot;</span> <span class="hljs-string">&quot;orders&quot;</span> {
+  <span class="hljs-comment"># ...</span>
+  <span class="hljs-keyword">lifecycle</span> {
+    <span class="hljs-attr">prevent_destroy</span> = <span class="hljs-literal">true</span>   <span class="hljs-comment"># a plan that would destroy this fails -&gt; no accidental DB deletion</span>
   }
 }</code></pre>
 <p>Know the limit of <code>prevent_destroy</code>: it is part of the resource block, so it protects against a plan that destroys or replaces the resource <em>while the block is still in the code</em>. If someone deletes the block, or renames the resource address without a <code>moved</code> block (51.7), the protection disappears with it and the plan happily shows a destroy. That is why the guardrail that actually stops deletion is on the AWS side, <code>deletion_protection = true</code> on the RDS instance, enforced by the RDS API itself, plus <code>skip_final_snapshot = false</code> and policy that rejects any plan deleting a database (51.11). Section 51.10 shows the pipeline in full.</p>
@@ -31440,100 +31440,100 @@ Instead:
 <h4 id="mental-model-x8">Mental model</h4>
 <p>State is a phone book: each entry links a name (the address) to a phone number (the AWS resource id). Renaming a resource in code without telling Terraform is like reprinting the phone book with a new name and no number: Terraform calls nobody at the old name (&quot;destroy&quot;) and gets a new number for the new name (&quot;create&quot;). A <code>moved</code> block is the forwarding notice: &quot;the person you knew as <code>orders</code> is now <code>module.orders_db.this</code>, same number&quot;.</p>
 <h4 id="how-it-works-count-versus-foreach-x">How it works — <code>count</code> versus <code>for_each</code></h4>
-<pre class="code"><code class="hljs language-hcl"># Fragile: addresses are list positions aws_sqs_queue.jobs[0], [1], [2]
-variable &quot;queue_names&quot; { default = [&quot;order-emails&quot;, &quot;invoice-pdf&quot;, &quot;loyalty-points&quot;] }
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># Fragile: addresses are list positions aws_sqs_queue.jobs[0], [1], [2]</span>
+<span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;queue_names&quot;</span> { <span class="hljs-attr">default</span> = [<span class="hljs-string">&quot;order-emails&quot;</span>, <span class="hljs-string">&quot;invoice-pdf&quot;</span>, <span class="hljs-string">&quot;loyalty-points&quot;</span>] }
 
-resource &quot;aws_sqs_queue&quot; &quot;jobs&quot; {
-  count = length(var.queue_names)
-  name  = var.queue_names[count.index]
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_sqs_queue&quot;</span> <span class="hljs-string">&quot;jobs&quot;</span> {
+  <span class="hljs-attr">count</span> = <span class="hljs-title function_">length</span>(<span class="hljs-built_in">var</span>.queue_names)
+  <span class="hljs-attr">name</span>  = <span class="hljs-built_in">var</span>.queue_names[<span class="hljs-built_in">count</span>.index]
 }
 
-# Robust: addresses are keys aws_sqs_queue.jobs[&quot;invoice-pdf&quot;], independent of order
-resource &quot;aws_sqs_queue&quot; &quot;jobs_by_name&quot; {
-  for_each                   = toset([&quot;order-emails&quot;, &quot;invoice-pdf&quot;, &quot;loyalty-points&quot;])
-  name                       = each.key
-  message_retention_seconds  = 345600
-  visibility_timeout_seconds = 60
+<span class="hljs-comment"># Robust: addresses are keys aws_sqs_queue.jobs[&quot;invoice-pdf&quot;], independent of order</span>
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_sqs_queue&quot;</span> <span class="hljs-string">&quot;jobs_by_name&quot;</span> {
+  <span class="hljs-attr">for_each</span>                   = <span class="hljs-title function_">toset</span>([<span class="hljs-string">&quot;order-emails&quot;</span>, <span class="hljs-string">&quot;invoice-pdf&quot;</span>, <span class="hljs-string">&quot;loyalty-points&quot;</span>])
+  <span class="hljs-attr">name</span>                       = <span class="hljs-built_in">each</span>.key
+  <span class="hljs-attr">message_retention_seconds</span>  = <span class="hljs-number">345600</span>
+  <span class="hljs-attr">visibility_timeout_seconds</span> = <span class="hljs-number">60</span>
 }</code></pre>
 <p>With <code>count</code>, removing <code>&quot;order-emails&quot;</code> from the front of the list shifts every index: <code>[0]</code> becomes <code>invoice-pdf</code> and <code>[1]</code> becomes <code>loyalty-points</code>. SQS queue names cannot be changed in place, so the plan replaces two queues that were never meant to change and destroys the third. With <code>for_each</code>, removing a key plans exactly one destroy. Use <code>count</code> only for &quot;zero or one&quot; (<code>count = var.enable_bastion ? 1 : 0</code>); use <code>for_each</code> for collections.</p>
 <h4 id="how-it-works-moved-import-and-removed-blocks-x">How it works — <code>moved</code>, <code>import</code> and <code>removed</code> blocks</h4>
-<pre class="code"><code class="hljs language-hcl"># 1. Rename or move into a module without destroying anything (Terraform 1.1+)
-moved {
-  from = aws_db_instance.orders
-  to   = module.orders_db.aws_db_instance.this
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># 1. Rename or move into a module without destroying anything (Terraform 1.1+)</span>
+<span class="hljs-keyword">moved</span> {
+  <span class="hljs-attr">from</span> = aws_db_instance.orders
+  <span class="hljs-attr">to</span>   = <span class="hljs-built_in">module</span>.orders_db.aws_db_instance.this
 }
 
-moved {
-  from = aws_sqs_queue.jobs[1]
-  to   = aws_sqs_queue.jobs_by_name[&quot;invoice-pdf&quot;]
+<span class="hljs-keyword">moved</span> {
+  <span class="hljs-attr">from</span> = aws_sqs_queue.jobs[<span class="hljs-number">1</span>]
+  <span class="hljs-attr">to</span>   = aws_sqs_queue.jobs_by_name[<span class="hljs-string">&quot;invoice-pdf&quot;</span>]
 }
 
-# 2. Adopt a resource created by hand (Terraform 1.5+); generate a starting config with
-#    terraform plan -generate-config-out=generated.tf
-import {
-  to = aws_elasticache_replication_group.sessions
-  id = &quot;orders-sessions&quot;
+<span class="hljs-comment"># 2. Adopt a resource created by hand (Terraform 1.5+); generate a starting config with</span>
+<span class="hljs-comment">#    terraform plan -generate-config-out=generated.tf</span>
+<span class="hljs-keyword">import</span> {
+  <span class="hljs-attr">to</span> = aws_elasticache_replication_group.sessions
+  <span class="hljs-attr">id</span> = <span class="hljs-string">&quot;orders-sessions&quot;</span>
 }
 
-# 3. Stop managing a resource WITHOUT deleting it, for example when handing it to another team (1.7+)
-removed {
-  from = aws_s3_bucket.legacy_exports
-  lifecycle {
-    destroy = false
+<span class="hljs-comment"># 3. Stop managing a resource WITHOUT deleting it, for example when handing it to another team (1.7+)</span>
+<span class="hljs-keyword">removed</span> {
+  <span class="hljs-attr">from</span> = aws_s3_bucket.legacy_exports
+  <span class="hljs-keyword">lifecycle</span> {
+    <span class="hljs-attr">destroy</span> = <span class="hljs-literal">false</span>
   }
 }</code></pre>
 <p>The plan shows these explicitly: <code># aws_db_instance.orders has moved to module.orders_db.aws_db_instance.this</code>, <code># aws_elasticache_replication_group.sessions will be imported</code>, <code># aws_s3_bucket.legacy_exports will no longer be managed by Terraform</code>. A refactor pull request whose plan says <code>0 to add, 0 to change, 0 to destroy</code> plus moves is the goal. Keep <code>moved</code> blocks in shared modules for at least one major version so every caller&#39;s state migrates.</p>
 <h4 id="how-it-works-lifecycle-rules-and-checks-x">How it works — lifecycle rules and checks</h4>
-<pre class="code"><code class="hljs language-hcl">variable &quot;environment&quot; {
-  type = string
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;environment&quot;</span> {
+  <span class="hljs-attr">type</span> = string
   validation {
-    condition     = contains([&quot;dev&quot;, &quot;staging&quot;, &quot;production&quot;], var.environment)
-    error_message = &quot;environment must be dev, staging or production.&quot;
+    <span class="hljs-attr">condition</span>     = <span class="hljs-title function_">contains</span>([<span class="hljs-string">&quot;dev&quot;</span>, <span class="hljs-string">&quot;staging&quot;</span>, <span class="hljs-string">&quot;production&quot;</span>], <span class="hljs-built_in">var</span>.environment)
+    <span class="hljs-attr">error_message</span> = <span class="hljs-string">&quot;environment must be dev, staging or production.&quot;</span>
   }
 }
 
-resource &quot;aws_ecs_service&quot; &quot;api&quot; {
-  name            = &quot;orders-api&quot;
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.api.arn
-  desired_count   = 3
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_ecs_service&quot;</span> <span class="hljs-string">&quot;api&quot;</span> {
+  <span class="hljs-attr">name</span>            = <span class="hljs-string">&quot;orders-api&quot;</span>
+  <span class="hljs-attr">cluster</span>         = aws_ecs_cluster.main.id
+  <span class="hljs-attr">task_definition</span> = aws_ecs_task_definition.api.arn
+  <span class="hljs-attr">desired_count</span>   = <span class="hljs-number">3</span>
 
-  lifecycle {
-    ignore_changes = [desired_count]     # Application Auto Scaling owns this after creation
+  <span class="hljs-keyword">lifecycle</span> {
+    <span class="hljs-attr">ignore_changes</span> = [desired_count]     <span class="hljs-comment"># Application Auto Scaling owns this after creation</span>
   }
 }
 
-resource &quot;aws_db_parameter_group&quot; &quot;orders&quot; {
-  name_prefix = &quot;orders-pg17-&quot;           # a prefix lets create_before_destroy work for named resources
-  family      = &quot;postgres17&quot;
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_db_parameter_group&quot;</span> <span class="hljs-string">&quot;orders&quot;</span> {
+  <span class="hljs-attr">name_prefix</span> = <span class="hljs-string">&quot;orders-pg17-&quot;</span>           <span class="hljs-comment"># a prefix lets create_before_destroy work for named resources</span>
+  <span class="hljs-attr">family</span>      = <span class="hljs-string">&quot;postgres17&quot;</span>
   parameter {
-    name  = &quot;rds.logical_replication&quot;
-    value = &quot;1&quot;
-    apply_method = &quot;pending-reboot&quot;
+    <span class="hljs-attr">name</span>  = <span class="hljs-string">&quot;rds.logical_replication&quot;</span>
+    <span class="hljs-attr">value</span> = <span class="hljs-string">&quot;1&quot;</span>
+    <span class="hljs-attr">apply_method</span> = <span class="hljs-string">&quot;pending-reboot&quot;</span>
   }
-  lifecycle {
-    create_before_destroy = true         # new group exists before the old one is removed
+  <span class="hljs-keyword">lifecycle</span> {
+    <span class="hljs-attr">create_before_destroy</span> = <span class="hljs-literal">true</span>         <span class="hljs-comment"># new group exists before the old one is removed</span>
   }
 }
 
-resource &quot;aws_db_instance&quot; &quot;orders&quot; {
-  # ... arguments as in 64.14 ...
-  lifecycle {
-    prevent_destroy = true
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_db_instance&quot;</span> <span class="hljs-string">&quot;orders&quot;</span> {
+  <span class="hljs-comment"># ... arguments as in 64.14 ...</span>
+  <span class="hljs-keyword">lifecycle</span> {
+    <span class="hljs-attr">prevent_destroy</span> = <span class="hljs-literal">true</span>
     precondition {
-      condition     = var.environment != &quot;production&quot; || var.multi_az
-      error_message = &quot;Production databases must be Multi-AZ.&quot;
+      <span class="hljs-attr">condition</span>     = <span class="hljs-built_in">var</span>.environment != <span class="hljs-string">&quot;production&quot;</span> || <span class="hljs-built_in">var</span>.multi_az
+      <span class="hljs-attr">error_message</span> = <span class="hljs-string">&quot;Production databases must be Multi-AZ.&quot;</span>
     }
   }
 }</code></pre>
 <p><code>ignore_changes</code> stops Terraform fighting another controller; <code>create_before_destroy</code> avoids gaps when something must be replaced; <code>replace_triggered_by</code> forces replacement when a dependency changes; <code>precondition</code> and <code>postcondition</code> fail the plan or apply with a clear message when an assumption is broken.</p>
 <h4 id="how-it-works-pin-everything-x">How it works — pin everything</h4>
-<pre class="code"><code class="hljs language-hcl">terraform {
-  required_version = &quot;~&gt; 1.10&quot;
-  required_providers {
-    aws = {
-      source  = &quot;hashicorp/aws&quot;
-      version = &quot;~&gt; 6.0&quot;                 # allow minor and patch updates, never a new major
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-keyword">terraform</span> {
+  <span class="hljs-attr">required_version</span> = <span class="hljs-string">&quot;~&gt; 1.10&quot;</span>
+  <span class="hljs-keyword">required_providers</span> {
+    <span class="hljs-attr">aws</span> = {
+      <span class="hljs-attr">source</span>  = <span class="hljs-string">&quot;hashicorp/aws&quot;</span>
+      <span class="hljs-attr">version</span> = <span class="hljs-string">&quot;~&gt; 6.0&quot;</span>                 <span class="hljs-comment"># allow minor and patch updates, never a new major</span>
     }
   }
 }</code></pre>
@@ -31602,15 +31602,15 @@ resource &quot;aws_db_instance&quot; &quot;orders&quot; {
     production/
       network/  data/  app/</code></pre>
 <p>Why split by layer: the app layer changes daily (task definitions, scaling), the data layer monthly, the network layer rarely. A routine app change then runs a 20-second plan over 60 resources and holds a lock nobody else needs, and it <em>cannot</em> touch the database because the database is not in that state at all. Why one AWS account per environment: credentials for staging cannot change production, and the provider can refuse to run in the wrong account:</p>
-<pre class="code"><code class="hljs language-hcl"># envs/production/data/providers.tf
-provider &quot;aws&quot; {
-  region              = &quot;ap-south-1&quot;
-  allowed_account_ids = [&quot;444455556666&quot;]          # fail fast if credentials point anywhere else
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># envs/production/data/providers.tf</span>
+<span class="hljs-keyword">provider</span> <span class="hljs-string">&quot;aws&quot;</span> {
+  <span class="hljs-attr">region</span>              = <span class="hljs-string">&quot;ap-south-1&quot;</span>
+  <span class="hljs-attr">allowed_account_ids</span> = [<span class="hljs-string">&quot;444455556666&quot;</span>]          <span class="hljs-comment"># fail fast if credentials point anywhere else</span>
   assume_role {
-    role_arn = &quot;arn:aws:iam::444455556666:role/terraform-apply-data&quot;
+    <span class="hljs-attr">role_arn</span> = <span class="hljs-string">&quot;arn:aws:iam::444455556666:role/terraform-apply-data&quot;</span>
   }
   default_tags {
-    tags = { environment = &quot;production&quot;, service = &quot;orders&quot;, managed_by = &quot;terraform&quot; }
+    <span class="hljs-attr">tags</span> = { <span class="hljs-attr">environment</span> = <span class="hljs-string">&quot;production&quot;</span>, <span class="hljs-attr">service</span> = <span class="hljs-string">&quot;orders&quot;</span>, <span class="hljs-attr">managed_by</span> = <span class="hljs-string">&quot;terraform&quot;</span> }
   }
 }</code></pre>
 <h4 id="how-it-works-workspaces-directories-or-a-wrapper-x">How it works — workspaces, directories or a wrapper</h4>
@@ -31643,31 +31643,31 @@ provider &quot;aws&quot; {
 <h4 id="how-it-works-module-versions-x">How it works — module versions</h4>
 <p>Publish modules with semantic version tags and reference them by version: <code>source = &quot;git::https://github.com/acme/terraform-modules.git//postgres?ref=v2.3.0&quot;</code> for Git, or <code>source = &quot;app.terraform.io/acme/postgres/aws&quot;</code> with <code>version = &quot;~&gt; 2.3&quot;</code> for a registry. A breaking change to inputs or a change that replaces resources is a major version; ship <code>moved</code> blocks with it. Roll out a new module version to staging, let it soak, then production.</p>
 <h4 id="how-it-works-testing-before-apply-x">How it works — testing before apply</h4>
-<pre class="code"><code class="hljs language-hcl"># modules/postgres/tests/postgres.tftest.hcl (terraform test, 1.7+ for mock providers)
-mock_provider &quot;aws&quot; {}
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># modules/postgres/tests/postgres.tftest.hcl (terraform test, 1.7+ for mock providers)</span>
+mock_provider <span class="hljs-string">&quot;aws&quot;</span> {}
 
 variables {
-  name              = &quot;orders&quot;
-  environment       = &quot;production&quot;
-  instance_class    = &quot;db.r6g.large&quot;
-  subnet_ids        = [&quot;subnet-0a1b2c3d&quot;, &quot;subnet-4e5f6a7b&quot;]
-  security_group_id = &quot;sg-0123456789abcdef0&quot;
+  <span class="hljs-attr">name</span>              = <span class="hljs-string">&quot;orders&quot;</span>
+  <span class="hljs-attr">environment</span>       = <span class="hljs-string">&quot;production&quot;</span>
+  <span class="hljs-attr">instance_class</span>    = <span class="hljs-string">&quot;db.r6g.large&quot;</span>
+  <span class="hljs-attr">subnet_ids</span>        = [<span class="hljs-string">&quot;subnet-0a1b2c3d&quot;</span>, <span class="hljs-string">&quot;subnet-4e5f6a7b&quot;</span>]
+  <span class="hljs-attr">security_group_id</span> = <span class="hljs-string">&quot;sg-0123456789abcdef0&quot;</span>
 }
 
-run &quot;production_database_is_protected&quot; {
-  command = plan
+run <span class="hljs-string">&quot;production_database_is_protected&quot;</span> {
+  <span class="hljs-attr">command</span> = plan
 
   assert {
-    condition     = aws_db_instance.this.deletion_protection == true
-    error_message = &quot;Production databases must have deletion_protection enabled.&quot;
+    <span class="hljs-attr">condition</span>     = aws_db_instance.this.deletion_protection == <span class="hljs-literal">true</span>
+    <span class="hljs-attr">error_message</span> = <span class="hljs-string">&quot;Production databases must have deletion_protection enabled.&quot;</span>
   }
   assert {
-    condition     = aws_db_instance.this.manage_master_user_password == true
-    error_message = &quot;The master password must be managed by RDS, never passed in.&quot;
+    <span class="hljs-attr">condition</span>     = aws_db_instance.this.manage_master_user_password == <span class="hljs-literal">true</span>
+    <span class="hljs-attr">error_message</span> = <span class="hljs-string">&quot;The master password must be managed by RDS, never passed in.&quot;</span>
   }
   assert {
-    condition     = aws_db_instance.this.backup_retention_period &gt;= 7
-    error_message = &quot;Backups must be kept for at least 7 days.&quot;
+    <span class="hljs-attr">condition</span>     = aws_db_instance.this.backup_retention_period &gt;= <span class="hljs-number">7</span>
+    <span class="hljs-attr">error_message</span> = <span class="hljs-string">&quot;Backups must be kept for at least 7 days.&quot;</span>
   }
 }</code></pre>
 <p>The pipeline order, cheapest first: <code>terraform fmt -check</code>, <code>terraform validate</code>, a linter (TFLint, with the AWS ruleset catching invalid instance types), a security scanner (Trivy&#39;s config scanning or Checkov), <code>terraform test</code> for modules, then <code>plan</code> and policy checks (51.10, 51.11). Integration tests that create real resources in a sandbox account and destroy them are worth it for shared modules, and only there.</p>
@@ -31935,22 +31935,22 @@ run &quot;production_database_is_protected&quot; {
 <li><strong>The policy step is owned centrally.</strong> <code>policy/</code> has its own code owners; service teams cannot weaken it in the same pull request that needs the exception.</li>
 </ul>
 <p>The trust policy for the apply role, written in Terraform:</p>
-<pre class="code"><code class="hljs language-hcl">data &quot;aws_iam_policy_document&quot; &quot;gha_apply_trust&quot; {
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-built_in">data</span> <span class="hljs-string">&quot;aws_iam_policy_document&quot;</span> <span class="hljs-string">&quot;gha_apply_trust&quot;</span> {
   statement {
-    actions = [&quot;sts:AssumeRoleWithWebIdentity&quot;]
+    <span class="hljs-attr">actions</span> = [<span class="hljs-string">&quot;sts:AssumeRoleWithWebIdentity&quot;</span>]
     principals {
-      type        = &quot;Federated&quot;
-      identifiers = [&quot;arn:aws:iam::444455556666:oidc-provider/token.actions.githubusercontent.com&quot;]
+      <span class="hljs-attr">type</span>        = <span class="hljs-string">&quot;Federated&quot;</span>
+      <span class="hljs-attr">identifiers</span> = [<span class="hljs-string">&quot;arn:aws:iam::444455556666:oidc-provider/token.actions.githubusercontent.com&quot;</span>]
     }
     condition {
-      test     = &quot;StringEquals&quot;
-      variable = &quot;token.actions.githubusercontent.com:aud&quot;
-      values   = [&quot;sts.amazonaws.com&quot;]
+      <span class="hljs-attr">test</span>     = <span class="hljs-string">&quot;StringEquals&quot;</span>
+      <span class="hljs-attr">variable</span> = <span class="hljs-string">&quot;token.actions.githubusercontent.com:aud&quot;</span>
+      <span class="hljs-attr">values</span>   = [<span class="hljs-string">&quot;sts.amazonaws.com&quot;</span>]
     }
     condition {
-      test     = &quot;StringEquals&quot;
-      variable = &quot;token.actions.githubusercontent.com:sub&quot;
-      values   = [&quot;repo:acme/infra:environment:production&quot;]   # only the approved environment job
+      <span class="hljs-attr">test</span>     = <span class="hljs-string">&quot;StringEquals&quot;</span>
+      <span class="hljs-attr">variable</span> = <span class="hljs-string">&quot;token.actions.githubusercontent.com:sub&quot;</span>
+      <span class="hljs-attr">values</span>   = [<span class="hljs-string">&quot;repo:acme/infra:environment:production&quot;</span>]   <span class="hljs-comment"># only the approved environment job</span>
     }
   }
 }</code></pre>
@@ -31977,75 +31977,75 @@ run &quot;production_database_is_protected&quot; {
 <p>Conftest runs <strong>Open Policy Agent (OPA)</strong> policies written in <strong>Rego</strong> against structured files. For Terraform, the input is the plan rendered as JSON (<code>terraform show -json tfplan</code>), whose <code>resource_changes</code> array lists every resource with its <code>address</code>, <code>type</code>, <code>change.actions</code> (<code>[&quot;create&quot;]</code>, <code>[&quot;update&quot;]</code>, <code>[&quot;delete&quot;]</code>, <code>[&quot;delete&quot;, &quot;create&quot;]</code> for a replacement) and <code>change.before</code> / <code>change.after</code> attribute values. A policy is a set of rules that produce <code>deny</code> (fail) or <code>warn</code> (report) messages.</p>
 <h4 id="practical-example-the-guardrails-in-rego-x">Practical example — the guardrails in Rego</h4>
 <p>Written in Rego v1 syntax (the default in OPA 1.0), these are the rules from 51.5.2 plus the one that would have stopped the incident in 51.15:</p>
-<pre class="code"><code class="hljs language-rego"># policy/guardrails.rego
-package terraform.guardrails
+<pre class="code"><code class="hljs language-rego"><span class="hljs-comment"># policy/guardrails.rego</span>
+<span class="hljs-keyword">package</span> terraform.guardrails
 
-import rego.v1
+<span class="hljs-keyword">import</span> rego.v1
 
-data_store_types := {&quot;aws_db_instance&quot;, &quot;aws_rds_cluster&quot;, &quot;aws_elasticache_replication_group&quot;, &quot;aws_s3_bucket&quot;, &quot;aws_dynamodb_table&quot;}
+data_store_types <span class="hljs-operator">:=</span> {<span class="hljs-string">&quot;aws_db_instance&quot;</span>, <span class="hljs-string">&quot;aws_rds_cluster&quot;</span>, <span class="hljs-string">&quot;aws_elasticache_replication_group&quot;</span>, <span class="hljs-string">&quot;aws_s3_bucket&quot;</span>, <span class="hljs-string">&quot;aws_dynamodb_table&quot;</span>}
 
-allowed_db_classes := {&quot;db.t4g.medium&quot;, &quot;db.r6g.large&quot;, &quot;db.r6g.xlarge&quot;, &quot;db.r6g.2xlarge&quot;}
+allowed_db_classes <span class="hljs-operator">:=</span> {<span class="hljs-string">&quot;db.t4g.medium&quot;</span>, <span class="hljs-string">&quot;db.r6g.large&quot;</span>, <span class="hljs-string">&quot;db.r6g.xlarge&quot;</span>, <span class="hljs-string">&quot;db.r6g.2xlarge&quot;</span>}
 
-# 1. No deleting or replacing a data store, unless a current, owned waiver exists.
-deny contains msg if {
-    some rc in input.resource_changes
-    rc.type in data_store_types
-    &quot;delete&quot; in rc.change.actions
-    not waived(rc.address)
-    msg := sprintf(&quot;%s: deleting or replacing a data store is blocked (actions %v)&quot;, [rc.address, rc.change.actions])
+<span class="hljs-comment"># 1. No deleting or replacing a data store, unless a current, owned waiver exists.</span>
+deny <span class="hljs-keyword">contains</span> msg <span class="hljs-keyword">if</span> {
+    <span class="hljs-keyword">some</span> rc <span class="hljs-keyword">in</span> <span class="hljs-built_in">input</span>.resource_changes
+    rc.type <span class="hljs-keyword">in</span> data_store_types
+    <span class="hljs-string">&quot;delete&quot;</span> <span class="hljs-keyword">in</span> rc.change.actions
+    <span class="hljs-keyword">not</span> <span class="hljs-title function_">waived</span>(rc.address)
+    msg <span class="hljs-operator">:=</span> <span class="hljs-title function_">sprintf</span>(<span class="hljs-string">&quot;%s: deleting or replacing a data store is blocked (actions %v)&quot;</span>, [rc.address, rc.change.actions])
 }
 
-# 2. Databases must keep backups and deletion protection.
-deny contains msg if {
-    some rc in input.resource_changes
-    rc.type == &quot;aws_db_instance&quot;
-    after := rc.change.after
-    after != null
-    after.backup_retention_period &lt; 7
-    msg := sprintf(&quot;%s: backup_retention_period must be at least 7&quot;, [rc.address])
+<span class="hljs-comment"># 2. Databases must keep backups and deletion protection.</span>
+deny <span class="hljs-keyword">contains</span> msg <span class="hljs-keyword">if</span> {
+    <span class="hljs-keyword">some</span> rc <span class="hljs-keyword">in</span> <span class="hljs-built_in">input</span>.resource_changes
+    rc.type <span class="hljs-operator">==</span> <span class="hljs-string">&quot;aws_db_instance&quot;</span>
+    after <span class="hljs-operator">:=</span> rc.change.after
+    after <span class="hljs-operator">!=</span> <span class="hljs-literal">null</span>
+    after.backup_retention_period &lt; <span class="hljs-number">7</span>
+    msg <span class="hljs-operator">:=</span> <span class="hljs-title function_">sprintf</span>(<span class="hljs-string">&quot;%s: backup_retention_period must be at least 7&quot;</span>, [rc.address])
 }
 
-deny contains msg if {
-    some rc in input.resource_changes
-    rc.type == &quot;aws_db_instance&quot;
-    rc.change.after != null
-    not rc.change.after.deletion_protection
-    msg := sprintf(&quot;%s: deletion_protection must be true&quot;, [rc.address])
+deny <span class="hljs-keyword">contains</span> msg <span class="hljs-keyword">if</span> {
+    <span class="hljs-keyword">some</span> rc <span class="hljs-keyword">in</span> <span class="hljs-built_in">input</span>.resource_changes
+    rc.type <span class="hljs-operator">==</span> <span class="hljs-string">&quot;aws_db_instance&quot;</span>
+    rc.change.after <span class="hljs-operator">!=</span> <span class="hljs-literal">null</span>
+    <span class="hljs-keyword">not</span> rc.change.after.deletion_protection
+    msg <span class="hljs-operator">:=</span> <span class="hljs-title function_">sprintf</span>(<span class="hljs-string">&quot;%s: deletion_protection must be true&quot;</span>, [rc.address])
 }
 
-# 3. Every bucket's public access block must have all four flags on.
-deny contains msg if {
-    some rc in input.resource_changes
-    rc.type == &quot;aws_s3_bucket_public_access_block&quot;
-    rc.change.after != null
-    some flag in [&quot;block_public_acls&quot;, &quot;block_public_policy&quot;, &quot;ignore_public_acls&quot;, &quot;restrict_public_buckets&quot;]
-    not rc.change.after[flag]
-    msg := sprintf(&quot;%s: %s must be true&quot;, [rc.address, flag])
+<span class="hljs-comment"># 3. Every bucket&#x27;s public access block must have all four flags on.</span>
+deny <span class="hljs-keyword">contains</span> msg <span class="hljs-keyword">if</span> {
+    <span class="hljs-keyword">some</span> rc <span class="hljs-keyword">in</span> <span class="hljs-built_in">input</span>.resource_changes
+    rc.type <span class="hljs-operator">==</span> <span class="hljs-string">&quot;aws_s3_bucket_public_access_block&quot;</span>
+    rc.change.after <span class="hljs-operator">!=</span> <span class="hljs-literal">null</span>
+    <span class="hljs-keyword">some</span> flag <span class="hljs-keyword">in</span> [<span class="hljs-string">&quot;block_public_acls&quot;</span>, <span class="hljs-string">&quot;block_public_policy&quot;</span>, <span class="hljs-string">&quot;ignore_public_acls&quot;</span>, <span class="hljs-string">&quot;restrict_public_buckets&quot;</span>]
+    <span class="hljs-keyword">not</span> rc.change.after[flag]
+    msg <span class="hljs-operator">:=</span> <span class="hljs-title function_">sprintf</span>(<span class="hljs-string">&quot;%s: %s must be true&quot;</span>, [rc.address, flag])
 }
 
-# 4. Cost guardrail: database instance classes from an approved list.
-deny contains msg if {
-    some rc in input.resource_changes
-    rc.type == &quot;aws_db_instance&quot;
-    rc.change.after != null
-    not rc.change.after.instance_class in allowed_db_classes
-    msg := sprintf(&quot;%s: instance_class %s is not on the approved list&quot;, [rc.address, rc.change.after.instance_class])
+<span class="hljs-comment"># 4. Cost guardrail: database instance classes from an approved list.</span>
+deny <span class="hljs-keyword">contains</span> msg <span class="hljs-keyword">if</span> {
+    <span class="hljs-keyword">some</span> rc <span class="hljs-keyword">in</span> <span class="hljs-built_in">input</span>.resource_changes
+    rc.type <span class="hljs-operator">==</span> <span class="hljs-string">&quot;aws_db_instance&quot;</span>
+    rc.change.after <span class="hljs-operator">!=</span> <span class="hljs-literal">null</span>
+    <span class="hljs-keyword">not</span> rc.change.after.instance_class <span class="hljs-keyword">in</span> allowed_db_classes
+    msg <span class="hljs-operator">:=</span> <span class="hljs-title function_">sprintf</span>(<span class="hljs-string">&quot;%s: instance_class %s is not on the approved list&quot;</span>, [rc.address, rc.change.after.instance_class])
 }
 
-# 5. Tags, as a warning: ownership and cost allocation.
-warn contains msg if {
-    some rc in input.resource_changes
-    rc.change.after != null
-    tags := object.get(rc.change.after, &quot;tags_all&quot;, null)
-    tags != null
-    missing := {&quot;service&quot;, &quot;environment&quot;, &quot;owner&quot;} - {k | some k, _ in tags}
-    count(missing) &gt; 0
-    msg := sprintf(&quot;%s: missing tags %v&quot;, [rc.address, missing])
+<span class="hljs-comment"># 5. Tags, as a warning: ownership and cost allocation.</span>
+warn <span class="hljs-keyword">contains</span> msg <span class="hljs-keyword">if</span> {
+    <span class="hljs-keyword">some</span> rc <span class="hljs-keyword">in</span> <span class="hljs-built_in">input</span>.resource_changes
+    rc.change.after <span class="hljs-operator">!=</span> <span class="hljs-literal">null</span>
+    tags <span class="hljs-operator">:=</span> <span class="hljs-title function_">object.get</span>(rc.change.after, <span class="hljs-string">&quot;tags_all&quot;</span>, <span class="hljs-literal">null</span>)
+    tags <span class="hljs-operator">!=</span> <span class="hljs-literal">null</span>
+    missing <span class="hljs-operator">:=</span> {<span class="hljs-string">&quot;service&quot;</span>, <span class="hljs-string">&quot;environment&quot;</span>, <span class="hljs-string">&quot;owner&quot;</span>} - {k | <span class="hljs-keyword">some</span> k, _ <span class="hljs-keyword">in</span> tags}
+    <span class="hljs-title function_">count</span>(missing) &gt; <span class="hljs-number">0</span>
+    msg <span class="hljs-operator">:=</span> <span class="hljs-title function_">sprintf</span>(<span class="hljs-string">&quot;%s: missing tags %v&quot;</span>, [rc.address, missing])
 }
 
-waived(address) if {
-    w := data.waivers[address]
-    time.now_ns() &lt; time.parse_rfc3339_ns(w.expires)
+<span class="hljs-title function_">waived</span>(address) <span class="hljs-keyword">if</span> {
+    w <span class="hljs-operator">:=</span> <span class="hljs-built_in">data</span>.waivers[address]
+    <span class="hljs-title function_">time.now_ns</span>() &lt; <span class="hljs-title function_">time.parse_rfc3339_ns</span>(w.expires)
 }</code></pre>
 <p>A waiver is data, reviewed by the policy owners, with an owner and an expiry:</p>
 <pre class="code"><code class="hljs language-json"><span class="hljs-punctuation">{</span>
@@ -32054,24 +32054,24 @@ waived(address) if {
   <span class="hljs-punctuation">}</span>
 <span class="hljs-punctuation">}</span></code></pre>
 <p>Policies get unit tests like any code, run with <code>conftest verify --policy policy</code>:</p>
-<pre class="code"><code class="hljs language-rego"># policy/guardrails_test.rego
-package terraform.guardrails
+<pre class="code"><code class="hljs language-rego"><span class="hljs-comment"># policy/guardrails_test.rego</span>
+<span class="hljs-keyword">package</span> terraform.guardrails
 
-import rego.v1
+<span class="hljs-keyword">import</span> rego.v1
 
-test_replacing_database_is_denied if {
-    msgs := deny with input as {&quot;resource_changes&quot;: [{
-        &quot;address&quot;: &quot;aws_db_instance.orders&quot;, &quot;type&quot;: &quot;aws_db_instance&quot;,
-        &quot;change&quot;: {&quot;actions&quot;: [&quot;delete&quot;, &quot;create&quot;], &quot;after&quot;: {&quot;backup_retention_period&quot;: 30, &quot;deletion_protection&quot;: true, &quot;instance_class&quot;: &quot;db.r6g.large&quot;}},
+test_replacing_database_is_denied <span class="hljs-keyword">if</span> {
+    msgs <span class="hljs-operator">:=</span> deny <span class="hljs-keyword">with</span> <span class="hljs-built_in">input</span> <span class="hljs-keyword">as</span> {<span class="hljs-string">&quot;resource_changes&quot;</span>: [{
+        <span class="hljs-string">&quot;address&quot;</span>: <span class="hljs-string">&quot;aws_db_instance.orders&quot;</span>, <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;aws_db_instance&quot;</span>,
+        <span class="hljs-string">&quot;change&quot;</span>: {<span class="hljs-string">&quot;actions&quot;</span>: [<span class="hljs-string">&quot;delete&quot;</span>, <span class="hljs-string">&quot;create&quot;</span>], <span class="hljs-string">&quot;after&quot;</span>: {<span class="hljs-string">&quot;backup_retention_period&quot;</span>: <span class="hljs-number">30</span>, <span class="hljs-string">&quot;deletion_protection&quot;</span>: <span class="hljs-literal">true</span>, <span class="hljs-string">&quot;instance_class&quot;</span>: <span class="hljs-string">&quot;db.r6g.large&quot;</span>}},
     }]}
-    some msg in msgs
-    contains(msg, &quot;data store is blocked&quot;)
+    <span class="hljs-keyword">some</span> msg <span class="hljs-keyword">in</span> msgs
+    <span class="hljs-title function_">contains</span>(msg, <span class="hljs-string">&quot;data store is blocked&quot;</span>)
 }
 
-test_compliant_database_passes if {
-    count(deny) == 0 with input as {&quot;resource_changes&quot;: [{
-        &quot;address&quot;: &quot;aws_db_instance.orders&quot;, &quot;type&quot;: &quot;aws_db_instance&quot;,
-        &quot;change&quot;: {&quot;actions&quot;: [&quot;update&quot;], &quot;after&quot;: {&quot;backup_retention_period&quot;: 30, &quot;deletion_protection&quot;: true, &quot;instance_class&quot;: &quot;db.r6g.large&quot;}},
+test_compliant_database_passes <span class="hljs-keyword">if</span> {
+    <span class="hljs-title function_">count</span>(deny) <span class="hljs-operator">==</span> <span class="hljs-number">0</span> <span class="hljs-keyword">with</span> <span class="hljs-built_in">input</span> <span class="hljs-keyword">as</span> {<span class="hljs-string">&quot;resource_changes&quot;</span>: [{
+        <span class="hljs-string">&quot;address&quot;</span>: <span class="hljs-string">&quot;aws_db_instance.orders&quot;</span>, <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;aws_db_instance&quot;</span>,
+        <span class="hljs-string">&quot;change&quot;</span>: {<span class="hljs-string">&quot;actions&quot;</span>: [<span class="hljs-string">&quot;update&quot;</span>], <span class="hljs-string">&quot;after&quot;</span>: {<span class="hljs-string">&quot;backup_retention_period&quot;</span>: <span class="hljs-number">30</span>, <span class="hljs-string">&quot;deletion_protection&quot;</span>: <span class="hljs-literal">true</span>, <span class="hljs-string">&quot;instance_class&quot;</span>: <span class="hljs-string">&quot;db.r6g.large&quot;</span>}},
     }]}
 }</code></pre>
 <h4 id="how-it-works-sentinel-and-other-policy-points-x">How it works — Sentinel and other policy points</h4>
@@ -32207,21 +32207,21 @@ test_compliant_database_passes if {
 <td>Avoid for real secrets</td>
 </tr>
 </tbody></table></div>
-<pre class="code"><code class="hljs language-hcl"># Pattern 2: create an application secret without it ever touching state (Terraform 1.11+)
-ephemeral &quot;random_password&quot; &quot;reporting_db&quot; {
-  length  = 32
-  special = false
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># Pattern 2: create an application secret without it ever touching state (Terraform 1.11+)</span>
+ephemeral <span class="hljs-string">&quot;random_password&quot;</span> <span class="hljs-string">&quot;reporting_db&quot;</span> {
+  <span class="hljs-attr">length</span>  = <span class="hljs-number">32</span>
+  <span class="hljs-attr">special</span> = <span class="hljs-literal">false</span>
 }
 
-resource &quot;aws_secretsmanager_secret&quot; &quot;reporting_db&quot; {
-  name       = &quot;orders/production/reporting-db&quot;
-  kms_key_id = aws_kms_key.secrets.arn
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_secretsmanager_secret&quot;</span> <span class="hljs-string">&quot;reporting_db&quot;</span> {
+  <span class="hljs-attr">name</span>       = <span class="hljs-string">&quot;orders/production/reporting-db&quot;</span>
+  <span class="hljs-attr">kms_key_id</span> = aws_kms_key.secrets.arn
 }
 
-resource &quot;aws_secretsmanager_secret_version&quot; &quot;reporting_db&quot; {
-  secret_id                = aws_secretsmanager_secret.reporting_db.id
-  secret_string_wo         = ephemeral.random_password.reporting_db.result
-  secret_string_wo_version = 1          # bump to rotate: Terraform sends a new value
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_secretsmanager_secret_version&quot;</span> <span class="hljs-string">&quot;reporting_db&quot;</span> {
+  <span class="hljs-attr">secret_id</span>                = aws_secretsmanager_secret.reporting_db.id
+  <span class="hljs-attr">secret_string_wo</span>         = ephemeral.random_password.reporting_db.result
+  <span class="hljs-attr">secret_string_wo_version</span> = <span class="hljs-number">1</span>          <span class="hljs-comment"># bump to rotate: Terraform sends a new value</span>
 }</code></pre>
 <pre class="code"><code class="hljs language-yaml"><span class="hljs-comment"># Pattern 3 on Kubernetes: External Secrets Operator copies from Secrets Manager into a Secret</span>
 <span class="hljs-attr">apiVersion:</span> <span class="hljs-string">external-secrets.io/v1</span>
@@ -32272,404 +32272,404 @@ resource &quot;aws_secretsmanager_secret_version&quot; &quot;reporting_db&quot; 
   data/      RDS, ElastiCache, parameter groups        changes: monthly
   app/       ECS, ALB, IAM, autoscaling, logs          changes: weekly</code></pre>
 <h3 id="51142-the-network-root">51.14.2 The network root</h3>
-<pre class="code"><code class="hljs language-hcl"># infra/envs/production/network/main.tf
-module &quot;vpc&quot; {
-  source  = &quot;terraform-aws-modules/vpc/aws&quot;
-  version = &quot;~&gt; 6.0&quot;
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># infra/envs/production/network/main.tf</span>
+<span class="hljs-built_in">module</span> <span class="hljs-string">&quot;vpc&quot;</span> {
+  <span class="hljs-attr">source</span>  = <span class="hljs-string">&quot;terraform-aws-modules/vpc/aws&quot;</span>
+  <span class="hljs-attr">version</span> = <span class="hljs-string">&quot;~&gt; 6.0&quot;</span>
 
-  name = &quot;orders-prod&quot;
-  cidr = &quot;10.20.0.0/16&quot;
-  azs  = [&quot;ap-south-1a&quot;, &quot;ap-south-1b&quot;, &quot;ap-south-1c&quot;]
+  <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;orders-prod&quot;</span>
+  <span class="hljs-attr">cidr</span> = <span class="hljs-string">&quot;10.20.0.0/16&quot;</span>
+  <span class="hljs-attr">azs</span>  = [<span class="hljs-string">&quot;ap-south-1a&quot;</span>, <span class="hljs-string">&quot;ap-south-1b&quot;</span>, <span class="hljs-string">&quot;ap-south-1c&quot;</span>]
 
-  public_subnets   = [&quot;10.20.0.0/24&quot;, &quot;10.20.1.0/24&quot;, &quot;10.20.2.0/24&quot;]      # ALB and NAT only
-  private_subnets  = [&quot;10.20.10.0/23&quot;, &quot;10.20.12.0/23&quot;, &quot;10.20.14.0/23&quot;]   # ECS tasks
-  database_subnets = [&quot;10.20.20.0/24&quot;, &quot;10.20.21.0/24&quot;, &quot;10.20.22.0/24&quot;]   # RDS and ElastiCache
+  <span class="hljs-attr">public_subnets</span>   = [<span class="hljs-string">&quot;10.20.0.0/24&quot;</span>, <span class="hljs-string">&quot;10.20.1.0/24&quot;</span>, <span class="hljs-string">&quot;10.20.2.0/24&quot;</span>]      <span class="hljs-comment"># ALB and NAT only</span>
+  <span class="hljs-attr">private_subnets</span>  = [<span class="hljs-string">&quot;10.20.10.0/23&quot;</span>, <span class="hljs-string">&quot;10.20.12.0/23&quot;</span>, <span class="hljs-string">&quot;10.20.14.0/23&quot;</span>]   <span class="hljs-comment"># ECS tasks</span>
+  <span class="hljs-attr">database_subnets</span> = [<span class="hljs-string">&quot;10.20.20.0/24&quot;</span>, <span class="hljs-string">&quot;10.20.21.0/24&quot;</span>, <span class="hljs-string">&quot;10.20.22.0/24&quot;</span>]   <span class="hljs-comment"># RDS and ElastiCache</span>
 
-  create_database_subnet_group = true
-  enable_nat_gateway           = true
-  one_nat_gateway_per_az       = true   # an AZ failure does not take egress down for the others
-  enable_dns_hostnames         = true
+  <span class="hljs-attr">create_database_subnet_group</span> = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">enable_nat_gateway</span>           = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">one_nat_gateway_per_az</span>       = <span class="hljs-literal">true</span>   <span class="hljs-comment"># an AZ failure does not take egress down for the others</span>
+  <span class="hljs-attr">enable_dns_hostnames</span>         = <span class="hljs-literal">true</span>
 }
 
-resource &quot;aws_security_group&quot; &quot;alb&quot; {
-  name   = &quot;orders-alb&quot;
-  vpc_id = module.vpc.vpc_id
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_security_group&quot;</span> <span class="hljs-string">&quot;alb&quot;</span> {
+  <span class="hljs-attr">name</span>   = <span class="hljs-string">&quot;orders-alb&quot;</span>
+  <span class="hljs-attr">vpc_id</span> = <span class="hljs-built_in">module</span>.vpc.vpc_id
 }
 
-resource &quot;aws_security_group&quot; &quot;api&quot; {
-  name   = &quot;orders-api&quot;
-  vpc_id = module.vpc.vpc_id
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_security_group&quot;</span> <span class="hljs-string">&quot;api&quot;</span> {
+  <span class="hljs-attr">name</span>   = <span class="hljs-string">&quot;orders-api&quot;</span>
+  <span class="hljs-attr">vpc_id</span> = <span class="hljs-built_in">module</span>.vpc.vpc_id
 }
 
-resource &quot;aws_security_group&quot; &quot;db&quot; {
-  name   = &quot;orders-db&quot;
-  vpc_id = module.vpc.vpc_id
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_security_group&quot;</span> <span class="hljs-string">&quot;db&quot;</span> {
+  <span class="hljs-attr">name</span>   = <span class="hljs-string">&quot;orders-db&quot;</span>
+  <span class="hljs-attr">vpc_id</span> = <span class="hljs-built_in">module</span>.vpc.vpc_id
 }
 
-resource &quot;aws_security_group&quot; &quot;redis&quot; {
-  name   = &quot;orders-redis&quot;
-  vpc_id = module.vpc.vpc_id
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_security_group&quot;</span> <span class="hljs-string">&quot;redis&quot;</span> {
+  <span class="hljs-attr">name</span>   = <span class="hljs-string">&quot;orders-redis&quot;</span>
+  <span class="hljs-attr">vpc_id</span> = <span class="hljs-built_in">module</span>.vpc.vpc_id
 }
 
-resource &quot;aws_vpc_security_group_ingress_rule&quot; &quot;alb_https&quot; {
-  security_group_id = aws_security_group.alb.id
-  cidr_ipv4         = &quot;0.0.0.0/0&quot;
-  from_port         = 443
-  to_port           = 443
-  ip_protocol       = &quot;tcp&quot;
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_vpc_security_group_ingress_rule&quot;</span> <span class="hljs-string">&quot;alb_https&quot;</span> {
+  <span class="hljs-attr">security_group_id</span> = aws_security_group.alb.id
+  <span class="hljs-attr">cidr_ipv4</span>         = <span class="hljs-string">&quot;0.0.0.0/0&quot;</span>
+  <span class="hljs-attr">from_port</span>         = <span class="hljs-number">443</span>
+  <span class="hljs-attr">to_port</span>           = <span class="hljs-number">443</span>
+  <span class="hljs-attr">ip_protocol</span>       = <span class="hljs-string">&quot;tcp&quot;</span>
 }
 
-resource &quot;aws_vpc_security_group_ingress_rule&quot; &quot;api_from_alb&quot; {
-  security_group_id            = aws_security_group.api.id
-  referenced_security_group_id = aws_security_group.alb.id      # only the ALB reaches the tasks
-  from_port                    = 3000
-  to_port                      = 3000
-  ip_protocol                  = &quot;tcp&quot;
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_vpc_security_group_ingress_rule&quot;</span> <span class="hljs-string">&quot;api_from_alb&quot;</span> {
+  <span class="hljs-attr">security_group_id</span>            = aws_security_group.api.id
+  <span class="hljs-attr">referenced_security_group_id</span> = aws_security_group.alb.id      <span class="hljs-comment"># only the ALB reaches the tasks</span>
+  <span class="hljs-attr">from_port</span>                    = <span class="hljs-number">3000</span>
+  <span class="hljs-attr">to_port</span>                      = <span class="hljs-number">3000</span>
+  <span class="hljs-attr">ip_protocol</span>                  = <span class="hljs-string">&quot;tcp&quot;</span>
 }
 
-resource &quot;aws_vpc_security_group_ingress_rule&quot; &quot;db_from_api&quot; {
-  security_group_id            = aws_security_group.db.id
-  referenced_security_group_id = aws_security_group.api.id
-  from_port                    = 5432
-  to_port                      = 5432
-  ip_protocol                  = &quot;tcp&quot;
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_vpc_security_group_ingress_rule&quot;</span> <span class="hljs-string">&quot;db_from_api&quot;</span> {
+  <span class="hljs-attr">security_group_id</span>            = aws_security_group.db.id
+  <span class="hljs-attr">referenced_security_group_id</span> = aws_security_group.api.id
+  <span class="hljs-attr">from_port</span>                    = <span class="hljs-number">5432</span>
+  <span class="hljs-attr">to_port</span>                      = <span class="hljs-number">5432</span>
+  <span class="hljs-attr">ip_protocol</span>                  = <span class="hljs-string">&quot;tcp&quot;</span>
 }
 
-resource &quot;aws_vpc_security_group_ingress_rule&quot; &quot;redis_from_api&quot; {
-  security_group_id            = aws_security_group.redis.id
-  referenced_security_group_id = aws_security_group.api.id
-  from_port                    = 6379
-  to_port                      = 6379
-  ip_protocol                  = &quot;tcp&quot;
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_vpc_security_group_ingress_rule&quot;</span> <span class="hljs-string">&quot;redis_from_api&quot;</span> {
+  <span class="hljs-attr">security_group_id</span>            = aws_security_group.redis.id
+  <span class="hljs-attr">referenced_security_group_id</span> = aws_security_group.api.id
+  <span class="hljs-attr">from_port</span>                    = <span class="hljs-number">6379</span>
+  <span class="hljs-attr">to_port</span>                      = <span class="hljs-number">6379</span>
+  <span class="hljs-attr">ip_protocol</span>                  = <span class="hljs-string">&quot;tcp&quot;</span>
 }
 
-resource &quot;aws_vpc_security_group_egress_rule&quot; &quot;all_out&quot; {
-  for_each          = { alb = aws_security_group.alb.id, api = aws_security_group.api.id }
-  security_group_id = each.value
-  cidr_ipv4         = &quot;0.0.0.0/0&quot;
-  ip_protocol       = &quot;-1&quot;
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_vpc_security_group_egress_rule&quot;</span> <span class="hljs-string">&quot;all_out&quot;</span> {
+  <span class="hljs-attr">for_each</span>          = { <span class="hljs-attr">alb</span> = aws_security_group.alb.id, <span class="hljs-attr">api</span> = aws_security_group.api.id }
+  <span class="hljs-attr">security_group_id</span> = <span class="hljs-built_in">each</span>.value
+  <span class="hljs-attr">cidr_ipv4</span>         = <span class="hljs-string">&quot;0.0.0.0/0&quot;</span>
+  <span class="hljs-attr">ip_protocol</span>       = <span class="hljs-string">&quot;-1&quot;</span>
 }
 
-# Publish what the other roots need (no terraform_remote_state, no access to this state).
-resource &quot;aws_ssm_parameter&quot; &quot;network&quot; {
-  for_each = {
-    vpc_id               = module.vpc.vpc_id
-    public_subnet_ids    = join(&quot;,&quot;, module.vpc.public_subnets)
-    private_subnet_ids   = join(&quot;,&quot;, module.vpc.private_subnets)
-    database_subnet_ids  = join(&quot;,&quot;, module.vpc.database_subnets)
-    db_subnet_group      = module.vpc.database_subnet_group_name
-    sg_alb               = aws_security_group.alb.id
-    sg_api               = aws_security_group.api.id
-    sg_db                = aws_security_group.db.id
-    sg_redis             = aws_security_group.redis.id
+<span class="hljs-comment"># Publish what the other roots need (no terraform_remote_state, no access to this state).</span>
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_ssm_parameter&quot;</span> <span class="hljs-string">&quot;network&quot;</span> {
+  <span class="hljs-attr">for_each</span> = {
+    <span class="hljs-attr">vpc_id</span>               = <span class="hljs-built_in">module</span>.vpc.vpc_id
+    <span class="hljs-attr">public_subnet_ids</span>    = <span class="hljs-title function_">join</span>(<span class="hljs-string">&quot;,&quot;</span>, <span class="hljs-built_in">module</span>.vpc.public_subnets)
+    <span class="hljs-attr">private_subnet_ids</span>   = <span class="hljs-title function_">join</span>(<span class="hljs-string">&quot;,&quot;</span>, <span class="hljs-built_in">module</span>.vpc.private_subnets)
+    <span class="hljs-attr">database_subnet_ids</span>  = <span class="hljs-title function_">join</span>(<span class="hljs-string">&quot;,&quot;</span>, <span class="hljs-built_in">module</span>.vpc.database_subnets)
+    <span class="hljs-attr">db_subnet_group</span>      = <span class="hljs-built_in">module</span>.vpc.database_subnet_group_name
+    <span class="hljs-attr">sg_alb</span>               = aws_security_group.alb.id
+    <span class="hljs-attr">sg_api</span>               = aws_security_group.api.id
+    <span class="hljs-attr">sg_db</span>                = aws_security_group.db.id
+    <span class="hljs-attr">sg_redis</span>             = aws_security_group.redis.id
   }
-  name  = &quot;/orders/production/network/${each.key}&quot;
-  type  = &quot;String&quot;
-  value = each.value
+  <span class="hljs-attr">name</span>  = <span class="hljs-string">&quot;/orders/production/network/<span class="hljs-subst">${each.key}</span>&quot;</span>
+  <span class="hljs-attr">type</span>  = <span class="hljs-string">&quot;String&quot;</span>
+  <span class="hljs-attr">value</span> = <span class="hljs-built_in">each</span>.value
 }</code></pre>
 <p>Three NAT gateways cost about $100 a month plus data processing; a single shared NAT saves about $65 and makes one AZ a single point of failure for all outbound calls (payment providers, email). For production, pay it.</p>
 <h3 id="51143-the-data-root">51.14.3 The data root</h3>
-<pre class="code"><code class="hljs language-hcl"># infra/envs/production/data/main.tf
-data &quot;aws_ssm_parameter&quot; &quot;net&quot; {
-  for_each = toset([&quot;db_subnet_group&quot;, &quot;database_subnet_ids&quot;, &quot;sg_db&quot;, &quot;sg_redis&quot;])
-  name     = &quot;/orders/production/network/${each.key}&quot;
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># infra/envs/production/data/main.tf</span>
+<span class="hljs-built_in">data</span> <span class="hljs-string">&quot;aws_ssm_parameter&quot;</span> <span class="hljs-string">&quot;net&quot;</span> {
+  <span class="hljs-attr">for_each</span> = <span class="hljs-title function_">toset</span>([<span class="hljs-string">&quot;db_subnet_group&quot;</span>, <span class="hljs-string">&quot;database_subnet_ids&quot;</span>, <span class="hljs-string">&quot;sg_db&quot;</span>, <span class="hljs-string">&quot;sg_redis&quot;</span>])
+  <span class="hljs-attr">name</span>     = <span class="hljs-string">&quot;/orders/production/network/<span class="hljs-subst">${each.key}</span>&quot;</span>
 }
 
-resource &quot;aws_db_parameter_group&quot; &quot;orders&quot; {
-  name_prefix = &quot;orders-pg17-&quot;
-  family      = &quot;postgres17&quot;
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_db_parameter_group&quot;</span> <span class="hljs-string">&quot;orders&quot;</span> {
+  <span class="hljs-attr">name_prefix</span> = <span class="hljs-string">&quot;orders-pg17-&quot;</span>
+  <span class="hljs-attr">family</span>      = <span class="hljs-string">&quot;postgres17&quot;</span>
   parameter {
-    name         = &quot;rds.logical_replication&quot;     # CDC for the analytics pipeline (Parts 12 and 383.7)
-    value        = &quot;1&quot;
-    apply_method = &quot;pending-reboot&quot;
+    <span class="hljs-attr">name</span>         = <span class="hljs-string">&quot;rds.logical_replication&quot;</span>     <span class="hljs-comment"># CDC for the analytics pipeline (Parts 12 and 383.7)</span>
+    <span class="hljs-attr">value</span>        = <span class="hljs-string">&quot;1&quot;</span>
+    <span class="hljs-attr">apply_method</span> = <span class="hljs-string">&quot;pending-reboot&quot;</span>
   }
   parameter {
-    name  = &quot;log_min_duration_statement&quot;
-    value = &quot;500&quot;
+    <span class="hljs-attr">name</span>  = <span class="hljs-string">&quot;log_min_duration_statement&quot;</span>
+    <span class="hljs-attr">value</span> = <span class="hljs-string">&quot;500&quot;</span>
   }
-  lifecycle { create_before_destroy = true }
+  <span class="hljs-keyword">lifecycle</span> { <span class="hljs-attr">create_before_destroy</span> = <span class="hljs-literal">true</span> }
 }
 
-resource &quot;aws_db_instance&quot; &quot;orders&quot; {
-  identifier            = &quot;orders-prod&quot;
-  engine                = &quot;postgres&quot;
-  engine_version        = &quot;17&quot;
-  instance_class        = &quot;db.r6g.large&quot;
-  allocated_storage     = 300
-  max_allocated_storage = 1000                    # storage autoscaling ceiling
-  storage_type          = &quot;gp3&quot;
-  storage_encrypted     = true
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_db_instance&quot;</span> <span class="hljs-string">&quot;orders&quot;</span> {
+  <span class="hljs-attr">identifier</span>            = <span class="hljs-string">&quot;orders-prod&quot;</span>
+  <span class="hljs-attr">engine</span>                = <span class="hljs-string">&quot;postgres&quot;</span>
+  <span class="hljs-attr">engine_version</span>        = <span class="hljs-string">&quot;17&quot;</span>
+  <span class="hljs-attr">instance_class</span>        = <span class="hljs-string">&quot;db.r6g.large&quot;</span>
+  <span class="hljs-attr">allocated_storage</span>     = <span class="hljs-number">300</span>
+  <span class="hljs-attr">max_allocated_storage</span> = <span class="hljs-number">1000</span>                    <span class="hljs-comment"># storage autoscaling ceiling</span>
+  <span class="hljs-attr">storage_type</span>          = <span class="hljs-string">&quot;gp3&quot;</span>
+  <span class="hljs-attr">storage_encrypted</span>     = <span class="hljs-literal">true</span>
 
-  db_name                     = &quot;orders&quot;
-  username                    = &quot;orders_admin&quot;
-  manage_master_user_password = true              # no password in code or state (64.13)
+  <span class="hljs-attr">db_name</span>                     = <span class="hljs-string">&quot;orders&quot;</span>
+  <span class="hljs-attr">username</span>                    = <span class="hljs-string">&quot;orders_admin&quot;</span>
+  <span class="hljs-attr">manage_master_user_password</span> = <span class="hljs-literal">true</span>              <span class="hljs-comment"># no password in code or state (64.13)</span>
 
-  db_subnet_group_name   = data.aws_ssm_parameter.net[&quot;db_subnet_group&quot;].value
-  vpc_security_group_ids = [data.aws_ssm_parameter.net[&quot;sg_db&quot;].value]
-  parameter_group_name   = aws_db_parameter_group.orders.name
-  multi_az               = true
+  <span class="hljs-attr">db_subnet_group_name</span>   = <span class="hljs-built_in">data</span>.aws_ssm_parameter.net[<span class="hljs-string">&quot;db_subnet_group&quot;</span>].value
+  <span class="hljs-attr">vpc_security_group_ids</span> = [<span class="hljs-built_in">data</span>.aws_ssm_parameter.net[<span class="hljs-string">&quot;sg_db&quot;</span>].value]
+  <span class="hljs-attr">parameter_group_name</span>   = aws_db_parameter_group.orders.name
+  <span class="hljs-attr">multi_az</span>               = <span class="hljs-literal">true</span>
 
-  backup_retention_period   = 30
-  backup_window             = &quot;20:30-21:00&quot;       # UTC, which is 02:00-02:30 IST
-  maintenance_window        = &quot;sun:21:30-sun:22:30&quot;
-  copy_tags_to_snapshot     = true
-  deletion_protection       = true                # AWS refuses DeleteDBInstance
-  skip_final_snapshot       = false
-  final_snapshot_identifier = &quot;orders-prod-final&quot;
-  delete_automated_backups  = false               # keep PITR backups even if the instance is deleted
+  <span class="hljs-attr">backup_retention_period</span>   = <span class="hljs-number">30</span>
+  <span class="hljs-attr">backup_window</span>             = <span class="hljs-string">&quot;20:30-21:00&quot;</span>       <span class="hljs-comment"># UTC, which is 02:00-02:30 IST</span>
+  <span class="hljs-attr">maintenance_window</span>        = <span class="hljs-string">&quot;sun:21:30-sun:22:30&quot;</span>
+  <span class="hljs-attr">copy_tags_to_snapshot</span>     = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">deletion_protection</span>       = <span class="hljs-literal">true</span>                <span class="hljs-comment"># AWS refuses DeleteDBInstance</span>
+  <span class="hljs-attr">skip_final_snapshot</span>       = <span class="hljs-literal">false</span>
+  <span class="hljs-attr">final_snapshot_identifier</span> = <span class="hljs-string">&quot;orders-prod-final&quot;</span>
+  <span class="hljs-attr">delete_automated_backups</span>  = <span class="hljs-literal">false</span>               <span class="hljs-comment"># keep PITR backups even if the instance is deleted</span>
 
-  performance_insights_enabled = true
-  auto_minor_version_upgrade   = true
-  apply_immediately            = false            # changes wait for the maintenance window
+  <span class="hljs-attr">performance_insights_enabled</span> = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">auto_minor_version_upgrade</span>   = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">apply_immediately</span>            = <span class="hljs-literal">false</span>            <span class="hljs-comment"># changes wait for the maintenance window</span>
 
-  lifecycle { prevent_destroy = true }
+  <span class="hljs-keyword">lifecycle</span> { <span class="hljs-attr">prevent_destroy</span> = <span class="hljs-literal">true</span> }
 }
 
-resource &quot;aws_elasticache_subnet_group&quot; &quot;cache&quot; {
-  name       = &quot;orders-prod-cache&quot;
-  subnet_ids = split(&quot;,&quot;, data.aws_ssm_parameter.net[&quot;database_subnet_ids&quot;].value)
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_elasticache_subnet_group&quot;</span> <span class="hljs-string">&quot;cache&quot;</span> {
+  <span class="hljs-attr">name</span>       = <span class="hljs-string">&quot;orders-prod-cache&quot;</span>
+  <span class="hljs-attr">subnet_ids</span> = <span class="hljs-title function_">split</span>(<span class="hljs-string">&quot;,&quot;</span>, <span class="hljs-built_in">data</span>.aws_ssm_parameter.net[<span class="hljs-string">&quot;database_subnet_ids&quot;</span>].value)
 }
 
-resource &quot;aws_elasticache_replication_group&quot; &quot;cache&quot; {
-  replication_group_id       = &quot;orders-prod&quot;
-  description                = &quot;orders API cache, rate limits and idempotency keys&quot;
-  engine                     = &quot;redis&quot;
-  engine_version             = &quot;7.1&quot;
-  node_type                  = &quot;cache.r7g.large&quot;   # about 13 GB memory per node
-  num_cache_clusters         = 2                   # primary plus one replica in another AZ
-  automatic_failover_enabled = true
-  multi_az_enabled           = true
-  subnet_group_name          = aws_elasticache_subnet_group.cache.name
-  security_group_ids         = [data.aws_ssm_parameter.net[&quot;sg_redis&quot;].value]
-  at_rest_encryption_enabled = true
-  transit_encryption_enabled = true
-  snapshot_retention_limit   = 3
-  apply_immediately          = false
-  lifecycle { prevent_destroy = true }
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_elasticache_replication_group&quot;</span> <span class="hljs-string">&quot;cache&quot;</span> {
+  <span class="hljs-attr">replication_group_id</span>       = <span class="hljs-string">&quot;orders-prod&quot;</span>
+  <span class="hljs-attr">description</span>                = <span class="hljs-string">&quot;orders API cache, rate limits and idempotency keys&quot;</span>
+  <span class="hljs-attr">engine</span>                     = <span class="hljs-string">&quot;redis&quot;</span>
+  <span class="hljs-attr">engine_version</span>             = <span class="hljs-string">&quot;7.1&quot;</span>
+  <span class="hljs-attr">node_type</span>                  = <span class="hljs-string">&quot;cache.r7g.large&quot;</span>   <span class="hljs-comment"># about 13 GB memory per node</span>
+  <span class="hljs-attr">num_cache_clusters</span>         = <span class="hljs-number">2</span>                   <span class="hljs-comment"># primary plus one replica in another AZ</span>
+  <span class="hljs-attr">automatic_failover_enabled</span> = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">multi_az_enabled</span>           = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">subnet_group_name</span>          = aws_elasticache_subnet_group.cache.name
+  <span class="hljs-attr">security_group_ids</span>         = [<span class="hljs-built_in">data</span>.aws_ssm_parameter.net[<span class="hljs-string">&quot;sg_redis&quot;</span>].value]
+  <span class="hljs-attr">at_rest_encryption_enabled</span> = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">transit_encryption_enabled</span> = <span class="hljs-literal">true</span>
+  <span class="hljs-attr">snapshot_retention_limit</span>   = <span class="hljs-number">3</span>
+  <span class="hljs-attr">apply_immediately</span>          = <span class="hljs-literal">false</span>
+  <span class="hljs-keyword">lifecycle</span> { <span class="hljs-attr">prevent_destroy</span> = <span class="hljs-literal">true</span> }
 }
 
-resource &quot;aws_ssm_parameter&quot; &quot;data&quot; {
-  for_each = {
-    db_endpoint     = aws_db_instance.orders.address
-    db_secret_arn   = aws_db_instance.orders.master_user_secret[0].secret_arn
-    redis_endpoint  = aws_elasticache_replication_group.cache.primary_endpoint_address
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_ssm_parameter&quot;</span> <span class="hljs-string">&quot;data&quot;</span> {
+  <span class="hljs-attr">for_each</span> = {
+    <span class="hljs-attr">db_endpoint</span>     = aws_db_instance.orders.address
+    <span class="hljs-attr">db_secret_arn</span>   = aws_db_instance.orders.master_user_secret[<span class="hljs-number">0</span>].secret_arn
+    <span class="hljs-attr">redis_endpoint</span>  = aws_elasticache_replication_group.cache.primary_endpoint_address
   }
-  name  = &quot;/orders/production/data/${each.key}&quot;
-  type  = &quot;String&quot;
-  value = each.value
+  <span class="hljs-attr">name</span>  = <span class="hljs-string">&quot;/orders/production/data/<span class="hljs-subst">${each.key}</span>&quot;</span>
+  <span class="hljs-attr">type</span>  = <span class="hljs-string">&quot;String&quot;</span>
+  <span class="hljs-attr">value</span> = <span class="hljs-built_in">each</span>.value
 }</code></pre>
 <p>Look at the four lines grouped under the backup settings: <code>deletion_protection</code>, <code>skip_final_snapshot = false</code> with a <code>final_snapshot_identifier</code>, <code>delete_automated_backups = false</code>, and <code>prevent_destroy</code>. Each covers a different way the database can disappear, and 51.15 shows what happens when they are missing. (The ECS tasks below use the master secret for brevity; in production the first migration creates a least-privilege <code>orders_app</code> role with its own secret, created as in 51.13, and the task definition references that one.)</p>
 <h3 id="51144-the-app-root-ecs-alb-iam-and-autoscaling">51.14.4 The app root: ECS, ALB, IAM and autoscaling</h3>
-<pre class="code"><code class="hljs language-hcl"># infra/envs/production/app/main.tf
-variable &quot;image_tag&quot;       { type = string }        # set by the deploy pipeline
-variable &quot;certificate_arn&quot; { type = string }
+<pre class="code"><code class="hljs language-hcl"><span class="hljs-comment"># infra/envs/production/app/main.tf</span>
+<span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;image_tag&quot;</span>       { <span class="hljs-attr">type</span> = string }        <span class="hljs-comment"># set by the deploy pipeline</span>
+<span class="hljs-keyword">variable</span> <span class="hljs-string">&quot;certificate_arn&quot;</span> { <span class="hljs-attr">type</span> = string }
 
-data &quot;aws_ssm_parameter&quot; &quot;p&quot; {
-  for_each = toset([
-    &quot;network/vpc_id&quot;, &quot;network/public_subnet_ids&quot;, &quot;network/private_subnet_ids&quot;, &quot;network/sg_alb&quot;, &quot;network/sg_api&quot;,
-    &quot;data/db_endpoint&quot;, &quot;data/db_secret_arn&quot;, &quot;data/redis_endpoint&quot;,
+<span class="hljs-built_in">data</span> <span class="hljs-string">&quot;aws_ssm_parameter&quot;</span> <span class="hljs-string">&quot;p&quot;</span> {
+  <span class="hljs-attr">for_each</span> = <span class="hljs-title function_">toset</span>([
+    <span class="hljs-string">&quot;network/vpc_id&quot;</span>, <span class="hljs-string">&quot;network/public_subnet_ids&quot;</span>, <span class="hljs-string">&quot;network/private_subnet_ids&quot;</span>, <span class="hljs-string">&quot;network/sg_alb&quot;</span>, <span class="hljs-string">&quot;network/sg_api&quot;</span>,
+    <span class="hljs-string">&quot;data/db_endpoint&quot;</span>, <span class="hljs-string">&quot;data/db_secret_arn&quot;</span>, <span class="hljs-string">&quot;data/redis_endpoint&quot;</span>,
   ])
-  name = &quot;/orders/production/${each.key}&quot;
+  <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;/orders/production/<span class="hljs-subst">${each.key}</span>&quot;</span>
 }
 
-locals {
-  p = { for k, v in data.aws_ssm_parameter.p : k =&gt; v.insecure_value }   # plain String parameters, not secrets
+<span class="hljs-keyword">locals</span> {
+  <span class="hljs-attr">p</span> = { <span class="hljs-keyword">for</span> k, v <span class="hljs-keyword">in</span> <span class="hljs-built_in">data</span>.aws_ssm_parameter.p : <span class="hljs-attr">k</span> =&gt; v.insecure_value }   <span class="hljs-comment"># plain String parameters, not secrets</span>
 }
 
-resource &quot;aws_ecs_cluster&quot; &quot;main&quot; {
-  name = &quot;orders-prod&quot;
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_ecs_cluster&quot;</span> <span class="hljs-string">&quot;main&quot;</span> {
+  <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;orders-prod&quot;</span>
   setting {
-    name  = &quot;containerInsights&quot;
-    value = &quot;enabled&quot;
+    <span class="hljs-attr">name</span>  = <span class="hljs-string">&quot;containerInsights&quot;</span>
+    <span class="hljs-attr">value</span> = <span class="hljs-string">&quot;enabled&quot;</span>
   }
 }
 
-resource &quot;aws_cloudwatch_log_group&quot; &quot;api&quot; {
-  name              = &quot;/ecs/orders-api&quot;
-  retention_in_days = 30
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_cloudwatch_log_group&quot;</span> <span class="hljs-string">&quot;api&quot;</span> {
+  <span class="hljs-attr">name</span>              = <span class="hljs-string">&quot;/ecs/orders-api&quot;</span>
+  <span class="hljs-attr">retention_in_days</span> = <span class="hljs-number">30</span>
 }
 
-# --- IAM: two roles with different jobs -----------------------------------------------
-data &quot;aws_iam_policy_document&quot; &quot;ecs_tasks_trust&quot; {
+<span class="hljs-comment"># --- IAM: two roles with different jobs -----------------------------------------------</span>
+<span class="hljs-built_in">data</span> <span class="hljs-string">&quot;aws_iam_policy_document&quot;</span> <span class="hljs-string">&quot;ecs_tasks_trust&quot;</span> {
   statement {
-    actions = [&quot;sts:AssumeRole&quot;]
+    <span class="hljs-attr">actions</span> = [<span class="hljs-string">&quot;sts:AssumeRole&quot;</span>]
     principals {
-      type        = &quot;Service&quot;
-      identifiers = [&quot;ecs-tasks.amazonaws.com&quot;]
+      <span class="hljs-attr">type</span>        = <span class="hljs-string">&quot;Service&quot;</span>
+      <span class="hljs-attr">identifiers</span> = [<span class="hljs-string">&quot;ecs-tasks.amazonaws.com&quot;</span>]
     }
   }
 }
 
-# Execution role: used by the ECS agent to pull the image, write logs and fetch secrets.
-resource &quot;aws_iam_role&quot; &quot;execution&quot; {
-  name               = &quot;orders-api-execution&quot;
-  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_trust.json
+<span class="hljs-comment"># Execution role: used by the ECS agent to pull the image, write logs and fetch secrets.</span>
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_iam_role&quot;</span> <span class="hljs-string">&quot;execution&quot;</span> {
+  <span class="hljs-attr">name</span>               = <span class="hljs-string">&quot;orders-api-execution&quot;</span>
+  <span class="hljs-attr">assume_role_policy</span> = <span class="hljs-built_in">data</span>.aws_iam_policy_document.ecs_tasks_trust.json
 }
 
-resource &quot;aws_iam_role_policy_attachment&quot; &quot;execution_managed&quot; {
-  role       = aws_iam_role.execution.name
-  policy_arn = &quot;arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy&quot;
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_iam_role_policy_attachment&quot;</span> <span class="hljs-string">&quot;execution_managed&quot;</span> {
+  <span class="hljs-attr">role</span>       = aws_iam_role.execution.name
+  <span class="hljs-attr">policy_arn</span> = <span class="hljs-string">&quot;arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy&quot;</span>
 }
 
-resource &quot;aws_iam_role_policy&quot; &quot;execution_secrets&quot; {
-  name = &quot;read-db-secret&quot;
-  role = aws_iam_role.execution.id
-  policy = jsonencode({
-    Version   = &quot;2012-10-17&quot;
-    Statement = [{ Effect = &quot;Allow&quot;, Action = [&quot;secretsmanager:GetSecretValue&quot;], Resource = [local.p[&quot;data/db_secret_arn&quot;]] }]
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_iam_role_policy&quot;</span> <span class="hljs-string">&quot;execution_secrets&quot;</span> {
+  <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;read-db-secret&quot;</span>
+  <span class="hljs-attr">role</span> = aws_iam_role.execution.id
+  <span class="hljs-attr">policy</span> = <span class="hljs-title function_">jsonencode</span>({
+    <span class="hljs-attr">Version</span>   = <span class="hljs-string">&quot;2012-10-17&quot;</span>
+    <span class="hljs-attr">Statement</span> = [{ <span class="hljs-attr">Effect</span> = <span class="hljs-string">&quot;Allow&quot;</span>, <span class="hljs-attr">Action</span> = [<span class="hljs-string">&quot;secretsmanager:GetSecretValue&quot;</span>], <span class="hljs-attr">Resource</span> = [<span class="hljs-built_in">local</span>.p[<span class="hljs-string">&quot;data/db_secret_arn&quot;</span>]] }]
   })
 }
 
-# Task role: what the NestJS code itself may call. Only what it needs.
-resource &quot;aws_iam_role&quot; &quot;task&quot; {
-  name               = &quot;orders-api-task&quot;
-  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_trust.json
+<span class="hljs-comment"># Task role: what the NestJS code itself may call. Only what it needs.</span>
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_iam_role&quot;</span> <span class="hljs-string">&quot;task&quot;</span> {
+  <span class="hljs-attr">name</span>               = <span class="hljs-string">&quot;orders-api-task&quot;</span>
+  <span class="hljs-attr">assume_role_policy</span> = <span class="hljs-built_in">data</span>.aws_iam_policy_document.ecs_tasks_trust.json
 }
 
-resource &quot;aws_iam_role_policy&quot; &quot;task_metrics&quot; {
-  name = &quot;put-orders-metrics&quot;
-  role = aws_iam_role.task.id
-  policy = jsonencode({
-    Version = &quot;2012-10-17&quot;
-    Statement = [{
-      Effect    = &quot;Allow&quot;
-      Action    = [&quot;cloudwatch:PutMetricData&quot;]
-      Resource  = &quot;*&quot;
-      Condition = { StringEquals = { &quot;cloudwatch:namespace&quot; = &quot;Orders&quot; } }
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_iam_role_policy&quot;</span> <span class="hljs-string">&quot;task_metrics&quot;</span> {
+  <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;put-orders-metrics&quot;</span>
+  <span class="hljs-attr">role</span> = aws_iam_role.task.id
+  <span class="hljs-attr">policy</span> = <span class="hljs-title function_">jsonencode</span>({
+    <span class="hljs-attr">Version</span> = <span class="hljs-string">&quot;2012-10-17&quot;</span>
+    <span class="hljs-attr">Statement</span> = [{
+      <span class="hljs-attr">Effect</span>    = <span class="hljs-string">&quot;Allow&quot;</span>
+      <span class="hljs-attr">Action</span>    = [<span class="hljs-string">&quot;cloudwatch:PutMetricData&quot;</span>]
+      <span class="hljs-attr">Resource</span>  = <span class="hljs-string">&quot;*&quot;</span>
+      <span class="hljs-attr">Condition</span> = { <span class="hljs-attr">StringEquals</span> = { <span class="hljs-string">&quot;cloudwatch:namespace&quot;</span> = <span class="hljs-string">&quot;Orders&quot;</span> } }
     }]
   })
 }
 
-# --- Task definition ---------------------------------------------------------------------
-resource &quot;aws_ecs_task_definition&quot; &quot;api&quot; {
-  family                   = &quot;orders-api&quot;
-  requires_compatibilities = [&quot;FARGATE&quot;]
-  network_mode             = &quot;awsvpc&quot;
-  cpu                      = &quot;1024&quot;
-  memory                   = &quot;2048&quot;
-  execution_role_arn       = aws_iam_role.execution.arn
-  task_role_arn            = aws_iam_role.task.arn
+<span class="hljs-comment"># --- Task definition ---------------------------------------------------------------------</span>
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_ecs_task_definition&quot;</span> <span class="hljs-string">&quot;api&quot;</span> {
+  <span class="hljs-attr">family</span>                   = <span class="hljs-string">&quot;orders-api&quot;</span>
+  <span class="hljs-attr">requires_compatibilities</span> = [<span class="hljs-string">&quot;FARGATE&quot;</span>]
+  <span class="hljs-attr">network_mode</span>             = <span class="hljs-string">&quot;awsvpc&quot;</span>
+  <span class="hljs-attr">cpu</span>                      = <span class="hljs-string">&quot;1024&quot;</span>
+  <span class="hljs-attr">memory</span>                   = <span class="hljs-string">&quot;2048&quot;</span>
+  <span class="hljs-attr">execution_role_arn</span>       = aws_iam_role.execution.arn
+  <span class="hljs-attr">task_role_arn</span>            = aws_iam_role.task.arn
   runtime_platform {
-    operating_system_family = &quot;LINUX&quot;
-    cpu_architecture        = &quot;ARM64&quot;              # Graviton: about 20% cheaper per vCPU-hour
+    <span class="hljs-attr">operating_system_family</span> = <span class="hljs-string">&quot;LINUX&quot;</span>
+    <span class="hljs-attr">cpu_architecture</span>        = <span class="hljs-string">&quot;ARM64&quot;</span>              <span class="hljs-comment"># Graviton: about 20% cheaper per vCPU-hour</span>
   }
-  container_definitions = jsonencode([{
-    name         = &quot;api&quot;
-    image        = &quot;111122223333.dkr.ecr.ap-south-1.amazonaws.com/orders-api:${var.image_tag}&quot;
-    essential    = true
-    portMappings = [{ containerPort = 3000, protocol = &quot;tcp&quot; }]
-    stopTimeout  = 30                              # time for graceful shutdown of the NestJS app
-    environment = [
-      { name = &quot;NODE_ENV&quot;, value = &quot;production&quot; },
-      { name = &quot;DB_HOST&quot;, value = local.p[&quot;data/db_endpoint&quot;] },
-      { name = &quot;DB_NAME&quot;, value = &quot;orders&quot; },
-      { name = &quot;REDIS_HOST&quot;, value = local.p[&quot;data/redis_endpoint&quot;] },
+  <span class="hljs-attr">container_definitions</span> = <span class="hljs-title function_">jsonencode</span>([{
+    <span class="hljs-attr">name</span>         = <span class="hljs-string">&quot;api&quot;</span>
+    <span class="hljs-attr">image</span>        = <span class="hljs-string">&quot;111122223333.dkr.ecr.ap-south-1.amazonaws.com/orders-api:<span class="hljs-subst">${var.image_tag}</span>&quot;</span>
+    <span class="hljs-attr">essential</span>    = <span class="hljs-literal">true</span>
+    <span class="hljs-attr">portMappings</span> = [{ <span class="hljs-attr">containerPort</span> = <span class="hljs-number">3000</span>, <span class="hljs-attr">protocol</span> = <span class="hljs-string">&quot;tcp&quot;</span> }]
+    <span class="hljs-attr">stopTimeout</span>  = <span class="hljs-number">30</span>                              <span class="hljs-comment"># time for graceful shutdown of the NestJS app</span>
+    <span class="hljs-attr">environment</span> = [
+      { <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;NODE_ENV&quot;</span>, <span class="hljs-attr">value</span> = <span class="hljs-string">&quot;production&quot;</span> },
+      { <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;DB_HOST&quot;</span>, <span class="hljs-attr">value</span> = <span class="hljs-built_in">local</span>.p[<span class="hljs-string">&quot;data/db_endpoint&quot;</span>] },
+      { <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;DB_NAME&quot;</span>, <span class="hljs-attr">value</span> = <span class="hljs-string">&quot;orders&quot;</span> },
+      { <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;REDIS_HOST&quot;</span>, <span class="hljs-attr">value</span> = <span class="hljs-built_in">local</span>.p[<span class="hljs-string">&quot;data/redis_endpoint&quot;</span>] },
     ]
-    secrets = [                                    # resolved by ECS at task start; never in state or image
-      { name = &quot;DB_USER&quot;, valueFrom = &quot;${local.p[&quot;data/db_secret_arn&quot;]}:username::&quot; },
-      { name = &quot;DB_PASSWORD&quot;, valueFrom = &quot;${local.p[&quot;data/db_secret_arn&quot;]}:password::&quot; },
+    <span class="hljs-attr">secrets</span> = [                                    <span class="hljs-comment"># resolved by ECS at task start; never in state or image</span>
+      { <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;DB_USER&quot;</span>, <span class="hljs-attr">valueFrom</span> = <span class="hljs-string">&quot;<span class="hljs-subst">${local.p[&quot;data/db_secret_arn&quot;]}</span>:username::&quot;</span> },
+      { <span class="hljs-attr">name</span> = <span class="hljs-string">&quot;DB_PASSWORD&quot;</span>, <span class="hljs-attr">valueFrom</span> = <span class="hljs-string">&quot;<span class="hljs-subst">${local.p[&quot;data/db_secret_arn&quot;]}</span>:password::&quot;</span> },
     ]
-    logConfiguration = {
-      logDriver = &quot;awslogs&quot;
-      options = {
-        &quot;awslogs-group&quot;         = aws_cloudwatch_log_group.api.name
-        &quot;awslogs-region&quot;        = &quot;ap-south-1&quot;
-        &quot;awslogs-stream-prefix&quot; = &quot;api&quot;
+    <span class="hljs-attr">logConfiguration</span> = {
+      <span class="hljs-attr">logDriver</span> = <span class="hljs-string">&quot;awslogs&quot;</span>
+      <span class="hljs-attr">options</span> = {
+        <span class="hljs-string">&quot;awslogs-group&quot;</span>         = aws_cloudwatch_log_group.api.name
+        <span class="hljs-string">&quot;awslogs-region&quot;</span>        = <span class="hljs-string">&quot;ap-south-1&quot;</span>
+        <span class="hljs-string">&quot;awslogs-stream-prefix&quot;</span> = <span class="hljs-string">&quot;api&quot;</span>
       }
     }
   }])
 }
 
-# --- Load balancer -----------------------------------------------------------------------
-resource &quot;aws_lb&quot; &quot;api&quot; {
-  name               = &quot;orders-prod&quot;
-  load_balancer_type = &quot;application&quot;
-  subnets            = split(&quot;,&quot;, local.p[&quot;network/public_subnet_ids&quot;])
-  security_groups    = [local.p[&quot;network/sg_alb&quot;]]
+<span class="hljs-comment"># --- Load balancer -----------------------------------------------------------------------</span>
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_lb&quot;</span> <span class="hljs-string">&quot;api&quot;</span> {
+  <span class="hljs-attr">name</span>               = <span class="hljs-string">&quot;orders-prod&quot;</span>
+  <span class="hljs-attr">load_balancer_type</span> = <span class="hljs-string">&quot;application&quot;</span>
+  <span class="hljs-attr">subnets</span>            = <span class="hljs-title function_">split</span>(<span class="hljs-string">&quot;,&quot;</span>, <span class="hljs-built_in">local</span>.p[<span class="hljs-string">&quot;network/public_subnet_ids&quot;</span>])
+  <span class="hljs-attr">security_groups</span>    = [<span class="hljs-built_in">local</span>.p[<span class="hljs-string">&quot;network/sg_alb&quot;</span>]]
 }
 
-resource &quot;aws_lb_target_group&quot; &quot;api&quot; {
-  name                 = &quot;orders-api&quot;
-  port                 = 3000
-  protocol             = &quot;HTTP&quot;
-  target_type          = &quot;ip&quot;                      # required for Fargate awsvpc tasks
-  vpc_id               = local.p[&quot;network/vpc_id&quot;]
-  deregistration_delay = 30
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_lb_target_group&quot;</span> <span class="hljs-string">&quot;api&quot;</span> {
+  <span class="hljs-attr">name</span>                 = <span class="hljs-string">&quot;orders-api&quot;</span>
+  <span class="hljs-attr">port</span>                 = <span class="hljs-number">3000</span>
+  <span class="hljs-attr">protocol</span>             = <span class="hljs-string">&quot;HTTP&quot;</span>
+  <span class="hljs-attr">target_type</span>          = <span class="hljs-string">&quot;ip&quot;</span>                      <span class="hljs-comment"># required for Fargate awsvpc tasks</span>
+  <span class="hljs-attr">vpc_id</span>               = <span class="hljs-built_in">local</span>.p[<span class="hljs-string">&quot;network/vpc_id&quot;</span>]
+  <span class="hljs-attr">deregistration_delay</span> = <span class="hljs-number">30</span>
   health_check {
-    path                = &quot;/health/ready&quot;          # @nestjs/terminus readiness endpoint
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    interval            = 10
+    <span class="hljs-attr">path</span>                = <span class="hljs-string">&quot;/health/ready&quot;</span>          <span class="hljs-comment"># @nestjs/terminus readiness endpoint</span>
+    <span class="hljs-attr">healthy_threshold</span>   = <span class="hljs-number">2</span>
+    <span class="hljs-attr">unhealthy_threshold</span> = <span class="hljs-number">3</span>
+    <span class="hljs-attr">interval</span>            = <span class="hljs-number">10</span>
   }
 }
 
-resource &quot;aws_lb_listener&quot; &quot;https&quot; {
-  load_balancer_arn = aws_lb.api.arn
-  port              = 443
-  protocol          = &quot;HTTPS&quot;
-  ssl_policy        = &quot;ELBSecurityPolicy-TLS13-1-2-2021-06&quot;
-  certificate_arn   = var.certificate_arn
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_lb_listener&quot;</span> <span class="hljs-string">&quot;https&quot;</span> {
+  <span class="hljs-attr">load_balancer_arn</span> = aws_lb.api.arn
+  <span class="hljs-attr">port</span>              = <span class="hljs-number">443</span>
+  <span class="hljs-attr">protocol</span>          = <span class="hljs-string">&quot;HTTPS&quot;</span>
+  <span class="hljs-attr">ssl_policy</span>        = <span class="hljs-string">&quot;ELBSecurityPolicy-TLS13-1-2-2021-06&quot;</span>
+  <span class="hljs-attr">certificate_arn</span>   = <span class="hljs-built_in">var</span>.certificate_arn
   default_action {
-    type             = &quot;forward&quot;
-    target_group_arn = aws_lb_target_group.api.arn
+    <span class="hljs-attr">type</span>             = <span class="hljs-string">&quot;forward&quot;</span>
+    <span class="hljs-attr">target_group_arn</span> = aws_lb_target_group.api.arn
   }
 }
 
-# --- Service and autoscaling -------------------------------------------------------------
-resource &quot;aws_ecs_service&quot; &quot;api&quot; {
-  name                               = &quot;orders-api&quot;
-  cluster                            = aws_ecs_cluster.main.id
-  task_definition                    = aws_ecs_task_definition.api.arn
-  launch_type                        = &quot;FARGATE&quot;
-  desired_count                      = 4
-  deployment_minimum_healthy_percent = 100
-  deployment_maximum_percent         = 200
-  health_check_grace_period_seconds  = 30
+<span class="hljs-comment"># --- Service and autoscaling -------------------------------------------------------------</span>
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_ecs_service&quot;</span> <span class="hljs-string">&quot;api&quot;</span> {
+  <span class="hljs-attr">name</span>                               = <span class="hljs-string">&quot;orders-api&quot;</span>
+  <span class="hljs-attr">cluster</span>                            = aws_ecs_cluster.main.id
+  <span class="hljs-attr">task_definition</span>                    = aws_ecs_task_definition.api.arn
+  <span class="hljs-attr">launch_type</span>                        = <span class="hljs-string">&quot;FARGATE&quot;</span>
+  <span class="hljs-attr">desired_count</span>                      = <span class="hljs-number">4</span>
+  <span class="hljs-attr">deployment_minimum_healthy_percent</span> = <span class="hljs-number">100</span>
+  <span class="hljs-attr">deployment_maximum_percent</span>         = <span class="hljs-number">200</span>
+  <span class="hljs-attr">health_check_grace_period_seconds</span>  = <span class="hljs-number">30</span>
   deployment_circuit_breaker {
-    enable   = true
-    rollback = true                                # a bad image rolls itself back
+    <span class="hljs-attr">enable</span>   = <span class="hljs-literal">true</span>
+    <span class="hljs-attr">rollback</span> = <span class="hljs-literal">true</span>                                <span class="hljs-comment"># a bad image rolls itself back</span>
   }
   network_configuration {
-    subnets          = split(&quot;,&quot;, local.p[&quot;network/private_subnet_ids&quot;])
-    security_groups  = [local.p[&quot;network/sg_api&quot;]]
-    assign_public_ip = false
+    <span class="hljs-attr">subnets</span>          = <span class="hljs-title function_">split</span>(<span class="hljs-string">&quot;,&quot;</span>, <span class="hljs-built_in">local</span>.p[<span class="hljs-string">&quot;network/private_subnet_ids&quot;</span>])
+    <span class="hljs-attr">security_groups</span>  = [<span class="hljs-built_in">local</span>.p[<span class="hljs-string">&quot;network/sg_api&quot;</span>]]
+    <span class="hljs-attr">assign_public_ip</span> = <span class="hljs-literal">false</span>
   }
   load_balancer {
-    target_group_arn = aws_lb_target_group.api.arn
-    container_name   = &quot;api&quot;
-    container_port   = 3000
+    <span class="hljs-attr">target_group_arn</span> = aws_lb_target_group.api.arn
+    <span class="hljs-attr">container_name</span>   = <span class="hljs-string">&quot;api&quot;</span>
+    <span class="hljs-attr">container_port</span>   = <span class="hljs-number">3000</span>
   }
-  lifecycle {
-    ignore_changes = [desired_count]               # Application Auto Scaling owns it
+  <span class="hljs-keyword">lifecycle</span> {
+    <span class="hljs-attr">ignore_changes</span> = [desired_count]               <span class="hljs-comment"># Application Auto Scaling owns it</span>
   }
-  depends_on = [aws_lb_listener.https]
+  <span class="hljs-attr">depends_on</span> = [aws_lb_listener.https]
 }
 
-resource &quot;aws_appautoscaling_target&quot; &quot;api&quot; {
-  service_namespace  = &quot;ecs&quot;
-  resource_id        = &quot;service/${aws_ecs_cluster.main.name}/${aws_ecs_service.api.name}&quot;
-  scalable_dimension = &quot;ecs:service:DesiredCount&quot;
-  min_capacity       = 4
-  max_capacity       = 20
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_appautoscaling_target&quot;</span> <span class="hljs-string">&quot;api&quot;</span> {
+  <span class="hljs-attr">service_namespace</span>  = <span class="hljs-string">&quot;ecs&quot;</span>
+  <span class="hljs-attr">resource_id</span>        = <span class="hljs-string">&quot;service/<span class="hljs-subst">${aws_ecs_cluster.main.name}</span>/<span class="hljs-subst">${aws_ecs_service.api.name}</span>&quot;</span>
+  <span class="hljs-attr">scalable_dimension</span> = <span class="hljs-string">&quot;ecs:service:DesiredCount&quot;</span>
+  <span class="hljs-attr">min_capacity</span>       = <span class="hljs-number">4</span>
+  <span class="hljs-attr">max_capacity</span>       = <span class="hljs-number">20</span>
 }
 
-resource &quot;aws_appautoscaling_policy&quot; &quot;api_cpu&quot; {
-  name               = &quot;orders-api-cpu-60&quot;
-  policy_type        = &quot;TargetTrackingScaling&quot;
-  service_namespace  = aws_appautoscaling_target.api.service_namespace
-  resource_id        = aws_appautoscaling_target.api.resource_id
-  scalable_dimension = aws_appautoscaling_target.api.scalable_dimension
+<span class="hljs-keyword">resource</span> <span class="hljs-string">&quot;aws_appautoscaling_policy&quot;</span> <span class="hljs-string">&quot;api_cpu&quot;</span> {
+  <span class="hljs-attr">name</span>               = <span class="hljs-string">&quot;orders-api-cpu-60&quot;</span>
+  <span class="hljs-attr">policy_type</span>        = <span class="hljs-string">&quot;TargetTrackingScaling&quot;</span>
+  <span class="hljs-attr">service_namespace</span>  = aws_appautoscaling_target.api.service_namespace
+  <span class="hljs-attr">resource_id</span>        = aws_appautoscaling_target.api.resource_id
+  <span class="hljs-attr">scalable_dimension</span> = aws_appautoscaling_target.api.scalable_dimension
   target_tracking_scaling_policy_configuration {
-    target_value       = 60
-    scale_in_cooldown  = 120
-    scale_out_cooldown = 60
+    <span class="hljs-attr">target_value</span>       = <span class="hljs-number">60</span>
+    <span class="hljs-attr">scale_in_cooldown</span>  = <span class="hljs-number">120</span>
+    <span class="hljs-attr">scale_out_cooldown</span> = <span class="hljs-number">60</span>
     predefined_metric_specification {
-      predefined_metric_type = &quot;ECSServiceAverageCPUUtilization&quot;
+      <span class="hljs-attr">predefined_metric_type</span> = <span class="hljs-string">&quot;ECSServiceAverageCPUUtilization&quot;</span>
     }
   }
 }
 
-output &quot;alb_dns_name&quot; { value = aws_lb.api.dns_name }</code></pre>
+<span class="hljs-keyword">output</span> <span class="hljs-string">&quot;alb_dns_name&quot;</span> { <span class="hljs-attr">value</span> = aws_lb.api.dns_name }</code></pre>
 <p>On the application side, NestJS reads exactly the variables the task definition provides, and nothing else:</p>
 <pre class="code"><code class="hljs language-typescript"><span class="hljs-comment">// app.module.ts (excerpt): configuration comes from the task definition&#x27;s environment and secrets</span>
 <span class="hljs-title class_">TypeOrmModule</span>.<span class="hljs-title function_">forRootAsync</span>({
@@ -32912,7 +32912,7 @@ app:      Plan: 17 to add, 0 to change, 0 to destroy.   apply about 4 min (ALB, 
 <li>Keep secrets out of code, state and plan files: AWS-managed passwords, write-only arguments, and runtime references from ECS or External Secrets.</li>
 <li>Defence in depth beats carefulness: any one of several independent guardrails should stop a destructive apply, and backups only count once a restore drill has proven them.</li>
 </ul>
-</section></main></div>
+</section><script>(function(){var m={"part-22":"part-39","part-22-security":"part-39-security","221-authentication-vs-authorization":"391-authentication-vs-authorization","222-sessions":"392-sessions","2221-session-vs-token-the-decision-table":"3921-session-vs-token-the-decision-table","223-json-web-tokens-jwt":"393-json-web-tokens-jwt","224-oauth-20":"394-oauth-20","225-openid-connect-oidc":"395-openid-connect-oidc","226-single-sign-on-sso":"396-single-sign-on-sso","227-multi-factor-authentication-mfa":"397-multi-factor-authentication-mfa","228-role-based-access-control-rbac":"398-role-based-access-control-rbac","229-attribute-based-access-control-abac":"399-attribute-based-access-control-abac","2210-permissions-scopes-and-tenant-isolation":"3910-permissions-scopes-and-tenant-isolation","2211-api-keys-for-machine-clients":"3911-api-keys-for-machine-clients","2212-object-level-authorization-and-idor":"3912-object-level-authorization-and-idor","2213-hashing-and-hmac":"3913-hashing-and-hmac","2214-password-hashing-and-salting":"3914-password-hashing-and-salting","2215-randomness":"3915-randomness","2216-symmetric-encryption-and-envelope-encryption":"3916-symmetric-encryption-and-envelope-encryption","2217-asymmetric-cryptography-and-digital-signatures":"3917-asymmetric-cryptography-and-digital-signatures","2218-hmac-in-practice-webhook-signatures-and-signed-urls":"3918-hmac-in-practice-webhook-signatures-and-signed-urls","2219-key-management-tls-and-mtls":"3919-key-management-tls-and-mtls","2220-sql-injection":"3920-sql-injection","2221-cross-site-scripting-xss":"3921-cross-site-scripting-xss","2222-cross-site-request-forgery-csrf":"3922-cross-site-request-forgery-csrf","2223-server-side-request-forgery-ssrf":"3923-server-side-request-forgery-ssrf","2224-broken-access-control":"3924-broken-access-control","2225-authentication-failures":"3925-authentication-failures","2226-security-misconfiguration":"3926-security-misconfiguration","2227-insecure-deserialization-and-prototype-pollution":"3927-insecure-deserialization-and-prototype-pollution","2228-dependency-vulnerabilities-and-supply-chain":"3928-dependency-vulnerabilities-and-supply-chain","2229-injection-beyond-sql":"3929-injection-beyond-sql","2230-file-upload-security":"3930-file-upload-security","2231-logging-and-data-protection":"3931-logging-and-data-protection","2232-secrets-management":"3932-secrets-management","2233-security-headers":"3933-security-headers","2234-audit-logging":"3934-audit-logging","2235-rate-limiting-and-abuse-prevention":"3935-rate-limiting-and-abuse-prevention","2236-a-complete-nestjs-authentication-module":"3936-a-complete-nestjs-authentication-module","2237-threat-modeling-in-one-page":"3937-threat-modeling-in-one-page","2238-the-security-review-checklist-for-pull-requests":"3938-the-security-review-checklist-for-pull-requests","2239-edge-cases-and-failure-modes":"3939-edge-cases-and-failure-modes","2240-security-as-a-practice":"3940-security-as-a-practice","part-23":"part-40","part-23-testing-backend-systems-with-jest-and-nestjs":"part-40-testing-backend-systems-with-jest-and-nestjs","231-the-testing-pyramid-and-the-testing-trophy":"401-the-testing-pyramid-and-the-testing-trophy","232-where-tests-sit-in-the-architecture":"402-where-tests-sit-in-the-architecture","233-unit-testing-domain-logic-and-services":"403-unit-testing-domain-logic-and-services","234-test-doubles-dummy-stub-spy-mock-fake":"404-test-doubles-dummy-stub-spy-mock-fake","235-what-should-and-should-not-be-mocked":"405-what-should-and-should-not-be-mocked","236-fixtures-factories-and-builders":"406-fixtures-factories-and-builders","237-integration-testing-with-a-real-postgresql-testcontainers":"407-integration-testing-with-a-real-postgresql-testcontainers","238-testing-nestjs-specifics-guards-pipes-interceptors-filters-modules":"408-testing-nestjs-specifics-guards-pipes-interceptors-filters-modules","239-testing-transactions-and-concurrency-against-a-real-database":"409-testing-transactions-and-concurrency-against-a-real-database","2310-testing-async-flows-jobs-sagas-outbox-relay-consumers":"4010-testing-async-flows-jobs-sagas-outbox-relay-consumers","2311-testing-time-frozen-clocks-cron-logic-and-ttl-expiry":"4011-testing-time-frozen-clocks-cron-logic-and-ttl-expiry","2312-testing-migrations":"4012-testing-migrations","2313-end-to-end-testing-the-nestjs-app-with-supertest-and-nock":"4013-end-to-end-testing-the-nestjs-app-with-supertest-and-nock","2314-contract-testing":"4014-contract-testing","2315-load-tests-property-based-tests-and-mutation-tests":"4015-load-tests-property-based-tests-and-mutation-tests","2316-coverage-what-the-number-means-and-what-it-does-not":"4016-coverage-what-the-number-means-and-what-it-does-not","2317-a-complete-example-testing-placeorder-at-all-three-levels":"4017-a-complete-example-testing-placeorder-at-all-three-levels","2318-flaky-tests":"4018-flaky-tests","2319-ci-organisation-for-tests":"4019-ci-organisation-for-tests","2320-unit-vs-integration-vs-e2e-the-tradeoffs":"4020-unit-vs-integration-vs-e2e-the-tradeoffs","2321-edge-cases-failure-modes-across-the-testing-practice":"4021-edge-cases-failure-modes-across-the-testing-practice","part-24":"part-41","part-24-performance-engineering":"part-41-performance-engineering","241-latency-throughput-and-littles-law":"411-latency-throughput-and-littles-law","242-percentiles-and-tail-latency":"412-percentiles-and-tail-latency","243-resources-cpu-memory-io-and-network":"413-resources-cpu-memory-io-and-network","244-n1-queries":"414-n1-queries","245-connection-pooling":"415-connection-pooling","246-query-optimisation":"416-query-optimisation","247-caching-and-batch-processing":"417-caching-and-batch-processing","248-pagination-and-streaming":"418-pagination-and-streaming","249-compression-serialization-and-http-client-tuning":"419-compression-serialization-and-http-client-tuning","2491-compression":"4191-compression","2492-serialization-cost":"4192-serialization-cost","2493-http-client-tuning":"4193-http-client-tuning","2410-async-offloading-nodenestjs-tuning-and-the-client-facing-edge":"4110-async-offloading-nodenestjs-tuning-and-the-client-facing-edge","24101-move-work-off-the-request-path":"41101-move-work-off-the-request-path","24102-node-and-nestjs-specifics":"41102-node-and-nestjs-specifics","24103-the-client-facing-edge-cdn-cache-headers-etags-http2":"41103-the-client-facing-edge-cdn-cache-headers-etags-http2","2411-capacity-and-load-testing-performance-budgets-and-regression-tests":"4111-capacity-and-load-testing-performance-budgets-and-regression-tests","2412-the-profiling-toolkit":"4112-the-profiling-toolkit","2413-runbook-the-api-suddenly-became-slow":"4113-runbook-the-api-suddenly-became-slow","2414-edge-cases-failure-modes":"4114-edge-cases-failure-modes","part-25":"part-42","part-25-observability-logs-metrics-and-traces":"part-42-observability-logs-metrics-and-traces","251-monitoring-versus-observability":"421-monitoring-versus-observability","2511-known-unknowns-and-unknown-unknowns":"4211-known-unknowns-and-unknown-unknowns","252-logs":"422-logs","2521-structured-logging":"4221-structured-logging","2522-log-levels-and-what-belongs-at-each":"4222-log-levels-and-what-belongs-at-each","2523-request-logging-and-correlation-ids-in-nestjs":"4223-request-logging-and-correlation-ids-in-nestjs","2524-sampling-rate-limiting-and-the-cost-of-volume":"4224-sampling-rate-limiting-and-the-cost-of-volume","2525-sync-versus-async-logging-and-the-event-loop":"4225-sync-versus-async-logging-and-the-event-loop","2526-aggregation-querying-and-log-based-alerts":"4226-aggregation-querying-and-log-based-alerts","253-metrics":"423-metrics","2531-metric-types-counter-gauge-histogram-summary":"4231-metric-types-counter-gauge-histogram-summary","2532-red-use-and-the-golden-signals":"4232-red-use-and-the-golden-signals","2533-cardinality":"4233-cardinality","2534-exposing-metrics-in-nestjs":"4234-exposing-metrics-in-nestjs","2535-prometheus-scraping-promql-and-recording-rules":"4235-prometheus-scraping-promql-and-recording-rules","2536-grafana-dashboards-the-service-overview":"4236-grafana-dashboards-the-service-overview","2537-alerting-rules":"4237-alerting-rules","254-traces":"424-traces","2541-distributed-tracing-explained-simply":"4241-distributed-tracing-explained-simply","2542-opentelemetry-setup-in-nestjs":"4242-opentelemetry-setup-in-nestjs","2543-correlation-id-versus-trace-id-versus-span-id":"4243-correlation-id-versus-trace-id-versus-span-id","255-opentelemetry-collector-and-how-the-tools-fit-together":"425-opentelemetry-collector-and-how-the-tools-fit-together","2551-the-collector":"4251-the-collector","2552-how-prometheus-grafana-loki-tempo-and-the-collector-fit-together":"4252-how-prometheus-grafana-loki-tempo-and-the-collector-fit-together","256-health-readiness-and-build-info-as-observability":"426-health-readiness-and-build-info-as-observability","2561-health-endpoints-tell-the-platform-metrics-tell-the-humans":"4261-health-endpoints-tell-the-platform-metrics-tell-the-humans","257-observability-for-the-database-redis-kafka-and-kubernetes":"427-observability-for-the-database-redis-kafka-and-kubernetes","2571-postgresql":"4271-postgresql","2572-redis":"4272-redis","2573-kafka":"4273-kafka","2574-kubernetes":"4274-kubernetes","258-dashboards-and-on-call":"428-dashboards-and-on-call","2581-what-the-first-screen-must-answer-in-30-seconds":"4281-what-the-first-screen-must-answer-in-30-seconds","259-cost-control":"429-cost-control","2591-where-the-money-goes-and-how-to-keep-it":"4291-where-the-money-goes-and-how-to-keep-it","2510-edge-cases-failure-modes":"4210-edge-cases-failure-modes","25101-how-a-senior-backend-engineer-thinks-about-this":"42101-how-a-senior-backend-engineer-thinks-about-this","25102-common-mistakes":"42102-common-mistakes","25103-interview-questions":"42103-interview-questions","25104-practical-exercise":"42104-practical-exercise","part-26":"part-43","part-26-docker-for-backend-engineers":"part-43-docker-for-backend-engineers","261-what-a-container-really-is":"431-what-a-container-really-is","262-images-layers-digests-registries-and-base-images":"432-images-layers-digests-registries-and-base-images","263-layers-and-the-build-cache":"433-layers-and-the-build-cache","264-the-container-as-a-process-pid-1-signals-exit-codes-and-restart-policies":"434-the-container-as-a-process-pid-1-signals-exit-codes-and-restart-policies","265-dockerfile-best-practices":"435-dockerfile-best-practices","266-multi-stage-builds":"436-multi-stage-builds","267-container-networking":"437-container-networking","268-volumes-and-state":"438-volumes-and-state","269-environment-variables-and-configuration":"439-environment-variables-and-configuration","2610-container-lifecycle-logs-and-resource-limits":"4310-container-lifecycle-logs-and-resource-limits","2611-container-security":"4311-container-security","2612-docker-compose-for-local-development":"4312-docker-compose-for-local-development","2613-containerizing-a-nestjs-postgresql-application":"4313-containerizing-a-nestjs-postgresql-application","26131-the-production-dockerfile":"43131-the-production-dockerfile","26132-dockerignore":"43132-dockerignore","26133-the-application-side":"43133-the-application-side","26134-development-compose":"43134-development-compose","26135-production-like-compose":"43135-production-like-compose","26136-build-tag-and-push":"43136-build-tag-and-push","26137-tagging-strategy":"43137-tagging-strategy","26138-size-before-and-after":"43138-size-before-and-after","26139-verifying-the-contract":"43139-verifying-the-contract","2614-debugging-containers":"4314-debugging-containers","2615-building-in-ci":"4315-building-in-ci","2616-edge-cases-and-failure-modes":"4316-edge-cases-and-failure-modes","part-27":"part-44","part-27-kubernetes-for-backend-engineers":"part-44-kubernetes-for-backend-engineers","271-why-kubernetes-exists-and-what-it-costs":"441-why-kubernetes-exists-and-what-it-costs","272-architecture-in-simple-terms":"442-architecture-in-simple-terms","273-pod":"443-pod","274-deployment":"444-deployment","275-service":"445-service","276-ingress":"446-ingress","277-configmap-and-secret":"447-configmap-and-secret","278-namespace":"448-namespace","279-statefulset":"449-statefulset","2710-job-and-cronjob":"4410-job-and-cronjob","2711-probes":"4411-probes","2712-resource-requests-and-limits":"4412-resource-requests-and-limits","2713-pod-lifecycle-and-graceful-shutdown":"4413-pod-lifecycle-and-graceful-shutdown","2714-horizontal-pod-autoscaler":"4414-horizontal-pod-autoscaler","2715-scheduling-controls":"4415-scheduling-controls","2716-security-in-the-cluster":"4416-security-in-the-cluster","2717-observability-in-kubernetes":"4417-observability-in-kubernetes","2718-how-a-nestjs-api-actually-gets-deployed-to-kubernetes":"4418-how-a-nestjs-api-actually-gets-deployed-to-kubernetes","2719-helm-and-gitops-in-practice":"4419-helm-and-gitops-in-practice","2720-a-debugging-runbook":"4420-a-debugging-runbook","2721-edge-cases-and-failure-modes":"4421-edge-cases-and-failure-modes","part-28":"part-45","part-28-cloud-architecture-aws-as-the-example":"part-45-cloud-architecture-aws-as-the-example","281-the-cloud-mental-model":"451-the-cloud-mental-model","282-compute-ec2-ecs-and-eks":"452-compute-ec2-ecs-and-eks","283-compute-lambda-and-serverless-functions":"453-compute-lambda-and-serverless-functions","284-relational-data-rds-and-aurora-postgresql":"454-relational-data-rds-and-aurora-postgresql","285-dynamodb-and-elasticache-redis":"455-dynamodb-and-elasticache-redis","286-messaging-sqs-sns-and-eventbridge":"456-messaging-sqs-sns-and-eventbridge","287-load-balancing-and-the-api-edge-alb-nlb-and-api-gateway":"457-load-balancing-and-the-api-edge-alb-nlb-and-api-gateway","288-cloudfront-and-route-53":"458-cloudfront-and-route-53","289-vpc-networking":"459-vpc-networking","2810-object-storage-s3":"4510-object-storage-s3","2811-identity-and-secrets-iam-sts-secrets-manager-parameter-store-and-kms":"4511-identity-and-secrets-iam-sts-secrets-manager-parameter-store-and-kms","2812-observability-on-aws-cloudwatch-x-ray-and-opentelemetry":"4512-observability-on-aws-cloudwatch-x-ray-and-opentelemetry","2813-a-reference-architecture-for-the-nestjs-platform-on-aws":"4513-a-reference-architecture-for-the-nestjs-platform-on-aws","2814-multi-az-and-multi-region":"4514-multi-az-and-multi-region","2815-the-well-architected-pillars-applied":"4515-the-well-architected-pillars-applied","2816-infrastructure-as-code":"4516-infrastructure-as-code","2817-edge-cases-and-failure-modes":"4517-edge-cases-and-failure-modes","part-29":"part-46","part-29-cicd-and-deployment-strategies":"part-46-cicd-and-deployment-strategies","291-continuous-integration":"461-continuous-integration","292-continuous-delivery-and-deployment":"462-continuous-delivery-and-deployment","293-artifacts-and-supply-chain":"463-artifacts-and-supply-chain","294-secrets-in-ci":"464-secrets-in-ci","295-testing-stages-in-the-pipeline":"465-testing-stages-in-the-pipeline","296-security-scanning":"466-security-scanning","297-deployment-strategies":"467-deployment-strategies","298-feature-flags":"468-feature-flags","299-rollbacks":"469-rollbacks","2910-smoke-tests-and-post-deploy-verification":"4610-smoke-tests-and-post-deploy-verification","2911-a-complete-github-actions-setup":"4611-a-complete-github-actions-setup","29111-ciyml-the-gate-on-every-pull-request":"46111-ciyml-the-gate-on-every-pull-request","29112-build-and-pushyml-build-once-scan-push-attest":"46112-build-and-pushyml-build-once-scan-push-attest","29113-deployyml-approve-migrate-roll-out-verify-roll-back":"46113-deployyml-approve-migrate-roll-out-verify-roll-back","29114-the-gitlab-ci-equivalents":"46114-the-gitlab-ci-equivalents","2912-dora-metrics":"4612-dora-metrics","2913-edge-cases-and-failure-modes":"4613-edge-cases-and-failure-modes","part-30":"part-47","part-30-git-from-intermediate-to-senior":"part-47-git-from-intermediate-to-senior","301-git-internals-first":"471-git-internals-first","302-commits":"472-commits","303-branches":"473-branches","304-merge":"474-merge","305-rebase":"475-rebase","306-cherry-pick":"476-cherry-pick","307-reset":"477-reset","308-revert":"478-revert","309-stash-tag-bisect-reflog-detached-head":"479-stash-tag-bisect-reflog-detached-head","3091-stash":"4791-stash","3092-tag":"4792-tag","3093-bisect":"4793-bisect","3094-reflog":"4794-reflog","3095-detached-head":"4795-detached-head","3010-the-seniors-toolbox":"4710-the-seniors-toolbox","3011-merge-vs-rebase-reset-vs-revert-merge-vs-cherry-pick":"4711-merge-vs-rebase-reset-vs-revert-merge-vs-cherry-pick","30111-merge-versus-rebase":"47111-merge-versus-rebase","30112-reset-versus-revert":"47112-reset-versus-revert","30113-merge-versus-cherry-pick":"47113-merge-versus-cherry-pick","3012-branching-strategies":"4712-branching-strategies","30121-git-flow":"47121-git-flow","30122-github-flow":"47122-github-flow","30123-trunk-based-development":"47123-trunk-based-development","30124-release-branches-hotfixes-and-monorepos":"47124-release-branches-hotfixes-and-monorepos","30125-choosing":"47125-choosing","3013-the-pull-request-workflow-at-senior-level":"4713-the-pull-request-workflow-at-senior-level","3014-recovery-scenarios":"4714-recovery-scenarios","30141-a-secret-was-pushed":"47141-a-secret-was-pushed","30142-a-force-push-overwrote-a-teammate":"47142-a-force-push-overwrote-a-teammate","30143-committed-to-the-wrong-branch":"47143-committed-to-the-wrong-branch","30144-splitting-one-commit-into-three":"47144-splitting-one-commit-into-three","30145-moving-commits-to-a-new-branch":"47145-moving-commits-to-a-new-branch","30146-a-package-lockjson-conflict":"47146-a-package-lockjson-conflict","30147-work-lost-after-a-bad-rebase":"47147-work-lost-after-a-bad-rebase","3015-edge-cases-and-failure-modes":"4715-edge-cases-and-failure-modes","part-37":"part-48","part-37-site-reliability-engineering":"part-48-site-reliability-engineering","371-the-sre-mindset":"481-the-sre-mindset","3711-reliability-is-a-feature-with-a-price":"4811-reliability-is-a-feature-with-a-price","3712-toil":"4812-toil","3713-error-budgets-as-the-arbitration-mechanism":"4813-error-budgets-as-the-arbitration-mechanism","372-sli-what-to-actually-measure":"482-sli-what-to-actually-measure","3721-the-four-kinds-that-matter":"4821-the-four-kinds-that-matter","3722-measure-from-the-users-side":"4822-measure-from-the-users-side","3723-real-promql":"4823-real-promql","373-slo-the-internal-target":"483-slo-the-internal-target","3731-per-journey-not-per-service":"4831-per-journey-not-per-service","3732-writing-an-slo-document-a-product-manager-can-read":"4832-writing-an-slo-document-a-product-manager-can-read","374-sla-the-external-promise":"484-sla-the-external-promise","375-error-budgets":"485-error-budgets","3751-the-arithmetic":"4851-the-arithmetic","3752-burn-rate":"4852-burn-rate","3753-multi-window-multi-burn-rate-alerting":"4853-multi-window-multi-burn-rate-alerting","3754-the-error-budget-policy":"4854-the-error-budget-policy","376-availability-maths":"486-availability-maths","3761-the-nines":"4861-the-nines","3762-serial-dependencies-multiply":"4862-serial-dependencies-multiply","3763-what-actually-fixes-it":"4863-what-actually-fixes-it","3764-why-9999-percent-on-a-999-percent-database-is-a-fantasy":"4864-why-9999-percent-on-a-999-percent-database-is-a-fantasy","377-incident-management":"487-incident-management","3771-what-an-incident-is-and-severity-levels":"4871-what-an-incident-is-and-severity-levels","3772-the-roles":"4872-the-roles","3773-declaring-the-war-room-the-status-page":"4873-declaring-the-war-room-the-status-page","3774-the-first-ten-minutes":"4874-the-first-ten-minutes","378-on-call":"488-on-call","3781-designing-a-rotation":"4881-designing-a-rotation","3782-paging-versus-ticketing":"4882-paging-versus-ticketing","3783-rotation-health-metrics":"4883-rotation-health-metrics","379-runbooks":"489-runbooks","3791-structure":"4891-structure","3792-a-complete-worked-runbook":"4892-a-complete-worked-runbook","3710-postmortems":"4810-postmortems","37101-blameless-in-practice-not-just-in-name":"48101-blameless-in-practice-not-just-in-name","37102-the-template":"48102-the-template","37103-a-complete-worked-postmortem":"48103-a-complete-worked-postmortem","37104-making-action-items-actually-ship":"48104-making-action-items-actually-ship","3711-root-cause-analysis":"4811-root-cause-analysis","37111-trigger-root-cause-contributing-factors":"48111-trigger-root-cause-contributing-factors","37112-five-whys-and-its-limits":"48112-five-whys-and-its-limits","37113-human-error-is-never-a-root-cause":"48113-human-error-is-never-a-root-cause","3712-change-management-game-days-and-drills":"4812-change-management-game-days-and-drills","37121-most-incidents-follow-a-change":"48121-most-incidents-follow-a-change","37122-freeze-windows-and-when-they-are-theatre":"48122-freeze-windows-and-when-they-are-theatre","37123-game-days-and-chaos-experiments":"48123-game-days-and-chaos-experiments","37124-dr-drills-and-capacity-reviews":"48124-dr-drills-and-capacity-reviews","3713-reliability-practice-for-the-nestjs-stack":"4813-reliability-practice-for-the-nestjs-stack","3714-edge-cases-and-failure-modes":"4814-edge-cases-and-failure-modes","part-38":"part-49","part-38-backup-restore-and-disaster-recovery":"part-49-backup-restore-and-disaster-recovery","381-backup":"491-backup","382-restore":"492-restore","383-rpo-and-rto":"493-rpo-and-rto","384-point-in-time-recovery":"494-point-in-time-recovery","385-disaster-recovery-strategies":"495-disaster-recovery-strategies","386-failover-and-failback":"496-failover-and-failback","387-database-recovery-scenarios":"497-database-recovery-scenarios","388-application-level-recovery":"498-application-level-recovery","389-what-happens-if-the-postgresql-production-database-disappears":"499-what-happens-if-the-postgresql-production-database-disappears","3810-the-dr-runbook-and-drill-schedule":"4910-the-dr-runbook-and-drill-schedule","3811-edge-cases-and-failure-modes":"4911-edge-cases-and-failure-modes","part-39-cost-aware-engineering":"part-50-cost-aware-engineering","391-why-engineers-must-understand-cost":"501-why-engineers-must-understand-cost","392-compute-cost":"502-compute-cost","393-database-cost":"503-database-cost","394-storage-network-egress-and-observability-cost":"504-storage-network-egress-and-observability-cost","395-caching-cdn-and-autoscaling-as-cost-tools":"505-caching-cdn-and-autoscaling-as-cost-tools","396-architecture-cost-trade-offs":"506-architecture-cost-trade-offs","397-the-best-architecture-is-not-the-most-sophisticated-architecture":"507-the-best-architecture-is-not-the-most-sophisticated-architecture","398-cost-review-practices":"508-cost-review-practices","399-edge-cases-and-failure-modes":"509-edge-cases-and-failure-modes","part-64":"part-51","part-64-infrastructure-as-code":"part-51-infrastructure-as-code","641-why-infrastructure-as-code":"511-why-infrastructure-as-code","6411-clickops-reproducibility-and-the-case-for-iac":"5111-clickops-reproducibility-and-the-case-for-iac","642-terraform-fundamentals":"512-terraform-fundamentals","6421-providers-resources-plan-and-apply":"5121-providers-resources-plan-and-apply","643-state-management":"513-state-management","6431-remote-state-locking-and-drift":"5131-remote-state-locking-and-drift","644-structuring-terraform-and-the-alternatives":"514-structuring-terraform-and-the-alternatives","6441-modules-environments-and-versioning":"5141-modules-environments-and-versioning","6442-pulumi-cdk-cloudformation-and-choosing":"5142-pulumi-cdk-cloudformation-and-choosing","645-iac-in-cicd-and-policy-as-code":"515-iac-in-cicd-and-policy-as-code","6451-plan-on-pull-request-apply-pipelines-and-preventing-destructive-changes":"5151-plan-on-pull-request-apply-pipelines-and-preventing-destructive-changes","6452-policy-as-code":"5152-policy-as-code","646-gitops-secrets-and-the-apply-gone-wrong-incident":"516-gitops-secrets-and-the-apply-gone-wrong-incident","6461-gitops-for-kubernetes-and-secrets-in-iac":"5161-gitops-for-kubernetes-and-secrets-in-iac","647-terraform-in-depth-addresses-foreach-lifecycle-and-safe-refactoring":"517-terraform-in-depth-addresses-foreach-lifecycle-and-safe-refactoring","648-layout-blast-radius-environments-and-testing":"518-layout-blast-radius-environments-and-testing","649-the-same-database-in-pulumi-and-cdk":"519-the-same-database-in-pulumi-and-cdk","6410-the-terraform-pipeline-in-practice":"5110-the-terraform-pipeline-in-practice","6411-policy-as-code-in-practice-conftest-and-rego-against-the-plan":"5111-policy-as-code-in-practice-conftest-and-rego-against-the-plan","6412-gitops-in-practice-argo-cd-kustomize-helm-and-flux":"5112-gitops-in-practice-argo-cd-kustomize-helm-and-flux","6413-secrets-in-iac-in-practice":"5113-secrets-in-iac-in-practice","6414-worked-example-terraform-for-a-nestjs-service-on-aws":"5114-worked-example-terraform-for-a-nestjs-service-on-aws","64141-requirements-and-decisions":"51141-requirements-and-decisions","64142-the-network-root":"51142-the-network-root","64143-the-data-root":"51143-the-data-root","64144-the-app-root-ecs-alb-iam-and-autoscaling":"51144-the-app-root-ecs-alb-iam-and-autoscaling","64145-applying-it-verifying-it-paying-for-it":"51145-applying-it-verifying-it-paying-for-it","6415-incident-story-the-terraform-apply-that-deleted-a-production-database":"5115-incident-story-the-terraform-apply-that-deleted-a-production-database"};function go(){var h=decodeURIComponent(location.hash.slice(1));if(h&&!document.getElementById(h)&&m[h]){history.replaceState(null,'','#'+m[h]);var e=document.getElementById(m[h]);if(e)e.scrollIntoView();}}go();window.addEventListener('hashchange',go);})();</script></main></div>
 <button id="to-top" class="to-top" title="Back to top" aria-label="Back to top">↑ Top</button>
 <script src="assets/mermaid.min.js"></script>
 <script src="assets/site.js"></script>

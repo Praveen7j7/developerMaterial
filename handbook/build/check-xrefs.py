@@ -17,7 +17,7 @@ for f in sorted(os.listdir(d)):
             n, t = int(m.group(1)), m.group(2).strip()
             if t.startswith(("Key Takeaways",)) or n not in titles: continue
             real = norm(titles[n]); got = norm(t)
-            if real.startswith(got[:12]) or got.startswith(real[:12]): ok += 1
+            if (real + ' ').startswith(got + ' ') or real.startswith(got[:12]) or got.startswith(real[:12]): ok += 1
             else: bad[(n, t[:40], titles[n][:40])] += 1
 print(f"title-checked references: {ok} ok, {sum(bad.values())} mismatched ({len(bad)} distinct)")
 for (n, t, r), c in bad.most_common(40): print(f"  {c:3}x Part {n}: says '{t}' / real '{r}'")

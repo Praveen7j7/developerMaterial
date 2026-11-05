@@ -1,4 +1,6 @@
-# Outline — Parts 51–68 (Batch 1: Principal & Architect volume, Modern add-on, Interview additions)
+# Outline — Parts 15, 25, 36–38, 51, 63–66 and 78–85 (Batch 1: Principal & Architect volume, Modern add-on, Interview additions)
+
+> Part numbers in this file were updated on 2026-11-05 to the reading-order numbering (Volume 0 = Parts 1–6, the book runs 1–85). The file name keeps the original batch number.
 
 This file is the assignment for every writer agent in batch 1. Read `_spec/STYLE.md` first, then this file, then only your own Part below.
 
@@ -7,14 +9,14 @@ This file is the assignment for every writer agent in batch 1. Read `_spec/STYLE
 - **Write path:** ignore the `f:\learning\...` path in STYLE.md. Write chapter files to
   `/Users/maclapctp409/Downloads/files/hpStuff/learning/senior-backend-handbook/chapters/`.
 - **Markdown only.** No slides, no deck JSON, no PDFs. Do not touch `slides/`, `dist/` or `build/`.
-- **Only write files for your own Part number.** Never edit or rename existing files (Parts 1–50 are finished).
-- **Do not repeat existing Parts.** Each Part below lists what already exists elsewhere. Reference it ("see Part 49 — Architecture Decisions") and go deeper or wider, never re-teach it.
+- **Only write files for your own Part number.** Never edit or rename existing files (Parts 7–14, 16–24, 26–35, 39–50 and 52–62 are finished).
+- **Do not repeat existing Parts.** Each Part below lists what already exists elsewhere. Reference it ("see Part 61 — Architecture Decisions") and go deeper or wider, never re-teach it.
 - File naming, heading levels, Mermaid rules, closing sections (Senior Checklist + Key Takeaways) and the 2,500–4,500 words-per-file split are unchanged from STYLE.md.
 - Target per Part: **20,000–35,000 words**, which is the size of the existing Parts, not the older 7–12k figure in STYLE.md. That is typically 5–8 files.
 
-## Adapted teaching template for Parts 51–57 (non-code leadership Parts)
+## Adapted teaching template for Parts 78–84 (non-code leadership Parts)
 
-Parts 51–57 are about how principal engineers and architects work, so most code blocks do not apply. Use this template instead of the one in STYLE.md §3, with the same `####` headings in this order:
+Parts 78–84 are about how principal engineers and architects work, so most code blocks do not apply. Use this template instead of the one in STYLE.md §3, with the same `####` headings in this order:
 
 ```markdown
 #### Concept
@@ -34,20 +36,20 @@ Parts 51–57 are about how principal engineers and architects work, so most cod
 
 - **Artifact example** replaces the NestJS/PostgreSQL/ORM blocks. It shows a real, filled-in artifact: an RFC section, a one-page strategy, a decision matrix, a migration tracker, an exec update email, an interview rubric. Use a `text` or `markdown`-style block or a table. Never a template full of blanks; fill it in for a realistic case.
 - Keep examples in the same domain vocabulary as the rest of the book (orders, payments, inventory, notifications, e-commerce, food delivery, ride booking).
-- Code is still welcome where it genuinely helps (for example an architecture fitness function as a Jest test in Part 53).
+- Code is still welcome where it genuinely helps (for example an architecture fitness function as a Jest test in Part 80).
 - Numbers still matter: team sizes, migration durations, costs, incident counts, hiring funnels.
 
-Parts 58–66 are technical and use the normal STYLE.md template.
+Parts 15, 25, 36–38, 51, 63, 64 and 85 are technical and use the normal STYLE.md template.
 
 ---
 
-# Volume 8 — Principal & Architect (Parts 51–58)
+# Volume 8 — Principal & Architect (Parts 78–85)
 
-Part 44 already defines *what* staff and principal engineers are expected to do (44.4 senior to staff, 44.5 staff vs principal). Part 43 covers the senior mindset, Part 49 covers decision guides and ADRs. Volume 8 teaches *how* to do the principal and architect job.
+Part 56 already defines *what* staff and principal engineers are expected to do (56.4 senior to staff, 56.5 staff vs principal). Part 55 covers the senior mindset, Part 61 covers decision guides and ADRs. Volume 8 teaches *how* to do the principal and architect job.
 
-## Part 51 — Writing as an Architect: RFCs, Design Docs and Decision Records
+## Part 78 — Writing as an Architect: RFCs, Design Docs and Decision Records
 
-Exists already: ADR basics (Part 49.6), "write the document" advice (Part 44.4).
+Exists already: ADR basics (Part 109.6), "write the document" advice (Part 104.4).
 
 - Why writing is the architect's primary tool (one-to-many, persistent, forces clarity)
 - Types of documents and when to use each: one-pager, RFC, design doc, ADR, tech spec, post-incident review, strategy memo
@@ -61,9 +63,9 @@ Exists already: ADR basics (Part 49.6), "write the document" advice (Part 44.4).
 - Worked example: an ADR chain over two years for choosing and then replacing a search engine
 - Common doc anti-patterns: solution looking for a problem, 40-page docs nobody reads, decision already made
 
-## Part 52 — Technical Strategy, Vision and Roadmaps
+## Part 79 — Technical Strategy, Vision and Roadmaps
 
-Exists already: build vs buy decision table (Part 49.5), tech debt mentions (Part 48).
+Exists already: build vs buy decision table (Part 109.5), tech debt mentions (Part 60).
 
 - Strategy vs vision vs roadmap vs plan; what "technical strategy" means for a company
 - Writing a strategy: diagnosis, guiding policy, coherent actions; examples of good and bad strategy
@@ -77,9 +79,9 @@ Exists already: build vs buy decision table (Part 49.5), tech debt mentions (Par
 - Worked example: a strategy for an e-commerce company moving from one monolith with 12 engineers to 80 engineers in 2 years
 - Worked example: evaluating whether to adopt Kafka vs staying on RabbitMQ + Postgres outbox
 
-## Part 53 — Architecture Governance, Standards and Paved Roads
+## Part 80 — Architecture Governance, Standards and Paved Roads
 
-Exists already: anti-patterns (Part 48), CI/CD pipelines (Part 29), API design (Part 8).
+Exists already: anti-patterns (Part 60), CI/CD pipelines (Part 46), API design (Part 14).
 
 - Why governance exists and why heavy governance fails
 - Paved roads / golden paths: service templates, default libraries, opinionated starters
@@ -92,9 +94,9 @@ Exists already: anti-patterns (Part 48), CI/CD pipelines (Part 29), API design (
 - Measuring compliance without policing
 - Worked example: introducing a standard error format and OpenAPI-first contracts across 25 NestJS services
 
-## Part 54 — Large-Scale Migrations and Legacy Modernization
+## Part 81 — Large-Scale Migrations and Legacy Modernization
 
-Exists already: strangler pattern (Part 47.6), schema migrations (Part 31), compatibility (Part 32), monolith vs microservices (Part 5).
+Exists already: strangler pattern (Part 107.6), schema migrations (Part 23), compatibility (Part 24), monolith vs microservices (Part 11).
 
 - Why large migrations fail (the 80% done forever problem)
 - Migration as a program: scoping, milestones, owners, tracking dashboards, communication cadence
@@ -108,9 +110,9 @@ Exists already: strangler pattern (Part 47.6), schema migrations (Part 31), comp
 - Worked example: moving an order system from a PHP monolith on MySQL to NestJS services on PostgreSQL over 18 months
 - Incident story: a migration that silently lost 0.3% of refunds and how reconciliation caught it
 
-## Part 55 — Org Design, Conway's Law and Platform Engineering
+## Part 82 — Org Design, Conway's Law and Platform Engineering
 
-Exists already: platform team mentions, DORA metrics (Part 29.8), on-call (Part 37.3).
+Exists already: platform team mentions, DORA metrics (Part 89.8), on-call (Part 97.3).
 
 - Conway's law and the inverse Conway maneuver, with real examples
 - Team topologies: stream-aligned, platform, enabling, complicated-subsystem teams; interaction modes
@@ -123,9 +125,9 @@ Exists already: platform team mentions, DORA metrics (Part 29.8), on-call (Part 
 - Worked example: redesigning team and service boundaries for a food delivery company at 60 engineers
 - Failure story: a microservices split that followed the org chart and created a distributed monolith
 
-## Part 56 — Influence, Communication and the Business Case
+## Part 83 — Influence, Communication and the Business Case
 
-Exists already: incident communication (Part 43.6), writing at staff level (Part 44.4).
+Exists already: incident communication (Part 103.6), writing at staff level (Part 104.4).
 
 - Influencing without authority: credibility, trust, pre-wiring, coalitions
 - Stakeholder mapping: who decides, who is affected, who can block
@@ -139,9 +141,9 @@ Exists already: incident communication (Part 43.6), writing at staff level (Part
 - Worked example: getting funding for a 2-quarter reliability program after three payment outages
 - Worked example: an exec update email for a slipping migration
 
-## Part 57 — Growing Engineers: Mentoring, Hiring and Technical Interviewing
+## Part 84 — Growing Engineers: Mentoring, Hiring and Technical Interviewing
 
-Exists already: candidate-side interview prep (Part 45), levels (Part 44).
+Exists already: candidate-side interview prep (Part 57), levels (Part 56).
 
 - Mentoring vs coaching vs sponsorship; running mentoring sessions
 - Code review and design review as teaching tools
@@ -154,11 +156,11 @@ Exists already: candidate-side interview prep (Part 45), levels (Part 44).
 - Building a technical culture: blameless reviews, learning sessions, internal tech talks, writing culture
 - Worked example: an interview loop and rubrics for hiring a senior NestJS/PostgreSQL engineer
 
-## Part 58 — Enterprise and Multi-Tenant SaaS Architecture
+## Part 85 — Enterprise and Multi-Tenant SaaS Architecture
 
 Uses the normal technical template (NestJS, PostgreSQL, TypeORM examples apply).
 
-Exists already: multitenant write scaling (Part 15.5), data protection and audit (Part 22.11), regions (Part 49.6).
+Exists already: multitenant write scaling (Part 67.5), data protection and audit (Part 74.11), regions (Part 109.6).
 
 - Multi-tenancy models in depth: silo, pool, bridge; per-tenant database vs schema vs row-level
 - Tenant isolation in PostgreSQL: row-level security policies, tenant_id everywhere, connection and pool strategy
@@ -174,11 +176,11 @@ Exists already: multitenant write scaling (Part 15.5), data protection and audit
 
 ---
 
-# Modern add-on (Parts 59–66)
+# Modern add-on (Parts 15, 25, 36–38, 51 and 63, 64)
 
 These Parts slot into existing volumes by topic: 59, 60, 63 into Volume 4 (Distributed Systems); 61 into Volume 2 (Architecture and APIs); 62 into Volume 3 (Data); 64 into Volume 5 (Production Engineering); 65, 66 into Volume 6 (Mastery).
 
-## Part 59 — Building Backends with LLMs: Foundations
+## Part 36 — Building Backends with LLMs: Foundations
 
 Exists already: nothing dedicated.
 
@@ -193,22 +195,22 @@ Exists already: nothing dedicated.
 - Observability for LLM features: logging prompts and outputs safely, token metrics, cost dashboards
 - Worked example: an order-support assistant endpoint that summarizes order history and suggests actions
 
-## Part 60 — Retrieval, Agents and Evaluation
+## Part 37 — Retrieval, Agents and Evaluation
 
 - Embeddings and vector search: what an embedding is, similarity metrics
 - pgvector in PostgreSQL: schema, HNSW vs IVFFlat indexes, EXPLAIN output, filtering with metadata
 - Dedicated vector databases vs pgvector: decision table
 - Retrieval-augmented generation (RAG): chunking, indexing pipeline, retrieval, re-ranking, citations, keeping the index in sync (outbox/CDC)
-- Hybrid search: combining PostgreSQL full-text search (Part 34) with vectors
+- Hybrid search: combining PostgreSQL full-text search (Part 33) with vectors
 - Agents and tool use: tool loops, giving the model safe tools (read-only vs write tools), idempotency for tool actions, human approval steps
 - Evaluation: golden datasets, LLM-as-judge, regression tests in CI, online metrics
 - Guardrails: input/output filtering, permission checks on retrieved data (tenant isolation in RAG)
 - Worked example: a product-catalog RAG search for an e-commerce site using pgvector
 - Incident story: a RAG system leaking another tenant's documents
 
-## Part 61 — GraphQL and gRPC
+## Part 15 — GraphQL and gRPC
 
-Exists already: REST API design (Part 8), API style decision (Part 49.1).
+Exists already: REST API design (Part 14), API style decision (Part 109.1).
 
 - GraphQL: schema, queries, mutations, subscriptions, resolvers; NestJS GraphQL module (code-first and schema-first)
 - The N+1 problem in GraphQL and DataLoader batching
@@ -216,14 +218,14 @@ Exists already: REST API design (Part 8), API style decision (Part 49.1).
 - Pagination (Relay connections), errors, versioning without versions
 - Federation and supergraphs: when one graph across services makes sense
 - gRPC: protobuf, service definitions, unary vs streaming, deadlines, status codes; NestJS microservices gRPC transport
-- Schema evolution in protobuf (field numbers, reserved fields) and compatibility (link Part 32)
+- Schema evolution in protobuf (field numbers, reserved fields) and compatibility (link Part 24)
 - gRPC load balancing, HTTP/2, gRPC-Web and gateways
 - REST vs GraphQL vs gRPC decision matrix with real scenarios (public API, mobile BFF, internal service mesh)
 - Worked example: an order service exposing REST publicly, GraphQL for the mobile app, gRPC internally
 
-## Part 62 — NoSQL Data Modelling
+## Part 25 — NoSQL Data Modelling
 
-Exists already: SQL vs NoSQL decision (Part 49.1), Redis (Part 16).
+Exists already: SQL vs NoSQL decision (Part 109.1), Redis (Part 26).
 
 - When PostgreSQL is not the right store, honestly
 - Document databases (MongoDB): document design, embedding vs referencing, indexes, transactions, aggregation pipeline; Mongoose/NestJS example
@@ -236,9 +238,9 @@ Exists already: SQL vs NoSQL decision (Part 49.1), Redis (Part 16).
 - Decision matrix across PostgreSQL, MongoDB, DynamoDB, Cassandra, Redis, TimescaleDB
 - Worked example: modelling a ride-booking trip history in DynamoDB vs PostgreSQL
 
-## Part 63 — Data Engineering for Backend Engineers
+## Part 38 — Data Engineering for Backend Engineers
 
-Exists already: outbox (Part 19.4), search index sync (Part 34.3), Kafka (Part 17).
+Exists already: outbox (Part 71.4), search index sync (Part 94.3), Kafka (Part 27).
 
 - OLTP vs OLAP: why analytics queries hurt the production database
 - Change data capture: logical replication, Debezium, Kafka Connect, handling schema changes
@@ -251,9 +253,9 @@ Exists already: outbox (Part 19.4), search index sync (Part 34.3), Kafka (Part 1
 - Building analytics features in the product: pre-aggregated tables, materialized views, read models
 - Worked example: CDC from the orders database into a warehouse for daily revenue dashboards
 
-## Part 64 — Infrastructure as Code
+## Part 51 — Infrastructure as Code
 
-Exists already: cloud services (Part 28), Kubernetes (Part 27), CI/CD (Part 29).
+Exists already: cloud services (Part 45), Kubernetes (Part 44), CI/CD (Part 46).
 
 - Why infrastructure as code; clickops failure stories
 - Terraform fundamentals: providers, resources, state, plan and apply, modules, variables and outputs
@@ -267,18 +269,18 @@ Exists already: cloud services (Part 28), Kubernetes (Part 27), CI/CD (Part 29).
 - Worked example: Terraform for a NestJS service on AWS (VPC, RDS PostgreSQL, ElastiCache Redis, ECS or EKS, IAM)
 - Incident story: a `terraform apply` that deleted a production database and the guardrails that would have stopped it
 
-## Part 65 — More System Designs I
+## Part 63 — More System Designs I
 
-Use the exact walkthrough format of Part 40 (read `chapters/part-40-01-intro-and-url-shortener.md` first and copy its structure: requirements, estimation, API, data model, high-level design, deep dives, failure modes, tradeoffs, checklist).
+Use the exact walkthrough format of Part 52 (read `chapters/part-52-01-intro-and-url-shortener.md` first and copy its structure: requirements, estimation, API, data model, high-level design, deep dives, failure modes, tradeoffs, checklist).
 
 - Web crawler (politeness, frontier, dedup, distributed fetching)
 - Distributed key-value store (partitioning, consistent hashing, replication, quorum, hinted handoff, anti-entropy)
 - Unique ID generator (Snowflake-style IDs, clock skew, UUIDv7, database sequences at scale)
 - Ticket and seat booking system (seat holds, expiring reservations, contention on hot events, payment coupling)
 
-## Part 66 — More System Designs II
+## Part 64 — More System Designs II
 
-Same format as Part 65.
+Same format as Part 63.
 
 - Leaderboard and top-K (Redis sorted sets, approximate top-K, count-min sketch, sharded leaderboards)
 - Collaborative document editing (operational transform vs CRDTs, presence, offline sync)
@@ -287,13 +289,13 @@ Same format as Part 65.
 
 ---
 
-# Interview additions (Parts 67–68)
+# Interview additions (Parts 65, 66)
 
-Both slot into Volume 6 (Mastery). Part 45 already holds candidate-side Q&A for Parts 1–50, behavioural questions and three mock loops; do not repeat it.
+Both slot into Volume 6 (Mastery). Part 57 already holds candidate-side Q&A for Parts 7–14, 16–24, 26–35, 39–50 and 52–62, behavioural questions and three mock loops; do not repeat it.
 
-## Part 67 — Low-Level Design and Machine Coding
+## Part 65 — Low-Level Design and Machine Coding
 
-Exists already: SOLID and design patterns (Part 6), LRU cache and rate limiter as algorithms (Parts 1, 2).
+Exists already: SOLID and design patterns (Part 12), LRU cache and rate limiter as algorithms (Parts 7, 8).
 
 - What the low-level design (LLD) / machine-coding round is, how it is scored (working code, extensibility, naming, tests, patterns used with reason)
 - A repeatable method: clarify requirements, identify entities, define interfaces, pick patterns, code the core, extend for a twist, test
@@ -311,14 +313,14 @@ Exists already: SOLID and design patterns (Part 6), LRU cache and rate limiter a
 - Common LLD mistakes: god classes, patterns for show, no extension point, untestable code
 - Decision table: which pattern fits which LLD requirement
 
-## Part 68 — The Interview Playbook
+## Part 66 — The Interview Playbook
 
 - The full hiring process: resume and project write-ups for backend roles, recruiter screen, how loops differ at big tech vs product startups vs services companies vs remote-first companies
-- The coding round: the pattern catalogue (two pointers, sliding window, BFS/DFS, heaps, DP, graphs, intervals, monotonic stack, union-find) with recognition cues; method for live solving; communicating complexity; testing your own code; link each pattern back to Parts 1–2
-- The system design round as a 45-minute procedure: time boxes, what to draw when, depth selection, handling pushback; link to Parts 40, 41, 65, 66
+- The coding round: the pattern catalogue (two pointers, sliding window, BFS/DFS, heaps, DP, graphs, intervals, monotonic stack, union-find) with recognition cues; method for live solving; communicating complexity; testing your own code; link each pattern back to Parts 7, 8
+- The system design round as a 45-minute procedure: time boxes, what to draw when, depth selection, handling pushback; link to Parts 52, 53 and 63, 64
 - Other round types: take-home assignments, debugging rounds, code-review rounds, pair programming, API design rounds
 - Staff and principal loops: past-project deep dive, architecture round, leadership and influence signals, written exercises; worked examples of strong vs weak answers
-- Interview Q&A for the new Parts 51–66: leadership and strategy, multi-tenant SaaS, LLM backends, RAG, GraphQL and gRPC, NoSQL, data engineering, infrastructure as code (about 6–10 questions per Part, answered in Part 45's style)
+- Interview Q&A for the new Parts 15, 25, 36–38, 51, 63, 64 and 78–85: leadership and strategy, multi-tenant SaaS, LLM backends, RAG, GraphQL and gRPC, NoSQL, data engineering, infrastructure as code (about 6–10 questions per Part, answered in Part 57's style)
 - Offers: levels and titles across companies, negotiation basics, evaluating an offer
 
 ---

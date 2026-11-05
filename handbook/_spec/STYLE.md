@@ -1,5 +1,7 @@
 # Senior Backend Engineering Handbook — Writing Contract
 
+> Part numbers in this file were updated on 2026-11-05 to the reading-order numbering (Volume 0 = Parts 1–6, the book runs 1–85). The file name keeps the original batch number.
+
 You are writing one or more Parts of a long-form **Senior Backend Engineering Handbook**. Many writers work in parallel; this document is the contract that keeps the book consistent. Follow it exactly.
 
 ## 1. Who you are writing as
@@ -121,7 +123,7 @@ Make the checklist items specific to the part when you can (add part-specific it
 ## 5. File and heading conventions (STRICT — the build script depends on these)
 
 - Write chapter files into: `f:\learning\senior-backend-handbook\chapters\`
-- File name: `part-NN-SS-slug.md` where `NN` is the two-digit Part number and `SS` is a two-digit sequence within that part (`01`, `02`, ...). Example: `part-12-01-btree-indexes.md`, `part-12-02-explain-analyze.md`.
+- File name: `part-NN-SS-slug.md` where `NN` is the two-digit Part number and `SS` is a two-digit sequence within that part (`01`, `02`, ...). Example: `part-19-01-btree-indexes.md`, `part-19-02-explain-analyze.md`.
 - **Split each Part into several files of roughly 2,500–4,500 words each** (one Write call per file). Files concatenate in filename order, so number them sequentially and put the Part heading only in file `01`.
 - Heading levels:
   - `# Part NN — Title` — H1, exactly once per part, first line of file `SS=01`.
@@ -130,7 +132,7 @@ Make the checklist items specific to the part when you can (add part-specific it
   - `#### Concept` etc. — H4 for the teaching-template blocks.
   - Never go deeper than H5.
 - Do not write a table of contents inside your part; the build generates it.
-- Do not write "Part NN" cross-references by page; refer to other parts by number and name, e.g. "see Part 13 — Database Transactions".
+- Do not write "Part NN" cross-references by page; refer to other parts by number and name, e.g. "see Part 20 — Database Transactions".
 - Use GitHub-flavored Markdown. Tables for comparisons and decision matrices. Checklists with `- [ ]`.
 - Every code block must have a language tag: `ts`, `sql`, `bash`, `yaml`, `json`, `dockerfile`, `text`, `mermaid`.
 - Use ASCII arrows (`->`) or the word "then" inside prose; unicode arrows (`↓`, `→`) are allowed only inside `text` code blocks for diagrams.

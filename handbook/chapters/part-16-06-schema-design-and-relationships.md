@@ -297,7 +297,7 @@ CREATE TRIGGER orders_set_updated_at BEFORE UPDATE ON orders
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 ```
 
-For a full audit trail, a generic trigger writing `jsonb` old/new rows into `audit_log (table_name, row_id, op, old_row jsonb, new_row jsonb, actor, at)` is the standard pattern. It costs one insert per write and a lot of storage; partition `audit_log` by month and drop old partitions (Part 22 — Partitioning). TypeORM's `@CreateDateColumn`, `@UpdateDateColumn` and `@VersionColumn` and Sequelize's `timestamps: true` set the columns from the application, which is fine as a convenience but not as the source of truth.
+For a full audit trail, a generic trigger writing `jsonb` old/new rows into `audit_log (table_name, row_id, op, old_row jsonb, new_row jsonb, actor, at)` is the standard pattern. It costs one insert per write and a lot of storage; partition `audit_log` by month and drop old partitions (Part 22 — Database Scaling). TypeORM's `@CreateDateColumn`, `@UpdateDateColumn` and `@VersionColumn` and Sequelize's `timestamps: true` set the columns from the application, which is fine as a convenience but not as the source of truth.
 
 ### 16.9.7 Multi-tenancy
 

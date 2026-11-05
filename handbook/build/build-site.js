@@ -17,6 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const { marked } = require('marked');
 const hljs = require('highlight.js');
+require('./hljs-extra')(hljs);
 const { sanitizeMermaid } = require('./mermaid-sanitize');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -25,6 +26,13 @@ const SITE = path.join(ROOT, 'site');
 const ASSETS = path.join(SITE, 'assets');
 fs.mkdirSync(ASSETS, { recursive: true });
 const TODAY = new Date().toISOString().slice(0, 10);
+
+// Part numbers before the 2026-11-05 renumbering, in today's order: OLD_NUMBERS[n - 1] is the old number of Part n.
+// Used only to send old bookmarks (#part-69, #693-...) to the new anchors.
+const OLD_NUMBERS = [69, 70, 71, 72, 73, 74, 1, 2, 3, 4, 5, 6, 7, 8, 61, 9, 10, 11, 12, 13, 14, 15, 31, 32, 62,
+  16, 17, 18, 19, 20, 21, 33, 34, 35, 36, 59, 60, 63, 22, 23, 24, 25, 26, 27, 28, 29, 30, 37, 38, 39, 64,
+  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 65, 66, 67, 68, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85,
+  51, 52, 53, 54, 55, 56, 57, 58];
 
 // ---------- the ten volumes (writing is done up to Vol 8; 7 & 9 come later) ----------
 const VOLUMES = [
@@ -186,6 +194,7 @@ const searchIndex = [];
 for (const v of VOLUMES) {
   const partNums = v.parts.filter(pn => partsMap[pn]);
   if (!partNums.length) continue;
+  const oldAnchors = {}; const pageIds = new Set();
   let bodyHtml = `<div class="vol-head"><div class="vol-kicker">Volume ${v.n}</div><h1 class="vol-h1">${escapeHtml(v.title)}</h1><p class="vol-blurb">${escapeHtml(v.blurb)}</p></div>`;
   for (const pn of partNums) {
     const p = partsMap[pn];
@@ -193,12 +202,23 @@ for (const v of VOLUMES) {
     const html = renderBody(p.md, headings);
     // anchor each part with a stable id; the part title h1 already rendered inside
     bodyHtml += `<section class="part" id="part-${pn}">${html}</section>`;
+    // old-bookmark map: the same heading as it was numbered before the renumbering
+    const old = OLD_NUMBERS[pn - 1];
+    pageIds.add(`part-${pn}`); oldAnchors[`part-${old}`] = `part-${pn}`;
+    for (const h of headings) {
+      pageIds.add(h.id);
+      const oldText = h.level === 1 ? h.text.replace(/^Part \d+/, `Part ${old}`) : h.text.replace(new RegExp(`^${pn}\\.`), `${old}.`);
+      const oldId = slugify(oldText);
+      if (oldId && oldId !== h.id) oldAnchors[oldId] = h.id;
+    }
     // search entries: the part + its h2/h3 headings
     searchIndex.push({ p: pn, t: partTitle[pn], v: v.n, s: v.slug, a: `part-${pn}`, k: 'part' });
     for (const h of headings) {
       if (h.level >= 2) searchIndex.push({ p: pn, t: `${partTitle[pn]} › ${h.text}`, v: v.n, s: v.slug, a: h.id, k: 'section' });
     }
   }
+  for (const k of Object.keys(oldAnchors)) if (pageIds.has(k) || oldAnchors[k] === k) delete oldAnchors[k];  // a current anchor always wins
+  bodyHtml += `<script>(function(){var m=${JSON.stringify(oldAnchors)};function go(){var h=decodeURIComponent(location.hash.slice(1));if(h&&!document.getElementById(h)&&m[h]){history.replaceState(null,'','#'+m[h]);var e=document.getElementById(m[h]);if(e)e.scrollIntoView();}}go();window.addEventListener('hashchange',go);})();</script>`;
   fs.writeFileSync(path.join(SITE, `vol-${v.n}-${v.slug}.html`), page({ title: `Volume ${v.n} — ${v.title}`, activeVol: v.n, main: bodyHtml }));
   console.log(`Volume ${v.n} ${v.title.padEnd(26)} ${String(partNums.length).padStart(2)} parts`);
 }

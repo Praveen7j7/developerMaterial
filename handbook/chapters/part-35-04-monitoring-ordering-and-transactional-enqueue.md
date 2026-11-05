@@ -374,7 +374,7 @@ async relay(): Promise<void> {
 }
 ```
 
-Trade-offs: adds one insert per job to the write transaction (about 0.3 ms), adds a relay to operate, adds latency equal to the polling interval (use `LISTEN`/`NOTIFY` or logical decoding to cut that to milliseconds), and needs a pruning job. In exchange you get a guarantee: **if the business write happened, the job will happen.** This is the same outbox pattern discussed in Part 29 — Distributed Systems Patterns; the only difference is that here the destination is a job queue rather than an event bus.
+Trade-offs: adds one insert per job to the write transaction (about 0.3 ms), adds a relay to operate, adds latency equal to the polling interval (use `LISTEN`/`NOTIFY` or logical decoding to cut that to milliseconds), and needs a pruning job. In exchange you get a guarantee: **if the business write happened, the job will happen.** This is the same outbox pattern discussed in Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency; the only difference is that here the destination is a job queue rather than an event bus.
 
 #### Solution 2: put the queue in PostgreSQL
 

@@ -292,7 +292,7 @@ VALUES (gen_random_uuid(), 'order', $1, 'order.status', 4,
 COMMIT;
 ```
 
-The relay publishes to `order.events` with `key = aggregate_id` and `seq` in the body. See Part 27 — Messaging and Event-Driven Architecture for the outbox relay itself.
+The relay publishes to `order.events` with `key = aggregate_id` and `seq` in the body. See Part 27 — Messaging: Queues, Topics, Kafka, RabbitMQ and SQS for the outbox relay itself.
 
 #### Client behaviour summary
 

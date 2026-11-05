@@ -348,7 +348,7 @@ The NestJS side signs the same raw body with the shared secret and calls this en
 Server Actions and Route Handlers sit between the browser and NestJS, so the API must not relax because "the call comes from our own server":
 
 - **Authenticate the user, not the web tier.** Actions should forward the user's access token or session (71.8). If the web tier calls NestJS with an all-powerful service token for user operations, every authorisation check moves into the frontend tier, and one missing check is an IDOR (Part 39 — Security, 39.5).
-- **Idempotency keys still matter.** A Server Action can be retried by the browser, double-submitted, or replayed. Generate the key when the form is rendered and send it as `Idempotency-Key`; NestJS deduplicates it as in Part 14 — REST API Design (14.12).
+- **Idempotency keys still matter.** A Server Action can be retried by the browser, double-submitted, or replayed. Generate the key when the form is rendered and send it as `Idempotency-Key`; NestJS deduplicates it as in Part 14 — API Design (REST first) (14.12).
 - **One error shape.** Return `{ code, issues, requestId }` from NestJS so the action can map `issues[].path` to form fields without bespoke parsing per endpoint.
 - **Revalidation calls need limits.** The revalidation endpoint is a cache-busting button: authenticate it with an HMAC or mTLS, cap the number of tags per call, and batch events (every 1 to 2 seconds) so a bulk price import of 20,000 SKUs is 50 calls, not 20,000.
 

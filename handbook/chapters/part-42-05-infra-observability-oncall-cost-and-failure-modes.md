@@ -128,7 +128,7 @@ Everything else, per-route breakdowns, per-pod detail, database internals, lives
 
 #### Runbook links from alerts
 
-Every alert carries `runbook_url`. The runbook is short: what the alert means, the dashboard to open, the three most likely causes with the query that confirms each, the mitigation for each, and who to escalate to. It is a checklist, not an essay. It is stored next to the code, reviewed in PRs, and updated in the incident retrospective. Part 48 — Incident Response and On-Call covers the runbook format and the incident process; here the rule is simply that no alert ships without one.
+Every alert carries `runbook_url`. The runbook is short: what the alert means, the dashboard to open, the three most likely causes with the query that confirms each, the mitigation for each, and who to escalate to. It is a checklist, not an essay. It is stored next to the code, reviewed in PRs, and updated in the incident retrospective. Part 48 — Site Reliability Engineering covers the runbook format and the incident process; here the rule is simply that no alert ships without one.
 
 #### Incident-style example
 

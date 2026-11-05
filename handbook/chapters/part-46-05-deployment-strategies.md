@@ -198,7 +198,7 @@ The lesson is the one this part keeps returning to: **rollback speed is a proper
 - **Canary that passes at low traffic and fails at peak.** The 5% slice never triggers the connection-pool exhaustion that 100% will. Include a load-proportional step or hold at 50% through a peak.
 - **Shadow traffic writing to production.** Duplicate orders, duplicate emails, double charges. This has happened, more than once, at well-known companies.
 - **Shadow doubling load on a shared dependency.** The mirrored traffic hits the same third-party API and you exhaust its rate limit.
-- **Blue/green with connection-limited dependencies.** Both environments hold full connection pools; 24 pods times 20 connections exceeds `max_connections` (Part 18 — PostgreSQL Architecture and Connections).
+- **Blue/green with connection-limited dependencies.** Both environments hold full connection pools; 24 pods times 20 connections exceeds `max_connections` (Part 18 — PostgreSQL Internals).
 - **Long-running requests during a switch.** A 90-second report request is killed mid-flight when blue scales down 30 seconds later.
 - **In-flight Kafka messages.** A consumer group rebalance during a rolling update pauses consumption; with a large partition count the rebalance can take longer than the rollout.
 

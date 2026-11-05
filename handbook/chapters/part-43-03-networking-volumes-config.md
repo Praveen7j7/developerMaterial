@@ -127,7 +127,7 @@ At 09:05 a new developer reports "the API cannot reach the database". Their `.en
 - **Port already allocated.** Two Compose projects publishing `5432:5432` collide on the host; use different host ports or none.
 - **IPv6 and `localhost`.** Node 17+ resolves `localhost` to `::1` first; a server bound to `0.0.0.0` (IPv4 only) refuses it. Bind to `::` to accept both, or use `127.0.0.1` explicitly in clients.
 - **Alpine DNS behaviour.** musl's resolver historically lacked TCP fallback for large responses and handles `search` domains differently; long service names or many search domains in Kubernetes can produce intermittent `ENOTFOUND`. glibc images are more forgiving.
-- **Connection limits from many containers.** Every container's pool counts toward `max_connections` in PostgreSQL; 20 containers with `max: 20` is 400 connections. See Part 18 — PostgreSQL Architecture and Connections.
+- **Connection limits from many containers.** Every container's pool counts toward `max_connections` in PostgreSQL; 20 containers with `max: 20` is 400 connections. See Part 18 — PostgreSQL Internals.
 - **Bridge MTU.** VPNs on the host can shrink MTU; large responses stall inside containers. Rare but memorable.
 
 #### How a Senior Backend Engineer thinks about this

@@ -453,7 +453,7 @@ Event sourcing is usually over-engineering, and the costs are real and permanent
 - **Debugging is harder for everyone.** "Why is this order in this state?" becomes an event replay rather than a `SELECT`.
 - **The team must all understand it.** One enthusiast and five confused colleagues is a bad outcome, and it is the common outcome.
 
-The pragmatic middle ground almost everyone should take: **keep current state in normal tables, keep the events too (your outbox already has them), and build read models where they pay.** You get audit, projections and query flexibility without the replay tax. Part 59 — Event Sourcing and CQRS in Depth covers the full pattern, including snapshots, upcasting and when the tradeoff genuinely flips.
+The pragmatic middle ground almost everyone should take: **keep current state in normal tables, keep the events too (your outbox already has them), and build read models where they pay.** You get audit, projections and query flexibility without the replay tax. Part 59 — Real-World Architecture Patterns covers the full pattern, including snapshots, upcasting and when the tradeoff genuinely flips.
 
 #### Common mistakes
 

@@ -357,7 +357,7 @@ The missing control was fencing: the runbook did not include "before promoting, 
 
 #### How a Senior Backend Engineer thinks about this
 
-They design the application to survive a database restart *as a normal event*, not an incident. Failover then becomes 90 seconds of retries rather than a page. That means timeouts, bounded retries with jitter, idempotent writes and a circuit breaker (Part 30 — Resilience Patterns).
+They design the application to survive a database restart *as a normal event*, not an incident. Failover then becomes 90 seconds of retries rather than a page. That means timeouts, bounded retries with jitter, idempotent writes and a circuit breaker (Part 30 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure).
 
 They fence before they promote. Always. It is one command and it prevents the worst class of DR incident.
 

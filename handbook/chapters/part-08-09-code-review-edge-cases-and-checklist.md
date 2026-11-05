@@ -99,7 +99,7 @@ Node's default old-space is around 1.5–2 GB in a typical container; a 400 MB s
 
 **6. `JSON.parse` on multi-megabyte payloads.** `JSON.parse` is linear and native, so it looks free. It is also **synchronous**: it blocks the event loop for its entire duration and allocates several times the input size.
 
-A 10 MB JSON body parses in roughly 80–120 ms and produces 40–60 MB of heap. At 20 requests per second of 10 MB uploads, the event loop is blocked more than it is free, p99 across every unrelated endpoint on that pod collapses, and the liveness probe starts failing (see Part 9 — Operating Systems and Runtime for the event loop, and Part 30 — Resilience Patterns for what that does to probes). Rewrite: cap `body-parser` `limit` to what the API actually needs (`'256kb'` for JSON APIs), take large payloads as an upload to object storage plus a job, and stream-parse when you must parse in-process.
+A 10 MB JSON body parses in roughly 80–120 ms and produces 40–60 MB of heap. At 20 requests per second of 10 MB uploads, the event loop is blocked more than it is free, p99 across every unrelated endpoint on that pod collapses, and the liveness probe starts failing (see Part 9 — Operating Systems and the Node.js Runtime for the event loop, and Part 30 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure for what that does to probes). Rewrite: cap `body-parser` `limit` to what the API actually needs (`'256kb'` for JSON APIs), take large payloads as an upload to object storage plus a job, and stream-parse when you must parse in-process.
 
 **7. Regex with catastrophic backtracking.** The only shape in this list that is exponential.
 
@@ -292,7 +292,7 @@ The column that matters most in a design review is the last one. "We will do the
 
 ## 8.25 The complexity cheat sheet
 
-Everything from Part 7 — Data Structures and Part 8, consolidated. Time complexities are for the standard implementation; `n` is the number of elements.
+Everything from Part 7 — Computer Science Fundamentals: Data Structures and Part 8, consolidated. Time complexities are for the standard implementation; `n` is the number of elements.
 
 **Data structures**
 

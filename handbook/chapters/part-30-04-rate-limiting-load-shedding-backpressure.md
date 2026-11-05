@@ -4,7 +4,7 @@
 
 Rate limiting caps how many operations a caller may perform in a time window. It appears in two directions. **Inbound** rate limiting protects *you* from clients (abusive, buggy, or simply enthusiastic). **Outbound** (client-side) rate limiting protects *downstreams* from you, and protects you from being cut off by a third party whose contract says "100 requests per second".
 
-Part 26 — API Design covers token bucket and sliding window in detail; here we recap just enough to place rate limiting in the reliability toolbox.
+Part 14 — API Design (REST first) covers token bucket and sliding window in detail; here we recap just enough to place rate limiting in the reliability toolbox.
 
 #### Why does it exist?
 

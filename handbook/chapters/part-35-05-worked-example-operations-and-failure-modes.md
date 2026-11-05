@@ -395,7 +395,7 @@ await queue.clean(0, 5_000, 'failed');
 
 **Changing a repeatable schedule.** Remove the old one first, then add the new one, and verify with `queue.getRepeatableJobs()` (or `getJobSchedulers()`) that exactly one entry exists. Deploying a changed cron pattern without removing the old key is how a job ends up running at both 02:00 and 03:00 for six months.
 
-**Rolling out a payload change.** Bump `v` in the payload, make the handler accept both versions, deploy the handler first, then deploy the producer. Remove the old branch only after the queue has fully drained of v1 jobs — check with a quick scan of `getWaiting()` and `getDelayed()`. This is Part 24 — Backward and Forward Compatibility applied to queues, and skipping it means every job already in the queue crashes on the new code.
+**Rolling out a payload change.** Bump `v` in the payload, make the handler accept both versions, deploy the handler first, then deploy the producer. Remove the old branch only after the queue has fully drained of v1 jobs — check with a quick scan of `getWaiting()` and `getDelayed()`. This is Part 24 — Backward Compatibility: APIs, Schemas, Events and Clients applied to queues, and skipping it means every job already in the queue crashes on the new code.
 
 ### 35.13.2 The comprehensive failure list
 
@@ -405,7 +405,7 @@ await queue.clean(0, 5_000, 'failed');
 
 **A poison job blocks a worker.** A payload that crashes the process (not throws — crashes: a native library segfault, an OOM on a 400 MB image) takes the pod with it. Kubernetes restarts it, it takes the same job, it dies again. `CrashLoopBackOff` with a queue that never drains. *Detect:* pod restart count climbing plus zero completions plus non-zero depth. *Fix:* `maxStalledCount` so the job is failed after a couple of stalls, size limits validated at enqueue time, and running risky rendering in a child process so a crash kills the thread and not the pod.
 
-**A retry storm against a third party.** The partner slows down, jobs time out, all of them retry on the same exponential schedule, and the retries arrive as a synchronized wave that finishes the partner off. *Detect:* their error rate correlates with your retry spikes; your `delayed` count oscillates. *Fix:* jitter, a queue limiter, a circuit breaker in the client (Part 30 — Resilience Patterns) that fails fast while open so jobs delay cheaply rather than holding sockets, and honouring `Retry-After`.
+**A retry storm against a third party.** The partner slows down, jobs time out, all of them retry on the same exponential schedule, and the retries arrive as a synchronized wave that finishes the partner off. *Detect:* their error rate correlates with your retry spikes; your `delayed` count oscillates. *Fix:* jitter, a queue limiter, a circuit breaker in the client (Part 30 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure) that fails fast while open so jobs delay cheaply rather than holding sockets, and honouring `Retry-After`.
 
 **Cron firing on every replica.** Covered in 35.4. *Detect:* the job's log line appears N times with N different pod names. *Fix:* a dedicated scheduler Deployment, BullMQ repeatable jobs, or the claimed `job_schedules` row. Plus a unique constraint on the business period so it cannot matter.
 

@@ -49,7 +49,7 @@ The race needs a reader that is slower than an entire write transaction, which i
 2. **Versioned values.** Store `{ version, data }` and only `SET` if the stored version is not newer, using a Lua script. The slow reader's `SET` with `updated_at = 10:00:00` loses to a value with `updated_at = 10:00:01`.
 3. **Short TTL as the backstop.** With a 60 second TTL, the worst case of any race is 60 seconds. Many teams accept this and skip 1 and 2.
 
-**Invalidation via Kafka or CDC.** In a system with several services writing to the same tables, or where invalidation must fan out to many pods' local caches, the write path publishes a `ProductUpdated` event (through the outbox pattern; see Part 29 — Transactional Outbox and Inbox) or a CDC tool such as Debezium reads the PostgreSQL WAL and emits change events. A consumer deletes the Redis keys. This decouples invalidation from every code path that writes, at the cost of a delay of 50 to 500 ms between commit and invalidation, which you must state as the consistency window.
+**Invalidation via Kafka or CDC.** In a system with several services writing to the same tables, or where invalidation must fan out to many pods' local caches, the write path publishes a `ProductUpdated` event (through the outbox pattern; see Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency) or a CDC tool such as Debezium reads the PostgreSQL WAL and emits change events. A consumer deletes the Redis keys. This decouples invalidation from every code path that writes, at the cost of a delay of 50 to 500 ms between commit and invalidation, which you must state as the consistency window.
 
 #### NestJS example
 

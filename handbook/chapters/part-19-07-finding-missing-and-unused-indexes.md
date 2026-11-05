@@ -437,7 +437,7 @@ Row 18 deserves emphasis because getting it wrong is expensive and getting it ri
 - **Every** composite index starts with `tenant_id`.
 - **Every** unique constraint includes `tenant_id`: `UNIQUE (tenant_id, order_ref)`, not `UNIQUE (order_ref)`. Two tenants can legitimately use the same reference.
 - Any index that does not start with `tenant_id` is either a mistake or a deliberate cross-tenant admin query, and it should be justified in the migration comment.
-- When you eventually partition by `tenant_id` or by hash of it (Part 22 — Scaling Databases), the indexes are already in the right shape.
+- When you eventually partition by `tenant_id` or by hash of it (Part 22 — Database Scaling), the indexes are already in the right shape.
 
 The counter-case: a table where one tenant holds 80 percent of the rows. Then `tenant_id` first is still correct for correctness and pruning, but the selectivity for that tenant is poor, and the second column has to do the real work. Check `most_common_vals` on `tenant_id` before assuming.
 

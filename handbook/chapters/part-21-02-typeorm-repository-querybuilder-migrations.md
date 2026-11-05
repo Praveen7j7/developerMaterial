@@ -460,7 +460,7 @@ export class IndexOrdersStatus1757200100000 implements MigrationInterface {
 | At application startup (`migrationsRun: true`) | each pod runs pending migrations on boot | zero extra infrastructure | N pods race (TypeORM takes no lock; you get `duplicate key` on the migrations table or worse), slow boots fail readiness probes, a bad migration crash-loops the whole deployment |
 | Kubernetes Job or init container | a one-off Job runs migrations; deployment waits on it | isolates DB access, one runner | more YAML; must handle "job already ran" idempotently |
 
-Startup migrations are acceptable for a single-instance internal tool. For anything with more than one replica, run migrations from the pipeline or a Job, before the new code rolls out, and write them so the old code keeps working while both versions overlap (expand/contract). Part 23 — Safe Schema Migrations covers the full playbook: adding columns with defaults, backfilling in batches, `NOT NULL` via `CHECK ... NOT VALID` then `VALIDATE`, and dropping columns two deploys later.
+Startup migrations are acceptable for a single-instance internal tool. For anything with more than one replica, run migrations from the pipeline or a Job, before the new code rolls out, and write them so the old code keeps working while both versions overlap (expand/contract). Part 23 — Database Migrations and Zero-Downtime Schema Changes covers the full playbook: adding columns with defaults, backfilling in batches, `NOT NULL` via `CHECK ... NOT VALID` then `VALIDATE`, and dropping columns two deploys later.
 
 #### Edge cases & failure modes
 

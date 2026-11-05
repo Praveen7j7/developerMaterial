@@ -165,7 +165,7 @@ An engineer runs `EXPLAIN ANALYZE DELETE FROM notifications WHERE created_at < '
 - Per-worker values mistaken for totals under `Gather`.
 - `EXPLAIN` on a prepared statement shows the *generic* plan after five executions, not your custom plan.
 - Running `EXPLAIN ANALYZE` on a replica where the plan differs because `random_page_cost` or statistics differ.
-- A query fast in `EXPLAIN ANALYZE` and slow in the app: the plan is fine and your problem is network round trips, result serialisation, or the ORM (Part 21 — ORMs in Depth).
+- A query fast in `EXPLAIN ANALYZE` and slow in the app: the plan is fine and your problem is network round trips, result serialisation, or the ORM (Part 21 — ORM Engineering: TypeORM, Sequelize and Raw SQL).
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -286,7 +286,7 @@ Planning Time: 0.142 ms
 Execution Time: 18428.812 ms
 ```
 
-Reading it: 165 million of 200 million rows match (`55,212,004 x 3` workers). That is 83 percent of the table. There is no index that helps; any index scan would read every heap page anyway plus the index. The estimate (69,066,488 per worker) versus actual (55,212,004) is off by 25 percent, which is fine. **`Rows Removed by Filter: 11,454,663`** per worker sounds huge but is only 17 percent, so a partial index would not pay. This plan is correct. 18 seconds is the honest price of aggregating 165 million rows, and the fix is architectural (a materialised rollup table, Part 22 — Scaling Databases), not an index.
+Reading it: 165 million of 200 million rows match (`55,212,004 x 3` workers). That is 83 percent of the table. There is no index that helps; any index scan would read every heap page anyway plus the index. The estimate (69,066,488 per worker) versus actual (55,212,004) is off by 25 percent, which is fine. **`Rows Removed by Filter: 11,454,663`** per worker sounds huge but is only 17 percent, so a partial index would not pay. This plan is correct. 18 seconds is the honest price of aggregating 165 million rows, and the fix is architectural (a materialised rollup table, Part 22 — Database Scaling), not an index.
 
 **Plan 2: index scan, the ideal shape.**
 

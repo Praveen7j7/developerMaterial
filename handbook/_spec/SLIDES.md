@@ -1,5 +1,7 @@
 # Masterclass Slide Deck — Writing Contract
 
+> Part numbers in this file were updated on 2026-11-05 to the reading-order numbering (Volume 0 = Parts 1–6, the book runs 1–85). The file name keeps the original batch number.
+
 You are writing slides for the **Senior Backend Engineering Masterclass**, the visual companion to the Senior Backend Engineering Handbook. The deck must NOT copy paragraphs from the handbook. It teaches visually: one idea per slide, 3–7 crisp points, a diagram or code snippet, a real-world example, and a "Senior takeaway".
 
 The build script turns your JSON into a PowerPoint (.pptx) and an HTML deck. **Only the JSON shapes described here render.** Anything else is dropped.
@@ -18,7 +20,7 @@ Write one JSON file per deck section into `f:\learning\senior-backend-handbook\s
 }
 ```
 
-- `parts`: the handbook Part numbers this section summarises (keeps deck and handbook synchronised — the section divider slide prints "Handbook Parts 11, 12, 13, 15, 31").
+- `parts`: the handbook Part numbers this section summarises (keeps deck and handbook synchronised — the section divider slide prints "Handbook Parts 18–20 and 22, 23").
 - `slides`: 5–12 content slides (see the per-section targets in section 4).
 
 ## 2. Slide shape

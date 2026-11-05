@@ -35,7 +35,7 @@ Imagine a restaurant whose kitchen cannot keep up. Before you build a second res
 #### How it works
 
 1. **Measure.** Turn on `pg_stat_statements`. Look at `total_exec_time`, `calls`, `mean_exec_time` and `rows`. Look at `pg_stat_activity` for connection counts and wait events. Look at CPU, IOPS, cache hit ratio (`pg_stat_database.blks_hit / (blks_hit + blks_read)`). A senior engineer refuses to scale anything before this step.
-2. **Queries and indexes.** The top ten statements by total time are almost always a handful of missing indexes, `SELECT *` on wide tables, N+1 loops from an ORM, or unbounded `OFFSET` pagination. Fixing them commonly buys 5x to 50x. See Part 19 — Indexes and Query Optimization.
+2. **Queries and indexes.** The top ten statements by total time are almost always a handful of missing indexes, `SELECT *` on wide tables, N+1 loops from an ORM, or unbounded `OFFSET` pagination. Fixing them commonly buys 5x to 50x. See Part 19 — Database Indexing.
 3. **Connection pooling.** Every PostgreSQL connection is a process with roughly 5 to 10 MB of memory and real CPU cost on connect. 40 pods with a pool of 20 each is 800 connections, which is already past the comfortable zone. PgBouncer in transaction mode multiplexes thousands of client connections onto tens of server connections. See section 22.9.
 4. **Caching.** Product pages, user profiles, configuration, permission sets: read a million times, changed once an hour. Redis answers in 0.2 to 1 ms and never touches the database. See Part 26 — Caching.
 5. **Read replicas.** When reads still dominate after caching, stream a copy of the data to one or more replicas and route read-only traffic there. Reads scale almost linearly with replica count; writes do not scale at all.

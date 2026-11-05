@@ -300,7 +300,7 @@ Three levers, in order of effectiveness.
 
 **1. Remove the dependency from the synchronous path.** This is the biggest win and it is an architecture decision, not an infrastructure purchase. The email provider was in the chain until we queued it (Part 35); now its availability does not appear in the product at all. Ask of every box in the diagram: does the *response* depend on it?
 
-**2. Make failure non-fatal.** A dependency you can degrade around drops out of the multiplication. If Redis being down means you read from PostgreSQL more slowly instead of returning 500, Redis contributes nothing to your unavailability. If the recommendation service being down means the recommendations panel is empty rather than the page failing, same. This is graceful degradation (Part 30 — Resilience Patterns) and it is worth more than another nine on any single component.
+**2. Make failure non-fatal.** A dependency you can degrade around drops out of the multiplication. If Redis being down means you read from PostgreSQL more slowly instead of returning 500, Redis contributes nothing to your unavailability. If the recommendation service being down means the recommendations panel is empty rather than the page failing, same. This is graceful degradation (Part 30 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure) and it is worth more than another nine on any single component.
 
 **3. Add real redundancy.** For components in **parallel**, where either one serving the request is enough, unavailabilities multiply instead:
 

@@ -27,7 +27,7 @@ flowchart LR
 
 1. **Prepare.** Validate input. Read reference data that does not need to be locked. Call external services whose result you need (pricing, fraud score, address validation). Check the idempotency key. None of this holds a connection in a transaction.
 2. **Transact.** `BEGIN`. Lock what must be locked, in order. Write. Insert an *outbox* row describing the event to publish. `COMMIT`. Target: single-digit milliseconds.
-3. **Side effects.** A relay process reads the outbox and publishes to Kafka or sends the email, marking each row done. If the process dies, the row is still there. This is the transactional outbox pattern; Part 29 — Distributed Transactions and Sagas covers the relay in depth, and Part 27 — Messaging covers consumer idempotency.
+3. **Side effects.** A relay process reads the outbox and publishes to Kafka or sends the email, marking each row done. If the process dies, the row is still there. This is the transactional outbox pattern; Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency covers the relay in depth, and Part 27 — Messaging covers consumer idempotency.
 
 What must never be inside the transaction: HTTP calls, message publishes (except to the outbox table), email/SMS, Redis calls you wait on, file uploads, `setTimeout`, waiting for user input, or logging that blocks.
 

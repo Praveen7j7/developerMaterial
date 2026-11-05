@@ -64,7 +64,7 @@ At 11:40 a deploy renamed the JSON field `deliveryEta` to `estimatedDeliveryAt` 
 
 #### Concept
 
-An API is compatible with its existing clients when every request they already send still succeeds with the same meaning, and every response they receive still contains every field they rely on, with the same type and semantics. Versioning is the mechanism for offering a different contract to clients that opt in, while keeping the old contract alive for those that do not. Part 14 — REST API Design covered versioning mechanics; this section looks at them through the compatibility lens.
+An API is compatible with its existing clients when every request they already send still succeeds with the same meaning, and every response they receive still contains every field they rely on, with the same type and semantics. Versioning is the mechanism for offering a different contract to clients that opt in, while keeping the old contract alive for those that do not. Part 14 — API Design (REST first) covered versioning mechanics; this section looks at them through the compatibility lens.
 
 #### Why does it exist?
 

@@ -139,7 +139,7 @@ An idempotent consumer records which message ids it has processed, in the same d
 
 #### Why does it exist?
 
-This is the only mechanism that closes every duplicate path from 27.8 with no timing assumptions. It requires that the message carries a stable, unique id assigned by the producer (27.10), and that the consumer's side effect is in the same database as the dedup table. It is also the receiving half of the inbox pattern; see Part 29 — Transactional Outbox and Inbox for the full treatment, including deferring the actual processing to a worker that reads the inbox.
+This is the only mechanism that closes every duplicate path from 27.8 with no timing assumptions. It requires that the message carries a stable, unique id assigned by the producer (27.10), and that the consumer's side effect is in the same database as the dedup table. It is also the receiving half of the inbox pattern; see Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency for the full treatment, including deferring the actual processing to a worker that reads the inbox.
 
 #### Mental model
 

@@ -371,7 +371,7 @@ await writeFile(`${path}.tmp-${process.pid}`, data);
 await rename(`${path}.tmp-${process.pid}`, path);
 ```
 
-**Double submit.** The user double-clicks "Place order", or the mobile app retries a timed-out `POST`. Two orders. The fix is the idempotency key (Part 29 — Idempotency and Exactly-Once Semantics): the client generates a key per *intent*, the server stores it with a unique constraint, and the second request replays the first response. UI tricks (disabling the button) reduce the frequency; only the constraint removes the bug.
+**Double submit.** The user double-clicks "Place order", or the mobile app retries a timed-out `POST`. Two orders. The fix is the idempotency key (Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency): the client generates a key per *intent*, the server stores it with a unique constraint, and the second request replays the first response. UI tricks (disabling the button) reduce the frequency; only the constraint removes the bug.
 
 **Duplicate job execution across pods.** A "send reminder emails" job runs on every worker pod at 09:00, or two BullMQ workers process the same job after a lock expiry, or a Kafka rebalance redelivers a batch. Fixes, in order of strength: make the job handler idempotent (a `sent_reminders(user_id, date)` unique constraint; sending twice fails the second insert *before* the email goes out), claim work with `FOR UPDATE SKIP LOCKED` (31.8), and use a lease with heartbeat for long jobs (31.14).
 

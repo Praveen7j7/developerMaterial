@@ -1,26 +1,28 @@
 # Expansion brief — thin Parts
 
-These Parts are complete in shape but much shorter than the rest of the book (most Parts are 15,000–35,000 words). Expand them in place. Read `_spec/STYLE.md`, then the assignment for your Parts in `_spec/OUTLINE-51-68.md` (Parts 59–68) or the Part's own files (Vol 0 Parts 70–74), then the existing files of your Parts in full.
+> Part numbers in this file were updated on 2026-11-05 to the reading-order numbering (Volume 0 = Parts 1–6, the book runs 1–85). The file name keeps the original batch number.
+
+These Parts are complete in shape but much shorter than the rest of the book (most Parts are 15,000–35,000 words). Expand them in place. Read `_spec/STYLE.md`, then the assignment for your Parts in `_spec/OUTLINE-51-68.md` (Parts 15, 25, 36–38, 51 and 63–66) or the Part's own files (Vol 0 Parts 2–6), then the existing files of your Parts in full.
 
 | Part | Words now | Target | Notes |
 |---|---|---|---|
-| 59 Building Backends with LLMs | 10.7k | 18–22k | Cover every outline bullet with the full teaching template; the worked example in full |
-| 60 Retrieval, Agents and Evaluation | 8.2k | 18–22k | pgvector EXPLAIN output, the incident story, evaluation in CI |
-| 61 GraphQL and gRPC | 7.0k | 18–22k | Federation, protobuf evolution, the three-protocol worked example |
-| 62 NoSQL Data Modelling | 8.4k | 18–22k | DynamoDB single-table worked example vs PostgreSQL; Cassandra write path |
-| 63 Data Engineering | 8.6k | 18–22k | CDC worked example end to end; stream processing windows |
-| 64 Infrastructure as Code | 7.8k | 18–22k | Full Terraform worked example; the `terraform apply` incident |
-| 65 More System Designs I | 10.5k | 18–24k | Each design at the depth of Part 40 (read part-40-01 first) |
-| 66 More System Designs II | 9.5k | 18–24k | Same |
-| 67 Low-Level Design | 9.4k | 18–24k | All 8 listed problems fully worked: diagram, code, tests, twist |
-| 68 Interview Playbook | 9.1k | 18–24k | Every outline bullet, including Q&A for Parts 51–66 |
-| 70 Asynchronous JavaScript | 6.9k | 12–15k | Volume 0 is for beginners: more worked examples and exercises, not harder material |
-| 71 How the Web Works | 8.5k | 12–15k | Same |
-| 72 Linux and the Command Line | 9.1k | 12–15k | Same |
-| 73 Git Basics | 6.0k | 12–15k | Same |
-| 74 Your First Backend | 6.8k | 12–15k | Grow the project step by step: validation, errors, tests, running with Docker |
+| 36 Building Backends with LLMs | 10.7k | 18–22k | Cover every outline bullet with the full teaching template; the worked example in full |
+| 37 Retrieval, Agents and Evaluation | 8.2k | 18–22k | pgvector EXPLAIN output, the incident story, evaluation in CI |
+| 15 GraphQL and gRPC | 7.0k | 18–22k | Federation, protobuf evolution, the three-protocol worked example |
+| 25 NoSQL Data Modelling | 8.4k | 18–22k | DynamoDB single-table worked example vs PostgreSQL; Cassandra write path |
+| 38 Data Engineering | 8.6k | 18–22k | CDC worked example end to end; stream processing windows |
+| 51 Infrastructure as Code | 7.8k | 18–22k | Full Terraform worked example; the `terraform apply` incident |
+| 63 More System Designs I | 10.5k | 18–24k | Each design at the depth of Part 52 (read part-52-01 first) |
+| 64 More System Designs II | 9.5k | 18–24k | Same |
+| 65 Low-Level Design | 9.4k | 18–24k | All 8 listed problems fully worked: diagram, code, tests, twist |
+| 66 Interview Playbook | 9.1k | 18–24k | Every outline bullet, including Q&A for Parts 15, 25, 36–38, 51, 63, 64 and 78–85 |
+| 2 Asynchronous JavaScript | 6.9k | 12–15k | Volume 0 is for beginners: more worked examples and exercises, not harder material |
+| 3 How the Web Works | 8.5k | 12–15k | Same |
+| 4 Linux and the Command Line | 9.1k | 12–15k | Same |
+| 5 Git Basics | 6.0k | 12–15k | Same |
+| 6 Your First Backend | 6.8k | 12–15k | Grow the project step by step: validation, errors, tests, running with Docker |
 
-Part 50 (the roadmap) is short on purpose; do not expand it.
+Part 62 (the roadmap) is short on purpose; do not expand it.
 
 ## Rules
 

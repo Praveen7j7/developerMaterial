@@ -305,7 +305,7 @@ FROM pg_stat_activity WHERE state = 'active' GROUP BY 1,2 ORDER BY 3 DESC;
 The ceiling is around 8,400 per second and adding connections makes it worse. Three fixes, in order of preference:
 
 1. **Batch the inserts.** 100 rows in one `INSERT ... VALUES (...), (...)` writes one WAL record and takes the page lock once. This alone took the same workload to 34,000 rows per second.
-2. **Partition by time** (Part 22 — Scaling Databases). Each partition has its own index and its own right edge, and if you route by hash instead of time you spread the edge across N pages.
+2. **Partition by time** (Part 22 — Database Scaling). Each partition has its own index and its own right edge, and if you route by hash instead of time you spread the edge across N pages.
 3. **Change the key distribution.** UUID v7 keeps rough time ordering with enough entropy to spread across several leaf pages. Random UUID v4 solves contention and creates a far worse problem (random I/O across the whole index).
 
 Note that this is a *primary key* problem, so "drop the index" is not on the table. It is the clearest example of an index cost you cannot remove, only architect around.

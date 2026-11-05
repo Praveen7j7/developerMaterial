@@ -56,7 +56,7 @@ Two rules fall straight out of this table. First, **anything that crosses a netw
 | One NestJS pod, 3–5 queries + serialization of 50 rows | 120–350 RPS | The realistic "list endpoint" number |
 | One NestJS pod, heavy `class-transformer` + 200 KB response | 40–120 RPS | Serialization becomes the bottleneck |
 
-**The loudest caveat in this part: these are starting points, not facts about your system.** A pod's RPS depends on your CPU limit, your Node version, your middleware stack, your logging volume, your payload size and your query plans. The correct workflow is to start from the table, design with it, then **replace every number with a measured one from your own load test** (Part 41 — Performance and Optimization covers how to run that test). An estimate built on a measured constant is engineering; an estimate built on a remembered constant is a guess with a table around it.
+**The loudest caveat in this part: these are starting points, not facts about your system.** A pod's RPS depends on your CPU limit, your Node version, your middleware stack, your logging volume, your payload size and your query plans. The correct workflow is to start from the table, design with it, then **replace every number with a measured one from your own load test** (Part 41 — Performance Engineering covers how to run that test). An estimate built on a measured constant is engineering; an estimate built on a remembered constant is a guess with a table around it.
 
 ### 53.1.3 Time and size shortcuts
 

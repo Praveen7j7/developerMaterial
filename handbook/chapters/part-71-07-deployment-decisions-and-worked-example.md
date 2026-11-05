@@ -89,7 +89,7 @@ The standalone image for a typical storefront is 150 to 250 MB instead of over 1
 #### Backend side (NestJS)
 
 - **The build calls the API.** `generateStaticParams` and static pages fetch from NestJS during `next build` in CI, so CI needs network access to a catalogue API with production-like data, or prerendering must be limited and the rest rendered on demand.
-- **Web and API deploy independently.** During a deploy, old web pods call the new API and new web pods call the old API. Keep API changes additive and backward compatible (Part 24 — API Compatibility).
+- **Web and API deploy independently.** During a deploy, old web pods call the new API and new web pods call the old API. Keep API changes additive and backward compatible (Part 24 — Backward Compatibility: APIs, Schemas, Events and Clients).
 - **Keep-alive and pools.** Each Next.js pod is an HTTP client of NestJS; enable keep-alive to avoid a new TCP and TLS handshake per server-side fetch, and size NestJS for the web tier's concurrency at peak.
 
 #### Production scenario
@@ -110,7 +110,7 @@ The same team's first launch used the default file-system cache. With six replic
 
 #### How a Senior Full-Stack Engineer thinks about this
 
-The senior picks the deployment by the features the app actually uses: static export when no page needs a server, a managed platform when the team wants zero infrastructure, containers when the rest of the system already runs there and the team can own a shared cache and version-skew handling. They treat the Next.js tier as a stateless service with shared state outside it, like any NestJS service in Part 43 — Containers and Kubernetes.
+The senior picks the deployment by the features the app actually uses: static export when no page needs a server, a managed platform when the team wants zero infrastructure, containers when the rest of the system already runs there and the team can own a shared cache and version-skew handling. They treat the Next.js tier as a stateless service with shared state outside it, like any NestJS service in Part 43 — Docker for Backend Engineers and Part 44 — Kubernetes for Backend Engineers.
 
 #### Common mistakes
 

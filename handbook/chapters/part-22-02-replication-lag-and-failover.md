@@ -26,7 +26,7 @@ Imagine a bookkeeper who writes every transaction in a journal before touching t
 
 **Logical replication.** `wal_level = logical` makes the primary decode WAL into row changes. A `PUBLICATION` names the tables; a `SUBSCRIPTION` on another database connects and applies changes with ordinary inserts, updates and deletes. It works across major versions (the standard zero-downtime upgrade path), can replicate a subset of tables or even filtered rows and columns (PostgreSQL 15+), and the subscriber is a normal writable database. It does not replicate DDL, sequences or large objects, and the initial sync of a big table can take hours.
 
-**CDC with Debezium.** Change Data Capture uses the same logical decoding (through the `pgoutput` plugin) but the consumer is Debezium, a Kafka Connect connector. Every row change becomes a Kafka message with `before` and `after` images. This is how you feed a search index, a cache invalidator or a data warehouse without dual writes from the application, and it is the mechanism behind the transactional outbox pattern (see Part 27 — Messaging Patterns).
+**CDC with Debezium.** Change Data Capture uses the same logical decoding (through the `pgoutput` plugin) but the consumer is Debezium, a Kafka Connect connector. Every row change becomes a Kafka message with `before` and `after` images. This is how you feed a search index, a cache invalidator or a data warehouse without dual writes from the application, and it is the mechanism behind the transactional outbox pattern (see Part 27 — Messaging: Queues, Topics, Kafka, RabbitMQ and SQS).
 
 ```mermaid
 flowchart TB
@@ -270,7 +270,7 @@ What the application must do, in order:
 - **Detect broken connections quickly.** Pool connections to the dead primary are broken sockets. Set TCP keepalives and short `connectionTimeoutMillis` so a broken connection is discovered in seconds, not after the OS's default 2-hour keepalive.
 - **Drain and rebuild the pool.** On `ECONNRESET`, `57P01 admin_shutdown`, `25006 read_only_sql_transaction` (you are talking to the demoted old primary), evict the connection and reconnect. `node-postgres` pools remove broken clients on error; make sure your health check exercises a query, not just a socket.
 - **Resolve DNS again.** Node caches DNS per lookup, not globally, so a new connection will re-resolve. But a long-lived connection never re-resolves; only reconnection picks up the new address. Never pin the IP.
-- **Retry idempotent work; do not retry the rest blindly.** A `SELECT` can be retried. An `INSERT` whose transaction was in flight when the failover hit is in an unknown state: it may have committed on the old primary and been lost, or committed and replicated, or never committed. Only an idempotency key (Part 29 — Idempotency) makes retry safe.
+- **Retry idempotent work; do not retry the rest blindly.** A `SELECT` can be retried. An `INSERT` whose transaction was in flight when the failover hit is in an unknown state: it may have committed on the old primary and been lost, or committed and replicated, or never committed. Only an idempotency key (Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency) makes retry safe.
 - **Stop background writers for a moment.** Workers pounding the endpoint during failover create a retry storm that slows the new primary's warm-up. Use exponential backoff with jitter.
 
 #### NestJS example

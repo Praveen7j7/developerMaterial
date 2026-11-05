@@ -49,9 +49,9 @@ Each "Yes" maps to a pattern in this part:
 - Timeout -> **Timeouts** and **timeout budgets** (30.2)
 - Fail -> **Retries** (30.3), **Circuit breakers** (30.5), **Fallbacks** (30.10), **Failover** (30.11)
 - Slow -> **Timeouts**, **Bulkheads** (30.6), **Load shedding** (30.8), **Backpressure** (30.9)
-- Duplicate -> **Idempotency** (30.14, and Part 29 — Idempotency and Exactly-Once Semantics)
+- Duplicate -> **Idempotency** (30.14, and Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency)
 - Wrong response -> **Response validation** (30.17)
-- Partial success -> **Per-item result handling**, **compensation** (30.17, and Part 29 — Sagas and Distributed Transactions)
+- Partial success -> **Per-item result handling**, **compensation** (30.17, and Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency)
 
 #### Practical example
 

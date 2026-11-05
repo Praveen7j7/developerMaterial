@@ -600,7 +600,7 @@ async update(
 }
 ```
 
-Returning **428 when `If-Match` is missing** is the part most APIs skip, and it is what turns the mechanism from advisory into enforced. Without it, an old client that does not send the header silently gets last-write-wins. (See Part 10 — HTTP, for ETag semantics; strong versus weak validators matter for caching but not for this use.)
+Returning **428 when `If-Match` is missing** is the part most APIs skip, and it is what turns the mechanism from advisory into enforced. Without it, an old client that does not send the header silently gets last-write-wins. (See Part 10 — Networking and HTTP, for ETag semantics; strong versus weak validators matter for caching but not for this use.)
 
 #### Production scenario
 

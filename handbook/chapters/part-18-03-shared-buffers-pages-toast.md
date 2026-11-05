@@ -158,7 +158,7 @@ Monitoring checklist: hit ratio per database, `pg_stat_io` (PG 16+) per backend 
 
 #### Failure scenario
 
-At 06:00 a nightly analytics job ran `SELECT ... FROM order_items JOIN orders ...` across two years of data on the primary. The ring buffer protected shared buffers, but the 30 GB scan flushed the OS page cache. For the next 20 minutes, every cold read of an `orders` page went to EBS at 0.8 ms, the API p99 rose from 90 ms to 700 ms, and the pool's `connectionTimeoutMillis` started firing because each request held its connection 8 times longer. The fix was to run analytics on a replica (see Part 22 — Replication and Scaling Reads) and to warm the cache after the job.
+At 06:00 a nightly analytics job ran `SELECT ... FROM order_items JOIN orders ...` across two years of data on the primary. The ring buffer protected shared buffers, but the 30 GB scan flushed the OS page cache. For the next 20 minutes, every cold read of an `orders` page went to EBS at 0.8 ms, the API p99 rose from 90 ms to 700 ms, and the pool's `connectionTimeoutMillis` started firing because each request held its connection 8 times longer. The fix was to run analytics on a replica (see Part 22 — Database Scaling) and to warm the cache after the job.
 
 #### Edge cases & failure modes
 

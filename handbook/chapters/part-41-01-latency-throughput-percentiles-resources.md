@@ -237,7 +237,7 @@ Label by route *template* (`/orders/:id`), never by the actual path; otherwise e
 
 #### SLOs on p99
 
-An SLO of "p99 < 300 ms over 30 days" means that in a rolling 30-day window, 99% of requests completed under 300 ms. The **error budget** is the 1% you may spend. A deploy that pushes p99 to 350 ms for two hours burns budget; alerting on *burn rate* (how fast the budget is being consumed) pages on real degradation and stays quiet on one slow minute. See Part 48 — Observability and SRE for the alerting math.
+An SLO of "p99 < 300 ms over 30 days" means that in a rolling 30-day window, 99% of requests completed under 300 ms. The **error budget** is the 1% you may spend. A deploy that pushes p99 to 350 ms for two hours burns budget; alerting on *burn rate* (how fast the budget is being consumed) pages on real degradation and stays quiet on one slow minute. See Part 48 — Site Reliability Engineering for the alerting math.
 
 #### Production scenario
 
@@ -318,7 +318,7 @@ Common CPU sinks in NestJS services: `class-transformer` on large payloads, `JSO
 
 V8 has a default old-space limit that depends on the machine (typically around 2–4 GB on 64-bit; check `node -e "console.log(v8.getHeapStatistics().heap_size_limit/1e6)"`). In a container with a 512 MB limit and no `--max-old-space-size`, V8 may try to grow beyond the container and get OOMKilled. Set `--max-old-space-size` to roughly 75% of the container memory limit so V8 collects before the kernel kills.
 
-Garbage collection pauses the event loop. Minor (scavenge) GCs are sub-millisecond; major (mark-sweep-compact) GCs on a 1.5 GB heap can pause for 50–300 ms and show up as p99 spikes with no corresponding slow query. Watch `nodejs_gc_duration_seconds` (prom-client default metrics) and correlate with latency spikes. Leaks (caches without bounds, listeners added per request, closures holding request bodies) show as a heap that grows across hours and a GC that gets slower and slower. Part 9 — Operating Systems and Node.js Internals covers heap snapshots and leak hunting in depth.
+Garbage collection pauses the event loop. Minor (scavenge) GCs are sub-millisecond; major (mark-sweep-compact) GCs on a 1.5 GB heap can pause for 50–300 ms and show up as p99 spikes with no corresponding slow query. Watch `nodejs_gc_duration_seconds` (prom-client default metrics) and correlate with latency spikes. Leaks (caches without bounds, listeners added per request, closures holding request bodies) show as a heap that grows across hours and a GC that gets slower and slower. Part 9 — Operating Systems and the Node.js Runtime covers heap snapshots and leak hunting in depth.
 
 #### I/O: the database's disk
 

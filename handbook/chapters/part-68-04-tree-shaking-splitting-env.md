@@ -211,7 +211,7 @@ Acceptance criteria:
 
 #### Concept
 
-In a backend, an environment variable is read **at run time**: NestJS's `ConfigService` reads `process.env.DATABASE_URL` when the process starts, on a server only your team can access (Part 4 — Working in the Terminal, 4.5). In a frontend build, "environment variables" are usually something else entirely: values that the build tool **replaces with string literals at build time**, so they become part of the JavaScript file that every visitor downloads.
+In a backend, an environment variable is read **at run time**: NestJS's `ConfigService` reads `process.env.DATABASE_URL` when the process starts, on a server only your team can access (Part 4 — Linux and the Command Line, 4.5). In a frontend build, "environment variables" are usually something else entirely: values that the build tool **replaces with string literals at build time**, so they become part of the JavaScript file that every visitor downloads.
 
 That gives two rules that every full-stack engineer must know by heart:
 

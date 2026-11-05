@@ -1,4 +1,6 @@
-# Outline — Parts 75–85 (Batch 3: Volume 7 — Frontend and Full Stack)
+# Outline — Parts 67–77 (Batch 3: Volume 7 — Frontend and Full Stack)
+
+> Part numbers in this file were updated on 2026-11-05 to the reading-order numbering (Volume 0 = Parts 1–6, the book runs 1–85). The file name keeps the original batch number.
 
 This file is the assignment for every writer agent in batch 3. Read `_spec/STYLE.md` first, then this file, then only your own Part below.
 
@@ -14,7 +16,7 @@ Stack for this volume: TypeScript, React 18, Next.js 14 (App Router), Vite, TanS
 - **Write path:** `/Users/maclapctp409/Downloads/files/hpStuff/learning/senior-backend-handbook/chapters/`.
 - **Markdown only.** Do not touch `slides/`, `dist/`, `site/` or `build/`.
 - **Only write files for your own Part number.** Never edit or rename other files.
-- **Do not repeat existing Parts.** Each Part below lists what already exists. Reference it ("see Part 4 — Networking and HTTP") and go deeper or wider.
+- **Do not repeat existing Parts.** Each Part below lists what already exists. Reference it ("see Part 10 — Networking and HTTP") and go deeper or wider.
 - File naming, heading levels, Mermaid rules, closing sections (Senior Checklist + Key Takeaways) and the 2,500–4,500 words-per-file split are unchanged from STYLE.md.
 - Target per Part: **18,000–28,000 words**, typically 5–7 files.
 - Code fence tags `tsx`, `html` and `css` are allowed in this volume, in addition to the STYLE.md list.
@@ -46,24 +48,24 @@ Use these `####` headings in this order for every major concept (skip one only w
 
 ---
 
-# Volume 7 — Frontend and Full Stack (Parts 75–85)
+# Volume 7 — Frontend and Full Stack (Parts 67–77)
 
-## Part 75 — How the Browser Builds a Page
+## Part 67 — How the Browser Builds a Page
 
-Exists already: what the browser does with a request (Part 71.6), HTTP caching and CORS (Part 4.11, 4.13), TLS (Part 4.12).
+Exists already: what the browser does with a request (Part 131.6), HTTP caching and CORS (Part 10.11, 10.13), TLS (Part 10.12).
 
 - From URL to pixels: navigation, HTML parsing, the DOM, CSSOM, render tree, layout, paint, compositing
 - HTML that matters to engineers: semantic elements, forms and their default behaviour, the `<head>` (meta, preload, preconnect)
 - CSS essentials: the box model, cascade and specificity, flexbox and grid, responsive design and media queries, why a CSS change can cause layout shift
-- JavaScript in the page: script loading (`defer`, `async`, modules), the main thread, event loop in the browser vs Node (link Part 3.8), long tasks
+- JavaScript in the page: script loading (`defer`, `async`, modules), the main thread, event loop in the browser vs Node (link Part 9.8), long tasks
 - Browser storage: cookies, localStorage, sessionStorage, IndexedDB, Cache API — what each is for and what must never go in them
 - Accessibility (a11y) as engineering: roles, labels, keyboard navigation, focus management, contrast; how a screen reader reads a page
 - DevTools for backend engineers: Network panel (waterfall, timing, initiator), Performance panel, Application panel
 - Worked example: tracing a product page from the first byte to interactive, with the network waterfall annotated
 
-## Part 76 — Frontend Tooling and TypeScript in the Browser
+## Part 68 — Frontend Tooling and TypeScript in the Browser
 
-Exists already: npm/packages basics (Part 72.3), Git workflow (Part 73).
+Exists already: npm/packages basics (Part 132.3), Git workflow (Part 5).
 
 - Why browsers need a build step: modules, TypeScript, JSX, old browsers, size
 - Bundlers and dev servers: what Vite, esbuild, webpack and Turbopack do; hot module replacement; tree shaking; code splitting at build time
@@ -75,7 +77,7 @@ Exists already: npm/packages basics (Part 72.3), Git workflow (Part 73).
 - Decision table: Vite SPA vs Next.js vs plain server-rendered pages
 - Worked example: a pnpm monorepo with `apps/api` (NestJS), `apps/web` (React) and `packages/contracts`
 
-## Part 77 — React Fundamentals for Backend Engineers
+## Part 69 — React Fundamentals for Backend Engineers
 
 Exists already: nothing dedicated.
 
@@ -83,29 +85,29 @@ Exists already: nothing dedicated.
 - State and re-rendering: `useState`, how React decides what to re-render, reconciliation and keys
 - Effects: `useEffect` done right (synchronising with the outside world), cleanup, why most data fetching should not be hand-written effects
 - Other core hooks: `useMemo`, `useCallback`, `useRef`, `useReducer`, `useContext`; custom hooks
-- Forms: controlled vs uncontrolled inputs, validation, React Hook Form with zod, double-submit protection (link idempotency, Part 8.5)
+- Forms: controlled vs uncontrolled inputs, validation, React Hook Form with zod, double-submit protection (link idempotency, Part 14.5)
 - Lists, tables and large lists (virtualisation)
 - Component patterns: composition, lifting state up, container/presentational, error boundaries, Suspense
 - Performance basics: unnecessary renders, memoisation tradeoffs, the React Profiler
 - Worked example: a checkout form with address, coupon and payment steps
 
-## Part 78 — Client State, Data Fetching and Caching
+## Part 70 — Client State, Data Fetching and Caching
 
-Exists already: HTTP caching (Part 4.11), backend caching (Part 16), pagination on the API side (Part 8.2).
+Exists already: HTTP caching (Part 10.11), backend caching (Part 26), pagination on the API side (Part 14.2).
 
 - Server state vs client state; why putting API data in a global store goes wrong
 - TanStack Query: queries, keys, stale time vs cache time, background refetch, deduplication, retries
 - Mutations: invalidation, optimistic updates and rollback, idempotency keys from the client
 - Pagination and infinite scroll from the client side; cursor contracts with the API
-- Real-time data in the UI: polling vs SSE vs WebSockets from the browser (link Part 35), merging pushed events into the cache
+- Real-time data in the UI: polling vs SSE vs WebSockets from the browser (link Part 34), merging pushed events into the cache
 - Client state stores: Context, Zustand, Redux Toolkit; when each is worth it
 - Offline and flaky networks: retries, timeouts, `AbortController`, showing stale data honestly
 - Loading, empty and error states as a design requirement
 - Worked example: an order list with filters, infinite scroll, live status updates and an optimistic "cancel order"
 
-## Part 79 — Next.js and Rendering Strategies
+## Part 71 — Next.js and Rendering Strategies
 
-Exists already: CDN and edge (Part 28.3), caching (Part 16).
+Exists already: CDN and edge (Part 88.3), caching (Part 26).
 
 - Rendering strategies: client-side rendering, server-side rendering, static generation, incremental static regeneration, streaming; what each costs in latency, server load and SEO
 - Next.js App Router: layouts, routes, server components vs client components, the boundary between them
@@ -118,9 +120,9 @@ Exists already: CDN and edge (Part 28.3), caching (Part 16).
 - Decision table: rendering strategy per page type (product page, cart, order history, admin dashboard)
 - Worked example: a product listing page with ISR plus a personalised cart rendered on the client
 
-## Part 80 — Frontend–Backend Contracts
+## Part 72 — Frontend–Backend Contracts
 
-Exists already: REST design (Part 8), GraphQL and gRPC (Part 61), API compatibility (Part 32), file uploads (Part 33), real-time (Part 35).
+Exists already: REST design (Part 14), GraphQL and gRPC (Part 15), API compatibility (Part 24), file uploads (Part 32), real-time (Part 34).
 
 - Why contracts break between frontend and backend teams; the cost of "just change the field name"
 - OpenAPI from NestJS (`@nestjs/swagger`) and generated typed clients (openapi-typescript, orval concepts)
@@ -129,14 +131,14 @@ Exists already: REST design (Part 8), GraphQL and gRPC (Part 61), API compatibil
 - GraphQL clients and codegen for the frontend (Apollo/urql concepts)
 - Error contracts: one error shape (RFC 7807 style), mapping errors to form fields and toasts
 - Dates, money, IDs and enums across the wire: time zones, decimals as strings, large integers, unknown enum values
-- Uploads and downloads from the browser: presigned URLs, progress, resumable uploads (link Part 33)
+- Uploads and downloads from the browser: presigned URLs, progress, resumable uploads (link Part 32)
 - Versioning and rollout with a frontend in the loop: old tabs still open, mobile and web on different versions, feature flags
 - Contract testing (consumer-driven contracts, Pact concepts) between web and API
 - Worked example: an order API, its generated client, and a breaking change caught in CI
 
-## Part 81 — Auth and Security in the Browser
+## Part 73 — Auth and Security in the Browser
 
-Exists already: authentication, JWT, OAuth2/OIDC, sessions (Part 22.1–22.4), XSS, CSRF (Part 22.21–22.22), CORS (Part 4.13).
+Exists already: authentication, JWT, OAuth2/OIDC, sessions (Part 82.1–22.4), XSS, CSRF (Part 82.21–22.22), CORS (Part 10.13).
 
 - Where tokens live: HttpOnly cookies vs memory vs localStorage; the real threat model for each
 - Session cookies done right: `HttpOnly`, `Secure`, `SameSite`, domain and path, cookie size limits
@@ -149,9 +151,9 @@ Exists already: authentication, JWT, OAuth2/OIDC, sessions (Part 22.1–22.4), X
 - Clickjacking, open redirects and other browser-only attacks
 - Worked example: login, refresh and logout for a Next.js app against a NestJS auth service
 
-## Part 82 — Web Performance
+## Part 74 — Web Performance
 
-Exists already: backend performance (Part 24), compression and HTTP/2 (Part 4), CDN (Part 28.3), cost (Part 39).
+Exists already: backend performance (Part 41), compression and HTTP/2 (Part 10), CDN (Part 88.3), cost (Part 50).
 
 - Why frontend performance is revenue: conversion numbers, mobile networks, low-end devices
 - Core Web Vitals: LCP, INP, CLS — what each measures and what moves it
@@ -163,9 +165,9 @@ Exists already: backend performance (Part 24), compression and HTTP/2 (Part 4), 
 - Measuring: Lighthouse, WebPageTest, real-user monitoring (RUM), performance budgets in CI
 - Worked example: taking a slow product page from LCP 4.8 s to under 2.5 s, step by step with numbers
 
-## Part 83 — Frontend Testing and Quality
+## Part 75 — Frontend Testing and Quality
 
-Exists already: backend testing strategy (Part 23), contract testing concepts (Part 23.4), CI (Part 29).
+Exists already: backend testing strategy (Part 40), contract testing concepts (Part 75.4), CI (Part 46).
 
 - The frontend testing pyramid (or trophy): what to test where
 - Unit tests with Vitest/Jest for hooks and utilities
@@ -177,21 +179,21 @@ Exists already: backend testing strategy (Part 23), contract testing concepts (P
 - Code review for frontend changes: what a backend reviewer should look for
 - Worked example: tests for the checkout flow from unit to end-to-end
 
-## Part 84 — Shipping and Operating Frontends
+## Part 76 — Shipping and Operating Frontends
 
-Exists already: CI/CD and deployment strategies (Part 29), feature flags (Part 29.6), observability (Part 25), containers (Part 26).
+Exists already: CI/CD and deployment strategies (Part 46), feature flags (Part 89.6), observability (Part 42), containers (Part 43).
 
 - Hosting options: static hosting on S3 + CloudFront, Vercel/Netlify concepts, Node servers for SSR
 - Build once, deploy many: runtime configuration for frontends
 - Cache busting and versioned assets; what happens to users on the old version during a deploy
 - Rollouts for frontends: canaries, feature flags, kill switches, rollback
-- Error tracking (Sentry concepts) with source maps; correlating a browser error with a backend trace (link Part 25.4)
+- Error tracking (Sentry concepts) with source maps; correlating a browser error with a backend trace (link Part 77.4)
 - Real-user monitoring and frontend SLOs
 - Frontend security headers at the edge (CSP, HSTS)
 - Incident story: a deploy that broke checkout only for users with a cached old bundle
 - Worked example: a GitHub Actions pipeline that builds, tests and deploys the web app with preview environments
 
-## Part 85 — Full-Stack Worked Project: Live Order Tracking
+## Part 77 — Full-Stack Worked Project: Live Order Tracking
 
 Exists already: every Part above; NestJS backend examples throughout the book.
 

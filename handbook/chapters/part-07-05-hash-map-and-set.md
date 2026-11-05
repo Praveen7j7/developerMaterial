@@ -156,7 +156,7 @@ Planning Time: 0.41 ms
 Execution Time: 99.1 ms
 ```
 
-`Buckets: 131072  Batches: 1` tells you the whole hash table fit in `work_mem`. When you see `Batches: 8`, PostgreSQL ran out of memory and split the join into batches spilled to temp files; raising `work_mem` for that session, or shrinking the build side with a better filter, fixes it. Hash indexes are equality-only (no ranges, no sorting, no uniqueness constraint) and have been crash-safe only since PostgreSQL 10; B-tree remains the default for good reasons (see Part 19 — Indexes).
+`Buckets: 131072  Batches: 1` tells you the whole hash table fit in `work_mem`. When you see `Batches: 8`, PostgreSQL ran out of memory and split the join into batches spilled to temp files; raising `work_mem` for that session, or shrinking the build side with a better filter, fixes it. Hash indexes are equality-only (no ranges, no sorting, no uniqueness constraint) and have been crash-safe only since PostgreSQL 10; B-tree remains the default for good reasons (see Part 19 — Database Indexing).
 
 #### TypeORM example
 

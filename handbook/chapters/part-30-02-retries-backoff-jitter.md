@@ -43,7 +43,7 @@ Imagine knocking on a door. If nobody answers, knocking again a moment later is 
 
 Two rules dominate:
 
-**Rule 1: Only retry idempotent operations, or operations protected by an idempotency key.** `GET`, `PUT` with full state, `DELETE` and `UPDATE ... SET x = 5` are naturally idempotent. `POST /charges` and `UPDATE ... SET balance = balance - 10` are not; retrying after a timeout may execute them twice. For those, you must send an idempotency key (Part 29 — Idempotency) so the server can recognise the repeat.
+**Rule 1: Only retry idempotent operations, or operations protected by an idempotency key.** `GET`, `PUT` with full state, `DELETE` and `UPDATE ... SET x = 5` are naturally idempotent. `POST /charges` and `UPDATE ... SET balance = balance - 10` are not; retrying after a timeout may execute them twice. For those, you must send an idempotency key (Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency) so the server can recognise the repeat.
 
 **Rule 2: Retries amplify load.** Consider a request path with three layers: gateway -> orders service -> inventory service -> PostgreSQL. Each layer retries 3 times (1 original + 2 retries... let's make it worst case, 3 attempts each). When PostgreSQL slows down, each inventory call fails, so inventory tries 3 times. Each orders call to inventory fails, so orders tries 3 times, each of which triggers 3 inventory attempts: 9. The gateway retries 3 times: 27. One user click becomes **27 database queries** at exactly the moment the database is struggling. This is the **retry storm**, and it is how a small slowdown becomes a total outage.
 

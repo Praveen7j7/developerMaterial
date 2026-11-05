@@ -527,7 +527,7 @@ A method-level `@Version('1')` decorator also exists for versioning individual h
 
 #### PostgreSQL example
 
-Versioning is an API concern; the schema has one version. But a **response-shape change often comes with a schema change**, and the two must be sequenced: expand the schema (add the new column, backfill), serve both shapes from it, contract the schema only after the old version is sunset (see Part 23 — Schema Migrations for expand/contract). A quick usage query for the sunset dashboard, assuming request logs land in a table or a warehouse:
+Versioning is an API concern; the schema has one version. But a **response-shape change often comes with a schema change**, and the two must be sequenced: expand the schema (add the new column, backfill), serve both shapes from it, contract the schema only after the old version is sunset (see Part 23 — Database Migrations and Zero-Downtime Schema Changes for expand/contract). A quick usage query for the sunset dashboard, assuming request logs land in a table or a warehouse:
 
 ```sql
 SELECT api_key_id, api_version, count(*) AS calls, max(requested_at) AS last_seen

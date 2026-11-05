@@ -57,7 +57,7 @@ An idempotency key lets a client safely retry `POST /payments` without creating 
 3. If processing fails with a non-retryable error, store the error response too. If it fails with a transient error, delete the key so the client can retry.
 4. The window is the TTL (24 hours is common). A retry after that creates a new operation; document it.
 
-For payments and orders, the idempotency record belongs in PostgreSQL in the same transaction as the business write (Part 29 — Transactional Outbox and Inbox covers the inbox table). Redis is fine as a fast first check in front of it, and sufficient on its own for non-financial operations.
+For payments and orders, the idempotency record belongs in PostgreSQL in the same transaction as the business write (Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency covers the inbox table). Redis is fine as a fast first check in front of it, and sufficient on its own for non-financial operations.
 
 ```ts
 // idempotency/idempotency.interceptor.ts (excerpt)

@@ -301,7 +301,7 @@ web:typecheck:   '{ id: string; orderNumber: string; status: "PENDING" | "PAID" 
 web:typecheck: ERROR: command finished with error: command (apps/web) pnpm run typecheck exited (2)
 ```
 
-The engineer now has three honest options instead of a production incident: update the UI in the same pull request; add `orderNumber` alongside `displayId` and remove the old field later (the expand-and-contract approach from Part 24 — API Compatibility, needed anyway because old browser tabs and the mobile app still expect `displayId`); or decide the rename is not worth it. Without the shared package, the first sign would have been "Order undefined" on every order card in production.
+The engineer now has three honest options instead of a production incident: update the UI in the same pull request; add `orderNumber` alongside `displayId` and remove the old field later (the expand-and-contract approach from Part 24 — Backward Compatibility: APIs, Schemas, Events and Clients, needed anyway because old browser tabs and the mobile app still expect `displayId`); or decide the rename is not worth it. Without the shared package, the first sign would have been "Order undefined" on every order card in production.
 
 #### Failure drills
 

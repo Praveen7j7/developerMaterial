@@ -214,7 +214,7 @@ At 19:40 a marketing push doubled traffic. The pods had `max: 10`, six pods, 60 
 
 #### Concept
 
-A slow query is the most common cause of a slow API. Query optimisation is a loop: find the expensive queries, read their plans, change the query or the indexes, re-read the plan, measure again. Part 19 — Indexing and Part 20 — Database Transactions cover the mechanics in depth; this section is the performance engineer's recap and the traps that cost the most in practice.
+A slow query is the most common cause of a slow API. Query optimisation is a loop: find the expensive queries, read their plans, change the query or the indexes, re-read the plan, measure again. Part 19 — Database Indexing and Part 20 — Database Transactions cover the mechanics in depth; this section is the performance engineer's recap and the traps that cost the most in practice.
 
 #### How it works — the EXPLAIN workflow
 
@@ -306,7 +306,7 @@ ALTER SYSTEM SET auto_explain.log_timing = off;  -- timing adds overhead on some
 
 #### Caching: measure the hit ratio, then decide
 
-Caching is covered in depth in Part 26 — Caching Strategies. The performance-engineering view is arithmetic. For a lookup that costs `T_origin` at the database and `T_cache` at Redis, with hit ratio `h`:
+Caching is covered in depth in Part 26 — Caching and Redis. The performance-engineering view is arithmetic. For a lookup that costs `T_origin` at the database and `T_cache` at Redis, with hit ratio `h`:
 
 ```text
 avg_latency = h × T_cache + (1 - h) × (T_cache + T_origin)
@@ -381,7 +381,7 @@ One round trip, one plan, and the index on `sku` is used for the join.
 
 **Batching external API calls.** Most providers offer batch endpoints (fetch 100 prices, send 1,000 push notifications). When they do not, run calls concurrently with a *bounded* concurrency (a `p-limit` of 8–16) so you do not open 5,000 sockets at once, and honour their rate limit with a token bucket. A sequential loop of 500 HTTP calls at 40 ms each is 20 s; with concurrency 16 it is about 1.3 s.
 
-**Batching Kafka publishes.** `producer.send({ topic, messages: [...] })` with many messages in one call produces one batch per partition, dramatically cheaper than one `send` per message (each `send` awaits a broker acknowledgement). The outbox relay in Part 39 — Event-Driven Architecture reads up to 500 rows and publishes them in one `send`. librdkafka-based clients expose `linger.ms` and `batch.size` to batch automatically; kafkajs batches only what you pass in a single call, so batch in your code.
+**Batching Kafka publishes.** `producer.send({ topic, messages: [...] })` with many messages in one call produces one batch per partition, dramatically cheaper than one `send` per message (each `send` awaits a broker acknowledgement). The outbox relay in Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency reads up to 500 rows and publishes them in one `send`. librdkafka-based clients expose `linger.ms` and `batch.size` to batch automatically; kafkajs batches only what you pass in a single call, so batch in your code.
 
 #### Edge cases & failure modes
 
@@ -394,7 +394,7 @@ One round trip, one plan, and the index on `sku` is used for the join.
 
 #### Keyset pagination and response size
 
-`OFFSET` gets slower with every page; keyset pagination (`WHERE (created_at, id) < (:cursor_created_at, :cursor_id) ORDER BY created_at DESC, id DESC LIMIT 20`) is constant time at any depth because the index is entered at the cursor. Part 30 — API Design covers cursor encoding. Two performance rules beyond the query:
+`OFFSET` gets slower with every page; keyset pagination (`WHERE (created_at, id) < (:cursor_created_at, :cursor_id) ORDER BY created_at DESC, id DESC LIMIT 20`) is constant time at any depth because the index is entered at the cursor. Part 14 — API Design (REST first) covers cursor encoding. Two performance rules beyond the query:
 
 - Cap page size at the server (`LIMIT 100` maximum regardless of what the client asks); a `?limit=10000` request is a denial of service against your own database and serializer.
 - Keep list responses thin: ids, names, a few fields. A list of 50 orders should be 10–20 KB, not 400 KB of nested items and customer objects. Measure with `content-length` in access logs and alert on p99 response size.

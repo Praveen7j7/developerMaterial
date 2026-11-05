@@ -175,7 +175,7 @@ USER node
 CMD ["node", "dist/main.js"]
 ```
 
-(`corepack` ships with Node 20 and 22; newer Node versions may need `npm i -g corepack` first. pnpm 10's `deploy` requires `inject-workspace-packages=true` in `.npmrc`, or the `--legacy` flag.) Part 43 — Containers and Docker explains the multi-stage pattern; the monorepo-specific part is pruning and `pnpm deploy`, which turn a 1.4 GB "copy everything" image into roughly 190 MB.
+(`corepack` ships with Node 20 and 22; newer Node versions may need `npm i -g corepack` first. pnpm 10's `deploy` requires `inject-workspace-packages=true` in `.npmrc`, or the `--legacy` flag.) Part 43 — Docker for Backend Engineers explains the multi-stage pattern; the monorepo-specific part is pruning and `pnpm deploy`, which turn a 1.4 GB "copy everything" image into roughly 190 MB.
 
 #### Production scenario
 
@@ -383,7 +383,7 @@ Keep the backend's formatting identical to the frontend's (one Prettier config a
 
 #### Production scenario
 
-A team with 30 engineers adopted Prettier and the flat ESLint config in one pass. They formatted the entire repository in a single dedicated commit, added that commit's SHA to `.git-blame-ignore-revs` so `git blame` skips it (Part 5 — Git for Everyday Work), and only then turned on the CI check. Review comments about style dropped to nearly zero within a month, and median review time on frontend pull requests fell from 26 to 17 hours.
+A team with 30 engineers adopted Prettier and the flat ESLint config in one pass. They formatted the entire repository in a single dedicated commit, added that commit's SHA to `.git-blame-ignore-revs` so `git blame` skips it (Part 5 — Git Basics and the Development Workflow), and only then turned on the CI check. Review comments about style dropped to nearly zero within a month, and median review time on frontend pull requests fell from 26 to 17 hours.
 
 #### Failure scenario
 

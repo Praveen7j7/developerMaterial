@@ -8,7 +8,7 @@ A **guardrail** is a check that runs on every request, outside the model, and th
 
 #### Why does it exist?
 
-In a multi-tenant system, the prompt is assembled from rows your code selected. If one query forgets `WHERE tenant_id = ...`, the model receives another tenant's documents and will happily use and cite them; no prompt instruction can undo that. Isolation that depends on every developer remembering a filter in every query will eventually fail (Part 85 — Multi-Tenant SaaS). Guardrails exist to make the safe path the only path: the filter is enforced by the database itself, verified again in code, and tested in CI.
+In a multi-tenant system, the prompt is assembled from rows your code selected. If one query forgets `WHERE tenant_id = ...`, the model receives another tenant's documents and will happily use and cite them; no prompt instruction can undo that. Isolation that depends on every developer remembering a filter in every query will eventually fail (Part 85 — Enterprise and Multi-Tenant SaaS Architecture). Guardrails exist to make the safe path the only path: the filter is enforced by the database itself, verified again in code, and tested in CI.
 
 #### Mental model
 

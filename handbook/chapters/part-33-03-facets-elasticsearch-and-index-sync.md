@@ -515,7 +515,7 @@ This is wrong in at least five ways, and none of them raise an error you will se
 
 Drift from dual writes is typically 0.01 to 0.5% of documents per month. That sounds small until it is the customer's product.
 
-**The outbox / CDC approach.** Make the index update a consequence of the committed transaction rather than a sibling of it. Two variants, both covered in Part 29 — Event-Driven Architecture and Part 30 — Message Brokers:
+**The outbox / CDC approach.** Make the index update a consequence of the committed transaction rather than a sibling of it. Two variants, both covered in Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency and Part 27 — Messaging: Queues, Topics, Kafka, RabbitMQ and SQS:
 
 - **Transactional outbox**: the same transaction that writes `products` inserts a row into `outbox`. A relay reads the outbox and publishes; an indexer consumes and writes to the search index. If it commits, the event exists; if it rolls back, it does not.
 - **Change data capture**: a connector reads the PostgreSQL write-ahead log through a logical replication slot and emits a change event per row. No application code at all, and it captures changes made by migrations, admin tools and `psql` - which the outbox does not.

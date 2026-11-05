@@ -622,7 +622,7 @@ The tell was that it only happened when *that one client* was connected; fast lo
 - Redis pipelines and `MULTI` blocks buffer commands in the client. An unbounded pipeline is the same bug in a different library.
 - HTTP/2 has its own per-stream flow-control windows, so a single stalled stream does not block the connection, but the userspace buffering issue is unchanged.
 - `res.writableLength` and `res.writableHighWaterMark` are readable at any time and make excellent metrics; almost nobody exports them.
-- Backpressure raises latency by design. A saturated system with correct backpressure gets *slow*, which is the point; add load shedding (see Part 30 — Reliability Patterns) if slow is not acceptable.
+- Backpressure raises latency by design. A saturated system with correct backpressure gets *slow*, which is the point; add load shedding (see Part 30 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure) if slow is not acceptable.
 
 #### How a Senior Backend Engineer thinks about this
 

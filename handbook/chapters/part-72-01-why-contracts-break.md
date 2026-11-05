@@ -21,7 +21,7 @@ The cost of "just change the field name" is therefore not one pull request. It i
 Contracts break for organisational reasons first and technical reasons second:
 
 1. **Different owners, different calendars.** The API team ships twice a day; the web team ships on Tuesdays; the mobile team ships every two weeks and users update over a month. Each team's change is safe for its own release and unsafe for someone else's.
-2. **Implicit agreements.** The UI sorts by `placedAt` because the API happened to return newest first. Nobody wrote "newest first" anywhere. A query planner change in PostgreSQL (a new index, Part 19 — Indexes) flips the order, and the API team never knew they had promised it.
+2. **Implicit agreements.** The UI sorts by `placedAt` because the API happened to return newest first. Nobody wrote "newest first" anywhere. A query planner change in PostgreSQL (a new index, Part 19 — Database Indexing) flips the order, and the API team never knew they had promised it.
 3. **Types that lie.** A hand-written TypeScript interface in the web app says `totalMinor: string`. The API sends a number for orders created by an old code path. TypeScript checks nothing at runtime, so the error appears three components later as `"1999".padStart is not a function`, or worse, as a wrong total.
 4. **Semantic drift.** The field keeps its name and type but changes meaning: `deliveryEta` was "when the rider will arrive" and becomes "when the kitchen will finish". Every type check passes. The UI is now wrong.
 5. **Clients you cannot update.** A browser tab, a cached service worker, an installed mobile app, a partner's integration, a BFF pod that has not rolled yet. Part 92.5 and 32.6 cover these from the server's side; this Part looks at them from the client.

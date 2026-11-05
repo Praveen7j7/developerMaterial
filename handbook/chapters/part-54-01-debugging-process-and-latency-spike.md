@@ -2,7 +2,7 @@
 
 ## 54.0 The senior debugging process
 
-Part 41 — Performance and Optimization gave you a runbook for one symptom: the API suddenly got slow. This part goes wider and deeper. Ten incidents, each traced from the first alert to the prevention item, with the commands, the output, the wrong turns and the reasoning. The wrong turns matter as much as the fix, because in a real incident you do not know which theory is correct, and the skill being taught is *how to eliminate theories cheaply*.
+Part 41 — Performance Engineering gave you a runbook for one symptom: the API suddenly got slow. This part goes wider and deeper. Ten incidents, each traced from the first alert to the prevention item, with the commands, the output, the wrong turns and the reasoning. The wrong turns matter as much as the fix, because in a real incident you do not know which theory is correct, and the skill being taught is *how to eliminate theories cheaply*.
 
 **Stay calm.** This is not a personality trait, it is a technique. Panic makes you skip steps, and skipped steps are how a 20-minute incident becomes a 3-hour one. The physical version: sit down, open a scratch document, write the current time and the symptom in one sentence. That sentence takes fifteen seconds and it forces you to state what you actually know versus what you assume. If your hands are shaking, type the timeline anyway; the writing calms you down and you will need it for the post-mortem.
 

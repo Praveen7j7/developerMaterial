@@ -430,7 +430,7 @@ async createOrder(@Body() dto: CreateOrderDto) {
 }
 ```
 
-The rule: **fire-and-forget is acceptable only for work whose loss is genuinely free** — a best-effort metric increment, a cache warm. For anything a human would notice, the intent goes into the same transaction as the state change. (Part 29 — Idempotency and Exactly-Once Semantics covers the outbox in full.)
+The rule: **fire-and-forget is acceptable only for work whose loss is genuinely free** — a best-effort metric increment, a cache warm. For anything a human would notice, the intent goes into the same transaction as the state change. (Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency covers the outbox in full.)
 
 And always install the safety nets, so an escaped rejection is loud and the pod exits cleanly rather than mid-transaction:
 

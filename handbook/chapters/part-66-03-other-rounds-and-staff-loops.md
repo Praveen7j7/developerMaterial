@@ -152,7 +152,7 @@ The interviewer is scoring three things: did you find the injection (non-negotia
 | `POST /returns/{returnId}/cancel` | Customer cancels before pickup | 200 | 409 already picked up |
 | `GET /returns?status=pending&cursor=` | Ops queue, cursor-paginated | 200 | 403 not ops |
 
-The three hard parts to talk through: idempotency (a retried `POST` must not create two returns, so the key is stored with the response, Part 29 — Idempotency); state transitions modelled as actions (`/cancel`) rather than a free-form `PATCH status`, so illegal transitions are impossible by construction; and refunds as an asynchronous consequence with their own status, because the payment provider can take days.
+The three hard parts to talk through: idempotency (a retried `POST` must not create two returns, so the key is stored with the response, Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency); state transitions modelled as actions (`/cancel`) rather than a free-form `PATCH status`, so illegal transitions are impossible by construction; and refunds as an asynchronous consequence with their own status, because the payment provider can take days.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -246,7 +246,7 @@ Every answer carries a number, a named tradeoff, or a person and a mechanism. Th
 
 #### Practical example — the architecture round and the written exercise
 
-An architecture-round prompt at staff level is deliberately larger than one system: "Our checkout spans 9 services owned by 5 teams, p99 is 2.1 s, and every incident needs three teams on a call. What would you do over the next year?" A strong answer does not jump to a target diagram. It diagnoses first (where the latency goes, which team boundaries cut through the hot path, Part 82 — Conway's Law), proposes a target with a migration path rather than a rewrite (Part 81), names what it refuses to do this year (Part 79 — guiding policy), and says how progress will be measured.
+An architecture-round prompt at staff level is deliberately larger than one system: "Our checkout spans 9 services owned by 5 teams, p99 is 2.1 s, and every incident needs three teams on a call. What would you do over the next year?" A strong answer does not jump to a target diagram. It diagnoses first (where the latency goes, which team boundaries cut through the hot path, Part 82 — Org Design, Conway's Law and Platform Engineering), proposes a target with a migration path rather than a rewrite (Part 81), names what it refuses to do this year (Part 79 — guiding policy), and says how progress will be measured.
 
 A written exercise usually gives 60 to 90 minutes or a take-home day for a two-page memo. The structure that works is the one Part 78 teaches: the recommendation in the first paragraph, context in five sentences, two or three options with honest tradeoffs, the recommendation's risks and how they are mitigated, and the decision needed with a date. Reviewers score clarity and judgement, not length; a crisp two pages beats a sprawling eight.
 

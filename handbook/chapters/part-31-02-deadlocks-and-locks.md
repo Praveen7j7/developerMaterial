@@ -152,7 +152,7 @@ Three things make this correct rather than decorative:
 
 - **The whole transaction is retried**, because the whole transaction was rolled back. Retrying only the failed statement inside a dead transaction gets you `25P02 current transaction is aborted`.
 - **Full jitter.** Two victims that retry after exactly 20 ms collide again. Randomising the delay across `[0, ceiling)` spreads them.
-- **`work` must be a pure function of its inputs.** If it sends an email or charges a card, a retry sends two. Side effects go outside the retried block, or behind an idempotency key (Part 29 — Idempotency and Exactly-Once Semantics).
+- **`work` must be a pure function of its inputs.** If it sends an email or charges a card, a retry sends two. Side effects go outside the retried block, or behind an idempotency key (Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency).
 
 Usage:
 

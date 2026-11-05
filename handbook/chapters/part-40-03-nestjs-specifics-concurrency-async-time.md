@@ -526,7 +526,7 @@ it('adds currency with a default without rewriting the table, and reverses', asy
 });
 ```
 
-To assert on lock behaviour, run the migration in one connection while a second connection holds a short transaction on the table and assert the migration either waits less than `lock_timeout` or fails fast (`SET lock_timeout = '2s'` inside the migration is a production best practice; see Part 21 — Schema Design and Migrations).
+To assert on lock behaviour, run the migration in one connection while a second connection holds a short transaction on the table and assert the migration either waits less than `lock_timeout` or fails fast (`SET lock_timeout = '2s'` inside the migration is a production best practice; see Part 23 — Database Migrations and Zero-Downtime Schema Changes).
 
 #### Edge cases & failure modes
 

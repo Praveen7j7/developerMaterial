@@ -169,7 +169,7 @@ server.headersTimeout = 66_000;
 
 #### Concept
 
-Anything the client does not need in the response goes to a queue: sending the confirmation email, rendering the invoice PDF, generating thumbnails, syncing to the CRM, updating search indexes. The request writes the order and an outbox row; a worker does the rest. Part 35 — Background Jobs and Queues covers the machinery (BullMQ, retries, idempotent workers). The performance effect is direct: a `POST /orders` that awaited a 400 ms email API now returns in 90 ms, and the email provider's outage no longer becomes your outage.
+Anything the client does not need in the response goes to a queue: sending the confirmation email, rendering the invoice PDF, generating thumbnails, syncing to the CRM, updating search indexes. The request writes the order and an outbox row; a worker does the rest. Part 35 — Background Jobs and Schedulers covers the machinery (BullMQ, retries, idempotent workers). The performance effect is direct: a `POST /orders` that awaited a 400 ms email API now returns in 90 ms, and the email provider's outage no longer becomes your outage.
 
 ```ts
 // Request path: enqueue, do not await the side effect

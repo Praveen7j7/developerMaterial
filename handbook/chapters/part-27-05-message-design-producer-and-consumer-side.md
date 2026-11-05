@@ -69,7 +69,7 @@ The rules that keep a JSON payload compatible:
 2. **New fields are optional with a default** in the consumer, because old messages in the topic do not have them.
 3. **Never change a field's type or meaning.** `amount` in cents becoming `amount` in dollars is a silent financial bug; add `amountMinor` instead.
 4. **Breaking changes get a new `version`** (and often a new type name: `OrderPlacedV2`), and the consumer handles both for as long as old messages can exist: retention plus DLQ replay window.
-5. **A schema registry** (Confluent Schema Registry with Avro, Protobuf or JSON Schema) enforces these rules at publish time, rejecting an incompatible schema before it reaches the topic. Part 24 — API Versioning and Schema Evolution covers registries, compatibility modes and the tooling.
+5. **A schema registry** (Confluent Schema Registry with Avro, Protobuf or JSON Schema) enforces these rules at publish time, rejecting an incompatible schema before it reaches the topic. Part 24 — Backward Compatibility: APIs, Schemas, Events and Clients covers registries, compatibility modes and the tooling.
 6. **Consumer-driven contract tests** (Part 40 — Testing) catch a producer change that would break a consumer before deploy.
 
 ```ts
@@ -118,7 +118,7 @@ A handler that writes to PostgreSQL and then publishes to a broker has two commi
 3. The relay can crash after publishing and before marking: the row is published again on restart. This is the producer-side duplicate path; the envelope `id` is the outbox row's id, so consumers dedup it.
 4. Ordering per key is preserved if the relay publishes rows in insertion order with the row's key as the partition key.
 
-Part 29 — Transactional Outbox and Inbox covers the table design, the polling relay versus CDC, batching, and the failure modes in depth. Here the rule is: **never publish business events directly from a request handler**; write the outbox row and let the relay publish.
+Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency covers the table design, the polling relay versus CDC, batching, and the failure modes in depth. Here the rule is: **never publish business events directly from a request handler**; write the outbox row and let the relay publish.
 
 #### PostgreSQL example
 

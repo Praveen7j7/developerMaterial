@@ -124,7 +124,7 @@ At 02:14 the on-call engineer was paged: "orders.json is corrupt". A legacy inte
 #### Edge cases & failure modes
 
 - Durability is only as good as `fsync`. With `synchronous_commit = off`, a crash can lose the last few hundred milliseconds of "committed" transactions. Know your setting.
-- Durability on one machine is not durability across a data-center failure. That needs replication (Part 22 — Replication and High Availability).
+- Durability on one machine is not durability across a data-center failure. That needs replication (Part 22 — Database Scaling).
 - A database guarantees the rules you declared. If you never declare `CHECK (quantity > 0)`, a negative quantity is perfectly valid to the database.
 - Connection exhaustion: every guarantee is behind a connection, and PostgreSQL connections are expensive processes. Pooling is mandatory (Part 21).
 - A transaction that is left open (application bug, forgotten `await`) holds locks and blocks vacuum. The database keeps its promises, but at a cost to everyone else.

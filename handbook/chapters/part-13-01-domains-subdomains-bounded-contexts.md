@@ -503,7 +503,7 @@ The opposite story. A team had one `products` table shared by Catalog, Inventory
 1. *What is a bounded context, and how does it differ from a microservice?* Expected: a model/language boundary versus a deployment unit; contexts can live in a monolith.
 2. *Why would you store the product name and price inside the order line instead of joining to the products table?* Expected: snapshot semantics, boundary independence, historical accuracy. Follow-up: which fields should refresh and which should not?
 3. *How do you enforce a boundary in a NestJS monolith?* Expected: module exports, separate schemas, DB grants, lint rules on imports, events for cross-context communication.
-4. *Two contexts need to be consistent (order paid and stock reserved). How do you handle that without a shared transaction?* Expected: events, sagas/process managers (see Part 29 — Event-Driven Architecture), compensation, reconciliation.
+4. *Two contexts need to be consistent (order paid and stock reserved). How do you handle that without a shared transaction?* Expected: events, sagas/process managers (see Part 29 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency), compensation, reconciliation.
 5. *When is it wrong to split a context?* Expected: no clear owner, high chatter, team too small.
 
 #### Practical exercise

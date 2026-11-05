@@ -2,7 +2,7 @@
 
 #### Concept
 
-Three things almost every backend team builds in their first year are, without anyone calling them that, distributed systems problems: a **cache** (a second copy of the truth), a **lock** (agreement about who may act), and a **rate limiter** (agreement about how much has happened). Part 26 — Caching and Redis covers how to operate Redis and which data structures to use; Part 30 — Resilience Patterns covers rate limiting as a protection mechanism. This section looks at the same three through the lens of everything in Part 28: partial failure, asynchrony, clocks you cannot trust, and processes that pause without warning.
+Three things almost every backend team builds in their first year are, without anyone calling them that, distributed systems problems: a **cache** (a second copy of the truth), a **lock** (agreement about who may act), and a **rate limiter** (agreement about how much has happened). Part 26 — Caching and Redis covers how to operate Redis and which data structures to use; Part 30 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure covers rate limiting as a protection mechanism. This section looks at the same three through the lens of everything in Part 28: partial failure, asynchrony, clocks you cannot trust, and processes that pause without warning.
 
 #### Why does it exist?
 
