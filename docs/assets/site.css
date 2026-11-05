@@ -182,7 +182,13 @@ main{padding:2.4rem 3.4rem 7rem;max-width:860px;position:relative}
 .topbar{display:none}
 
 /* ---- desktop controls (back + theme), top-right of reading column ---- */
-.controls{display:flex;justify-content:flex-end;gap:.5rem;margin:-.8rem 0 1.2rem}
+.controls{display:flex;gap:.5rem;position:fixed;top:.8rem;right:1.4rem;z-index:10}
+.controls .ctl{box-shadow:0 2px 8px rgba(120,90,20,.12)}
+.to-top{position:fixed;right:1.4rem;bottom:1.4rem;z-index:25;font-family:-apple-system,system-ui,sans-serif;font-size:.85rem;
+  padding:.5rem .85rem;border:1px solid var(--border);border-radius:999px;background:var(--paper);color:var(--fg);cursor:pointer;
+  box-shadow:0 4px 14px rgba(120,90,20,.18);opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
+.to-top.show{opacity:1;visibility:visible}
+.to-top:hover{border-color:var(--accent);color:var(--accent)}
 .ctl{display:inline-flex;align-items:center;gap:.3rem;font-family:-apple-system,system-ui,sans-serif;font-size:.82rem;
   padding:.35rem .7rem;border:1px solid var(--border);border-radius:7px;background:var(--paper);color:var(--fg);cursor:pointer}
 .ctl:hover{text-decoration:none;border-color:var(--accent);color:var(--accent)}

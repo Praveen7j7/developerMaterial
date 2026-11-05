@@ -6,7 +6,12 @@
     document.documentElement.setAttribute('data-theme',cur); try{localStorage.setItem('bh-theme',cur);}catch(e){}}
   document.addEventListener('click',function(e){var id=e.target&&e.target.id;
     if(id==='theme'||id==='theme-m')flip();
-    if(id==='menu')document.getElementById('sidebar').classList.toggle('open');});
+    if(id==='menu')document.getElementById('sidebar').classList.toggle('open');
+    if(id==='to-top')window.scrollTo({top:0,behavior:'smooth'});});
+  // show the back-to-top button once the reader is a screen down
+  var top=document.getElementById('to-top');
+  if(top){var onScroll=function(){top.classList.toggle('show',window.scrollY>600);};
+    window.addEventListener('scroll',onScroll,{passive:true});onScroll();}
 })();
 // mermaid, theme-aware
 (function(){ if(!window.mermaid) return;
