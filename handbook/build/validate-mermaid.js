@@ -1,5 +1,6 @@
 /* Validates every ```mermaid block in chapters/*.md using the real mermaid parser in headless Chrome.
  * Prints a report of broken diagrams with file + line, and writes dist/mermaid-report.json.
+ * Optional argument: a file-name prefix to check only some files, e.g. `node validate-mermaid.js part-75`.
  */
 const fs = require('fs');
 const path = require('path');
@@ -11,10 +12,11 @@ const CHAPTERS = path.join(ROOT, 'chapters');
 const DIST = path.join(ROOT, 'dist');
 fs.mkdirSync(DIST, { recursive: true });
 
-const CHROME = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(p => fs.existsSync(p));
+const CHROME = ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].find(p => fs.existsSync(p));
+const ONLY = process.argv[2] || '';
 
 const blocks = [];
-for (const f of fs.readdirSync(CHAPTERS).filter(f => f.endsWith('.md')).sort()) {
+for (const f of fs.readdirSync(CHAPTERS).filter(f => f.endsWith('.md') && f.startsWith(ONLY)).sort()) {
   const lines = fs.readFileSync(path.join(CHAPTERS, f), 'utf8').replace(/\r\n/g, '\n').split('\n');
   let i = 0;
   while (i < lines.length) {
@@ -51,7 +53,7 @@ window.__blocks = ${JSON.stringify(blocks.map(b => b.code))};
   window.__results = results; document.body.setAttribute('data-done','1');
 })();
 </script></body></html>`;
-const page = path.join(DIST, 'validate-mermaid.html');
+const page = path.join(DIST, `validate-mermaid${ONLY ? '-' + ONLY : ''}.html`);
 fs.writeFileSync(page, html);
 
 (async () => {
@@ -64,7 +66,7 @@ fs.writeFileSync(page, html);
   await browser.close();
   const bad = [];
   results.forEach((err, i) => { if (err) bad.push({ ...blocks[i], error: err }); });
-  fs.writeFileSync(path.join(DIST, 'mermaid-report.json'), JSON.stringify(bad, null, 1));
+  fs.writeFileSync(path.join(DIST, `mermaid-report${ONLY ? '-' + ONLY : ''}.json`), JSON.stringify(bad, null, 1));
   console.log(`Valid: ${results.length - bad.length}, broken: ${bad.length}`);
   for (const b of bad) console.log(`- ${b.file}:${b.line}  ${b.error}`);
   process.exit(bad.length ? 2 : 0);

@@ -28,14 +28,15 @@ const TODAY = new Date().toISOString().slice(0, 10);
 
 // ---------- the ten volumes (writing is done up to Vol 8; 7 & 9 come later) ----------
 const VOLUMES = [
-  { n: 0, slug: 'from-scratch', title: 'From Scratch', parts: [69, 70, 71, 72, 73, 74], blurb: 'Starting from zero: JavaScript and TypeScript, async, how the web works, Linux, Git and your first NestJS backend.' },
-  { n: 1, slug: 'foundations', title: 'Foundations', parts: [1, 2, 3, 4], blurb: 'Data structures, algorithms, operating systems, the Node.js runtime and networking. The layer underneath every framework.' },
-  { n: 2, slug: 'architecture-and-apis', title: 'Architecture and APIs', parts: [5, 6, 7, 8, 61], blurb: 'Choosing a system shape, clean design and patterns, domain-driven design, and API design people can live with — REST, GraphQL and gRPC.' },
-  { n: 3, slug: 'data', title: 'Data', parts: [9, 10, 11, 12, 13, 14, 15, 31, 32, 62], blurb: 'The relational model, SQL, PostgreSQL internals, indexing, transactions, ORMs, scaling, migrations, compatibility and NoSQL modelling.' },
-  { n: 4, slug: 'distributed-systems', title: 'Distributed Systems', parts: [16, 17, 18, 19, 20, 21, 33, 34, 35, 36, 59, 60, 63], blurb: 'Caching, messaging, distributed systems and transactions, reliability, concurrency, storage, search, real-time, jobs, LLM backends, RAG and data engineering.' },
-  { n: 5, slug: 'production-engineering', title: 'Production Engineering', parts: [22, 23, 24, 25, 26, 27, 28, 29, 30, 37, 38, 39, 64], blurb: 'Security, testing, performance, observability, containers, Kubernetes, cloud, CI/CD, Git, SRE, disaster recovery, cost and infrastructure as code.' },
-  { n: 6, slug: 'mastery', title: 'Mastery', parts: [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 65, 66, 67, 68], blurb: 'System designs, capacity estimation, debugging, the senior mindset, levels, interviews, projects, patterns, decisions, the roadmap, low-level design and the interview playbook.' },
-  { n: 8, slug: 'principal-and-architect', title: 'Principal and Architect', parts: [51, 52, 53, 54, 55, 56, 57, 58], blurb: 'Writing as an architect, technical strategy, governance, large migrations, org design, influence, growing engineers, and enterprise multi-tenant SaaS.' },
+  { n: 0, slug: 'from-scratch', title: 'From Scratch', parts: [1, 2, 3, 4, 5, 6], blurb: 'Starting from zero: JavaScript and TypeScript, async, how the web works, Linux, Git and your first NestJS backend.' },
+  { n: 1, slug: 'foundations', title: 'Foundations', parts: [7, 8, 9, 10], blurb: 'Data structures, algorithms, operating systems, the Node.js runtime and networking. The layer underneath every framework.' },
+  { n: 2, slug: 'architecture-and-apis', title: 'Architecture and APIs', parts: [11, 12, 13, 14, 15], blurb: 'Choosing a system shape, clean design and patterns, domain-driven design, and API design people can live with — REST, GraphQL and gRPC.' },
+  { n: 3, slug: 'data', title: 'Data', parts: [16, 17, 18, 19, 20, 21, 22, 23, 24, 25], blurb: 'The relational model, SQL, PostgreSQL internals, indexing, transactions, ORMs, scaling, migrations, compatibility and NoSQL modelling.' },
+  { n: 4, slug: 'distributed-systems', title: 'Distributed Systems', parts: [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38], blurb: 'Caching, messaging, distributed systems and transactions, reliability, concurrency, storage, search, real-time, jobs, LLM backends, RAG and data engineering.' },
+  { n: 5, slug: 'production-engineering', title: 'Production Engineering', parts: [39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51], blurb: 'Security, testing, performance, observability, containers, Kubernetes, cloud, CI/CD, Git, SRE, disaster recovery, cost and infrastructure as code.' },
+  { n: 6, slug: 'mastery', title: 'Mastery', parts: [52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66], blurb: 'System designs, capacity estimation, debugging, the senior mindset, levels, interviews, projects, patterns, decisions, the roadmap, low-level design and the interview playbook.' },
+  { n: 7, slug: 'frontend-and-full-stack', title: 'Frontend and Full Stack', parts: [67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77], blurb: 'How the browser builds a page, frontend tooling, React and Next.js, client data fetching, frontend-backend contracts, browser auth and security, web performance, testing, shipping frontends, and one feature built end to end.' },
+  { n: 8, slug: 'principal-and-architect', title: 'Principal and Architect', parts: [78, 79, 80, 81, 82, 83, 84, 85], blurb: 'Writing as an architect, technical strategy, governance, large migrations, org design, influence, growing engineers, and enterprise multi-tenant SaaS.' },
 ];
 
 // ---------- load chapters ----------
