@@ -1,0 +1,111 @@
+/* Design tokens. Everything visual is expressed through these variables.
+ * Light theme on :root; dark theme when the reader picks it (data-theme="dark") or when the
+ * system asks for dark and the reader has not picked light.
+ * Each volume has one accent colour (data-vol="N"), with light and dark values:
+ *   --v   accent (text-safe, AA on paper and surface)    --v-deep  stronger accent
+ *   --v-tint  pale background in the accent's hue           --v-mid   rules, bars, borders
+ */
+:root {
+  /* type */
+  --font-body: Charter, "Bitstream Charter", "Sitka Text", Cambria, "Iowan Old Style", Georgia, serif;
+  --font-ui: "Avenir Next", Avenir, "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --fs-xs: .75rem;
+  --fs-sm: .875rem;
+  --fs-md: 1rem;
+  --fs-body: 1.0625rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 1.875rem;
+  --fs-3xl: 2.25rem;
+  --fs-hero: clamp(2.1rem, 1.3rem + 3.6vw, 3.6rem);
+  --lh-body: 1.68;
+  --lh-tight: 1.22;
+
+  /* space */
+  --s-1: .25rem; --s-2: .5rem; --s-3: .75rem; --s-4: 1rem; --s-5: 1.5rem; --s-6: 2rem; --s-7: 3rem; --s-8: 4.5rem;
+
+  /* shape */
+  --r-sm: 4px; --r-md: 8px; --r-lg: 14px; --r-pill: 999px;
+  --sh-1: 0 1px 2px rgba(64, 44, 14, .07);
+  --sh-2: 0 2px 4px rgba(64, 44, 14, .05), 0 8px 24px -8px rgba(64, 44, 14, .16);
+  --sh-3: 0 24px 64px -16px rgba(40, 26, 6, .35);
+
+  /* layout */
+  --topbar-h: 56px;
+  --sb-w: 17.5rem;
+  --rail-w: 15rem;
+  --measure: 68ch;
+  --gutter: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+  --tap: 44px;
+  --frame-w: 1560px; /* the whole frame centres on very wide screens so the rails stay near the text */
+
+  /* colour: light */
+  --paper: #fbf7ef;
+  --surface: #fffdf9;
+  --sunk: #f4eee2;
+  --ink: #221e19;
+  --ink-2: #4a4238;
+  --muted: #6e6355;
+  --rule: #e5dccb;
+  --rule-2: #cfc3ad;
+  --code-bg: #f6f1e6;
+  --code-ink: #2a251f;
+  --focus: #1f5fd1;
+  --warn: #8a3b12;
+  --warn-tint: #fbece2;
+  --ok: #2e6b34;
+  --scrim: rgba(28, 22, 14, .45);
+  --on-v: #fff;
+  --mark-1: #327437; --mark-2: #3e61a4; --mark-3: #9a4541;
+  --hl-com: #6e6355; --hl-kw: #8a2f5c; --hl-str: #2c6b31; --hl-num: #9a4a00; --hl-fn: #2f55a0; --hl-type: #7a4a00; --hl-attr: #1f5f73; --hl-tag: #6a3f8f; --hl-del: #9a2f2f;
+
+  /* the site's own accent where no volume applies: ink blue */
+  --v-l: #2f5597; --vd-l: #22427a; --vt-l: #e8eefa; --vm-l: #c5d3ee;
+  --v-d: #9bb8f0; --vd-d: #6585c4; --vt-d: #1f2636; --vm-d: #36456a;
+  color-scheme: light;
+}
+
+/* per-volume accents (generated in OKLCH at even lightness so the nine sit together) */
+[data-vol="0"] { --v-l: #327437; --vd-l: #1d5522; --vt-l: #e6f5e6; --vm-l: #c4e1c4; --v-d: #95cf96; --vd-d: #59985b; --vt-d: #1e2e1e; --vm-d: #325033; }
+[data-vol="1"] { --v-l: #8c5500; --vd-l: #693c00; --vt-l: #fbeedf; --vm-l: #edd2b5; --v-d: #e7b375; --vd-d: #b07932; --vt-d: #342615; --vm-d: #5c4221; }
+[data-vol="2"] { --v-l: #3e61a4; --vd-l: #28467d; --vt-l: #e7f1ff; --vm-l: #c6d8f9; --v-d: #9bbeff; --vd-d: #6185c8; --vt-d: #1f293a; --vm-d: #364868; }
+[data-vol="3"] { --v-l: #007677; --vd-l: #005758; --vt-l: #def6f5; --vm-l: #b2e2e2; --v-d: #65d2d2; --vd-d: #009a9b; --vt-d: #112e2e; --vm-d: #155252; }
+[data-vol="4"] { --v-l: #735097; --vd-l: #543772; --vt-l: #f4ecfe; --vm-l: #dfd0f3; --v-d: #cdaef2; --vd-d: #9674bb; --vt-d: #2d2437; --vm-d: #4f3f62; }
+[data-vol="5"] { --v-l: #9a4541; --vd-l: #742e2b; --vt-l: #ffeae8; --vm-l: #f7cbc7; --v-d: #f8a49d; --vd-d: #c06a64; --vt-d: #382220; --vm-d: #643a37; }
+[data-vol="6"] { --v-l: #686800; --vd-l: #4c4b00; --vt-l: #f1f2df; --vm-l: #d9dbb5; --v-d: #c1c476; --vd-d: #8a8c34; --vt-d: #2a2a16; --vm-d: #4a4b22; }
+[data-vol="7"] { --v-l: #006e98; --vd-l: #005073; --vt-l: #e0f4fe; --vm-l: #b7def3; --v-d: #75caf2; --vd-d: #2a92bb; --vt-d: #152c37; --vm-d: #204e62; }
+[data-vol="8"] { --v-l: #92446c; --vd-l: #6e2e4f; --vt-l: #feeaf2; --vm-l: #f2cbdc; --v-d: #efa3c7; --vd-d: #b7698f; --vt-d: #36222b; --vm-d: #603a4c; }
+
+/* resolve the accent on every element that sets a volume, so nested volumes work */
+:root, [data-vol] { --v: var(--v-l); --v-deep: var(--vd-l); --v-tint: var(--vt-l); --v-mid: var(--vm-l); }
+
+/* dark theme */
+:root[data-theme="dark"] {
+  --paper: #1a1713; --surface: #221e19; --sunk: #14110e; --ink: #ece4d6; --ink-2: #d3c9b7; --muted: #b3a893;
+  --rule: #3a332a; --rule-2: #544a3d; --code-bg: #15120f; --code-ink: #e6ddcc; --focus: #8fb6ff;
+  --warn: #f2a77c; --warn-tint: #33231a; --ok: #95cf96; --scrim: rgba(0, 0, 0, .6); --on-v: #1a1713;
+  --mark-1: #95cf96; --mark-2: #9bbeff; --mark-3: #f8a49d;
+  --hl-com: #a39882; --hl-kw: #f0a3c6; --hl-str: #a3d6a0; --hl-num: #f2b77d; --hl-fn: #a7c3ff; --hl-type: #e8c37f; --hl-attr: #87d0e0; --hl-tag: #cdb0f0; --hl-del: #f4a19a;
+  --sh-1: 0 1px 2px rgba(0, 0, 0, .4); --sh-2: 0 8px 24px -8px rgba(0, 0, 0, .6); --sh-3: 0 24px 64px -16px rgba(0, 0, 0, .8);
+  color-scheme: dark;
+}
+:root[data-theme="dark"], :root[data-theme="dark"] [data-vol] { --v: var(--v-d); --v-deep: var(--vd-d); --v-tint: var(--vt-d); --v-mid: var(--vm-d); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #1a1713; --surface: #221e19; --sunk: #14110e; --ink: #ece4d6; --ink-2: #d3c9b7; --muted: #b3a893;
+    --rule: #3a332a; --rule-2: #544a3d; --code-bg: #15120f; --code-ink: #e6ddcc; --focus: #8fb6ff;
+    --warn: #f2a77c; --warn-tint: #33231a; --ok: #95cf96; --scrim: rgba(0, 0, 0, .6); --on-v: #1a1713;
+    --mark-1: #95cf96; --mark-2: #9bbeff; --mark-3: #f8a49d;
+    --hl-com: #a39882; --hl-kw: #f0a3c6; --hl-str: #a3d6a0; --hl-num: #f2b77d; --hl-fn: #a7c3ff; --hl-type: #e8c37f; --hl-attr: #87d0e0; --hl-tag: #cdb0f0; --hl-del: #f4a19a;
+    --sh-1: 0 1px 2px rgba(0, 0, 0, .4); --sh-2: 0 8px 24px -8px rgba(0, 0, 0, .6); --sh-3: 0 24px 64px -16px rgba(0, 0, 0, .8);
+    color-scheme: dark;
+  }
+  :root:not([data-theme="light"]), :root:not([data-theme="light"]) [data-vol] { --v: var(--v-d); --v-deep: var(--vd-d); --v-tint: var(--vt-d); --v-mid: var(--vm-d); }
+}
+
+@media (min-width: 768px) { :root { --gutter: max(24px, env(safe-area-inset-left, 0px)); --gutter-r: max(24px, env(safe-area-inset-right, 0px)); } }
+@media (min-width: 1024px) { :root { --fs-body: 1.125rem; } }
+@media (min-width: 1700px) { :root { --sb-w: 19.5rem; --rail-w: 17rem; } }

@@ -1,0 +1,23 @@
+/* Print: just the reading column, every answer expanded (site.js opens <details> before printing). */
+@media print {
+  :root { --paper: #fff; --surface: #fff; --sunk: #f4f4f4; --ink: #000; --ink-2: #222; --muted: #444; --rule: #ccc; --code-bg: #f7f7f7; --code-ink: #000; }
+  body { background: #fff; font-size: 11pt; }
+  .topbar, .sidebar, .rail, .scrim, .site-footer, .to-top, dialog, .copy-btn, .diagram-open, .part-nav, .pe-read, .ph-actions,
+  .learn-more, .takeaways-tools, .flash, .resume, .hero-search, .hero-actions, .role-switch, .skip { display: none !important; }
+  .shell { display: block; max-width: none; }
+  .main { padding: 0; }
+  [data-page="vol"] .main > * { max-width: none; }
+  .js .learn-list.is-long li { display: flex !important; }
+  .flash + ul, .takeaways-h ~ ul[hidden] { display: block !important; }
+  details > summary { display: none; }
+  details > .reveal-body, details > * { display: block !important; }
+  .reveal-body { border-left: 2px solid #999; }
+  .part { break-before: page; }
+  .part-head { box-shadow: none; }
+  pre.code { white-space: pre-wrap; overflow: visible; }
+  pre.code code { white-space: pre-wrap; }
+  .table-wrap { overflow: visible; }
+  .code-block, .diagram, .tb-practice, .tb-model, table { break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+  .prose h2, .prose h3 { break-after: avoid; }
+}

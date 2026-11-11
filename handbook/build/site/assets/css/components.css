@@ -1,0 +1,63 @@
+/* Reusable components: covers, dialogs (search, shortcuts, progress, diagram), search results. */
+
+/* ---------- volume covers (see build/site/covers.js) ---------- */
+.cover { display: block; width: 100%; height: auto; border-radius: var(--r-sm); box-shadow: var(--sh-1); }
+.cover .bg { fill: var(--v-tint); }
+.cover .a { fill: var(--v); }
+.cover .d { fill: var(--v-deep); }
+.cover .p { fill: var(--surface); }
+.cover .s { stroke: var(--v); fill: none; }
+.cover .sd { stroke: var(--v-deep); fill: none; }
+.cover .g { stroke: var(--v-mid); fill: none; stroke-width: 1; }
+.cover g.a, .cover g.d { stroke: none; }
+.cover g.s > *, .cover g.sd > *, .cover g.g > * { fill: none; }
+
+/* ---------- dialogs ---------- */
+.dlg {
+  width: min(640px, calc(100vw - 24px)); max-height: min(80vh, 720px); padding: 0; margin: 10vh auto auto;
+  border: 1px solid var(--rule); border-radius: var(--r-lg); background: var(--surface); color: var(--ink); box-shadow: var(--sh-3);
+  font-family: var(--font-ui); overflow: hidden;
+}
+.dlg[open] { display: flex; flex-direction: column; }
+.dlg::backdrop { background: var(--scrim); }
+.dlg-small { width: min(460px, calc(100vw - 24px)); padding: 0 20px 20px; overflow-y: auto; }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; position: sticky; top: 0; padding: 12px 0 8px; background: var(--surface); }
+.dlg-head h2 { margin: 0; font-size: var(--fs-lg); }
+@media (max-width: 600px) {
+  .dlg { margin: auto auto 0; width: 100vw; max-width: 100vw; border-radius: var(--r-lg) var(--r-lg) 0 0; max-height: 88vh; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .dlg-search { margin-top: 0; margin-bottom: auto; border-radius: 0 0 var(--r-lg) var(--r-lg); max-height: 90vh; padding-top: env(safe-area-inset-top, 0px); }
+}
+
+/* search */
+.search-form { display: flex; align-items: center; gap: 4px; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--rule); margin: 0; }
+.search-field { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding-left: 16px; color: var(--muted); }
+.search-field input { flex: 1; min-width: 0; height: var(--tap); border: 0; background: transparent; color: var(--ink); font: 500 var(--fs-md)/1 var(--font-ui); outline: none; }
+.search-field input::-webkit-search-cancel-button { display: none; }
+.search-results { list-style: none; margin: 0; padding: 6px; overflow-y: auto; flex: 1; }
+.search-results:empty { display: none; }
+.search-results a {
+  display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: baseline; padding: 10px 12px; border-radius: var(--r-md);
+  color: var(--ink); text-decoration: none; line-height: 1.35;
+}
+.search-results a:hover, .search-results [aria-selected="true"] a { background: var(--v-tint); }
+.sr-part { grid-row: 1 / 3; align-self: start; min-width: 2.6em; padding: 3px 6px; border-radius: var(--r-sm); text-align: center; font: 700 var(--fs-xs)/1.3 var(--font-ui); background: var(--v-tint); color: var(--v); border: 1px solid var(--v-mid); }
+.sr-title { font-weight: 600; font-size: var(--fs-sm); }
+.sr-title mark { background: none; color: var(--v); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+.sr-sub { font-size: var(--fs-xs); color: var(--muted); }
+.sr-empty { padding: 14px 12px; color: var(--muted); font-size: var(--fs-sm); }
+.search-hint { margin: 0; padding: 10px 16px 14px; font-size: var(--fs-xs); color: var(--muted); border-top: 1px solid var(--rule); }
+
+/* shortcuts */
+.keys { margin: 0; }
+.keys div { display: flex; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+.keys dt { min-width: 3.2em; }
+.keys dd { margin: 0; font-size: var(--fs-sm); color: var(--ink-2); }
+
+
+/* diagram viewer */
+.dlg-diagram { width: calc(100vw - 24px); max-width: none; height: calc(100vh - 24px); max-height: none; margin: 12px auto; }
+@media (max-width: 600px) { .dlg-diagram { width: 100vw; height: 100vh; height: 100dvh; margin: 0; border-radius: 0; max-height: none; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); } }
+.dg-bar { display: flex; align-items: center; gap: 4px; padding: 6px; border-bottom: 1px solid var(--rule); }
+.dg-spacer { flex: 1; }
+.dg-stage { flex: 1; overflow: auto; padding: 16px; background: var(--paper); touch-action: pan-x pan-y pinch-zoom; overscroll-behavior: contain; }
+.dg-stage svg { display: block; margin: 0 auto; max-width: none !important; height: auto; }
