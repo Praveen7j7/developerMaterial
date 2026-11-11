@@ -45,25 +45,34 @@ function AM_OF(n) {
   if (NEW_PARTS_2026_11_11_PM.includes(n)) return null;
   return n <= 53 ? n : n <= 67 ? n - 1 : n - 2;
 }
+// 2026-11-11 evening: six Parts were inserted (8, 9, 12, 43, 86, 96) and the rest shifted.
+// PM_OF(n) is the afternoon number of today's Part n (null for the six new Parts).
+const NEW_PARTS_2026_11_11_EVE = [8, 9, 12, 43, 86, 96];
+function PM_OF(n) {
+  if (n == null || NEW_PARTS_2026_11_11_EVE.includes(n)) return null;
+  return n <= 7 ? n : n <= 11 ? n - 2 : n <= 42 ? n - 3 : n <= 85 ? n - 4 : n <= 95 ? n - 5 : n - 6;
+}
+const AM_OF_TODAY = n => { const pm = PM_OF(n); return pm == null ? null : AM_OF(pm); };
 // Past numberings, oldest first; a newer numbering wins when two map the same old anchor.
 const PAST_NUMBERINGS = [
-  n => { const n5 = NOV5_OF_AM(AM_OF(n)); return n5 == null ? null : OLD_NUMBERS[n5 - 1]; },  // before 2026-11-05
-  n => NOV5_OF_AM(AM_OF(n)),                                                                  // 2026-11-05 to 2026-11-11
-  AM_OF,                                                                                      // 2026-11-11 morning
+  n => { const n5 = NOV5_OF_AM(AM_OF_TODAY(n)); return n5 == null ? null : OLD_NUMBERS[n5 - 1]; },  // before 2026-11-05
+  n => NOV5_OF_AM(AM_OF_TODAY(n)),                                                                  // 2026-11-05 to 2026-11-11
+  AM_OF_TODAY,                                                                                      // 2026-11-11 morning
+  PM_OF,                                                                                            // 2026-11-11 afternoon
 ];
 
 // ---------- the volumes ----------
 // `short` is the spine label on narrow screens; `cover` names the motif drawn in covers.js. Colours live in assets/css/tokens.css ([data-vol="N"]).
 const VOLUMES = [
-  { n: 0, short: 'Scratch', slug: 'from-scratch', title: 'From Scratch', cover: 'sprout', parts: [0, 1, 2, 3, 4, 5, 6, 7], blurb: 'Starting from zero: how to understand any technology, JavaScript and TypeScript, async, how the web works, Linux, Git, your first NestJS backend and your first frontend.' },
-  { n: 1, short: 'Foundations', slug: 'foundations', title: 'Foundations', cover: 'blocks', parts: [8, 9, 10, 11], blurb: 'Data structures, algorithms, operating systems, the Node.js runtime and networking. The layer underneath every framework.' },
-  { n: 2, short: 'APIs', slug: 'architecture-and-apis', title: 'Architecture and APIs', cover: 'blueprint', parts: [12, 13, 14, 15, 16], blurb: 'Choosing a system shape, clean design and patterns, domain-driven design, and API design people can live with — REST, GraphQL and gRPC.' },
-  { n: 3, short: 'Data', slug: 'data', title: 'Data', cover: 'cylinders', parts: [17, 18, 19, 20, 21, 22, 23, 24, 25, 26], blurb: 'The relational model, SQL, PostgreSQL internals, indexing, transactions, ORMs, scaling, migrations, compatibility and NoSQL modelling.' },
-  { n: 4, short: 'Distributed', slug: 'distributed-systems', title: 'Distributed Systems', cover: 'nodes', parts: [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39], blurb: 'Caching, messaging, distributed systems and transactions, reliability, concurrency, storage, search, real-time, jobs, LLM backends, RAG and data engineering.' },
-  { n: 5, short: 'Production', slug: 'production-engineering', title: 'Production Engineering', cover: 'gauge', parts: [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53], blurb: 'Security, testing, performance, observability, containers, Kubernetes, cloud, CI/CD, Git, SRE, disaster recovery, cost, infrastructure as code and AI-assisted engineering.' },
-  { n: 6, short: 'Mastery', slug: 'mastery', title: 'Mastery', cover: 'summit', parts: [54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70], blurb: 'System design from zero, 30 system designs, capacity estimation, debugging, the senior mindset, levels, interviews, projects, patterns, decisions, the roadmap, low-level design and the interview playbook.' },
-  { n: 7, short: 'Frontend', slug: 'frontend-and-full-stack', title: 'Frontend and Full Stack', cover: 'browser', parts: [71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82], blurb: 'How the browser builds a page, frontend tooling, React and Next.js, client data fetching, frontend-backend contracts, browser auth and security, web performance, testing, shipping frontends, one feature built end to end, and frontend and full-stack interviews.' },
-  { n: 8, short: 'Architect', slug: 'principal-and-architect', title: 'Principal and Architect', cover: 'compass', parts: [83, 84, 85, 86, 87, 88, 89, 90, 91], blurb: 'Writing as an architect, technical strategy, governance, large migrations, org design, influence, growing engineers, enterprise multi-tenant SaaS, and staff and principal interviews.' },
+  { n: 0, short: 'Scratch', slug: 'from-scratch', title: 'From Scratch', cover: 'sprout', parts: [0, 1, 2, 3, 4, 5, 6, 7, 8], blurb: 'Starting from zero: how to understand any technology, JavaScript and TypeScript, async, how the web works, Linux, Git, your first NestJS backend, your first frontend and your first developer job.' },
+  { n: 1, short: 'Foundations', slug: 'foundations', title: 'Foundations', cover: 'blocks', parts: [9, 10, 11, 12, 13, 14], blurb: 'Advanced TypeScript, data structures, algorithms, a graded coding-practice ladder, operating systems, the Node.js runtime and networking. The layer underneath every framework.' },
+  { n: 2, short: 'APIs', slug: 'architecture-and-apis', title: 'Architecture and APIs', cover: 'blueprint', parts: [15, 16, 17, 18, 19], blurb: 'Choosing a system shape, clean design and patterns, domain-driven design, and API design people can live with — REST, GraphQL and gRPC.' },
+  { n: 3, short: 'Data', slug: 'data', title: 'Data', cover: 'cylinders', parts: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29], blurb: 'The relational model, SQL, PostgreSQL internals, indexing, transactions, ORMs, scaling, migrations, compatibility and NoSQL modelling.' },
+  { n: 4, short: 'Distributed', slug: 'distributed-systems', title: 'Distributed Systems', cover: 'nodes', parts: [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43], blurb: 'Caching, messaging, distributed systems and transactions, reliability, concurrency, storage, search, real-time, jobs, LLM backends, RAG, data engineering and data platform architecture.' },
+  { n: 5, short: 'Production', slug: 'production-engineering', title: 'Production Engineering', cover: 'gauge', parts: [44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57], blurb: 'Security, testing, performance, observability, containers, Kubernetes, cloud, CI/CD, Git, SRE, disaster recovery, cost, infrastructure as code and AI-assisted engineering.' },
+  { n: 6, short: 'Mastery', slug: 'mastery', title: 'Mastery', cover: 'summit', parts: [58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74], blurb: 'System design from zero, 30 system designs, capacity estimation, debugging, the senior mindset, levels, interviews, projects, patterns, decisions, the roadmap, low-level design and the interview playbook.' },
+  { n: 7, short: 'Frontend', slug: 'frontend-and-full-stack', title: 'Frontend and Full Stack', cover: 'browser', parts: [75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87], blurb: 'How the browser builds a page, frontend tooling, React and Next.js, client data fetching, frontend-backend contracts, browser auth and security, web performance, testing, shipping frontends, one feature built end to end, frontend architecture at scale, and frontend and full-stack interviews.' },
+  { n: 8, short: 'Architect', slug: 'principal-and-architect', title: 'Principal and Architect', cover: 'compass', parts: [88, 89, 90, 91, 92, 93, 94, 95, 96, 97], blurb: 'Writing as an architect, technical strategy, governance, large migrations, org design, influence, growing engineers, enterprise multi-tenant SaaS, security architecture, and staff and principal interviews.' },
 ];
 const volFile = v => `vol-${v.n}-${v.slug}.html`;
 
@@ -71,12 +80,12 @@ const volFile = v => `vol-${v.n}-${v.slug}.html`;
 // `go` is a list of [label, partNumber | 'vol:N'] targets, in reading order.
 const START_PATHS = [
   { id: 'new', icon: 'book-open', who: 'New to coding', why: 'Learn how to learn a technology, then build up from your first variable to your first backend.', go: [['Part 0', 0], ['Volume 0', 'vol:0']] },
-  { id: 'backend', icon: 'server', who: 'Backend developer', why: 'Fill in the layer under the framework: data structures, the OS, the Node runtime and networking.', go: [['Volume 1', 'vol:1']] },
-  { id: 'sysdesign', icon: 'git-branch', who: 'Learning system design', why: 'Start from zero, then climb the ladder of designs from easy to staff level, trying each one before reading the model answer.', go: [['Part 54', 54], ['The design ladder', { part: 54, heading: /system design ladder/i }]] },
+  { id: 'backend', icon: 'server', who: 'Backend developer', why: 'Fill in the layer under the framework: advanced TypeScript, data structures, coding practice, the OS, the Node runtime and networking.', go: [['Volume 1', 'vol:1']] },
+  { id: 'sysdesign', icon: 'git-branch', who: 'Learning system design', why: 'Start from zero, then climb the ladder of designs from easy to staff level, trying each one before reading the model answer.', go: [['Part 58', 58], ['The design ladder', { part: 58, heading: /system design ladder/i }]] },
   { id: 'fullstack', icon: 'code-xml', who: 'Full-stack developer', why: 'Your first frontend, then how the browser, React, Next.js and the backend contract fit together.', go: [['Part 7', 7], ['Volume 7', 'vol:7']] },
   { id: 'senior', icon: 'target', who: 'Senior engineer', why: 'System designs, capacity estimates, debugging under pressure and the decisions seniors own.', go: [['Volume 6', 'vol:6']] },
   { id: 'architect', icon: 'layers', who: 'Architect or principal', why: 'Writing, strategy, governance, large migrations and influence beyond one team.', go: [['Volume 8', 'vol:8']] },
-  { id: 'interview', icon: 'message-circle-question', who: 'Preparing for interviews', why: 'Question banks with model answers for backend, frontend, full-stack, staff and principal loops.', go: [['60', 60], ['69', 69], ['70', 70], ['82', 82], ['91', 91]] },
+  { id: 'interview', icon: 'message-circle-question', who: 'Preparing for interviews', why: 'Question banks with model answers for backend, frontend, full-stack, staff and principal loops.', go: [['64', 64], ['73', 73], ['74', 74], ['87', 87], ['97', 97]] },
 ];
 
 // ---------- roadmap page: role paths ----------
@@ -85,9 +94,9 @@ const START_PATHS = [
 const ROLE_PATHS = [
   { id: 'all', label: 'Everything', stages: [1, 2, 3, 4, 5], extra: null },
   { id: 'backend', label: 'Backend', stages: [1, 2, 3, 4], extra: null },
-  { id: 'fullstack', label: 'Full-stack', stages: [1, 2], extra: { title: 'Frontend track', note: 'Volume 7, read after Stage 1 and alongside Stage 2.', parts: [71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82] } },
+  { id: 'fullstack', label: 'Full-stack', stages: [1, 2], extra: { title: 'Frontend track', note: 'Volume 7, read after Stage 1 and alongside Stage 2.', parts: [75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87] } },
   { id: 'architect', label: 'Architect', stages: [4, 5], extra: null },
-  { id: 'sysdesign', label: 'System design', stages: [], extra: { title: 'System design track', note: 'From zero to staff: the on-ramp, estimation, the designs from easy to hard, then patterns and decisions. Read in this order; each design has a brief to try before the model answer.', parts: [54, 56, 55, 66, 67, 68, 69, 62, 63, 64, 91], link: { part: 54, heading: /system design ladder/i, label: 'Every design by level: the ladder in Part 54' } } },
+  { id: 'sysdesign', label: 'System design', stages: [], extra: { title: 'System design track', note: 'From zero to staff: the on-ramp, estimation, the designs from easy to hard, then patterns and decisions. Read in this order; each design has a brief to try before the model answer.', parts: [58, 60, 59, 70, 71, 72, 73, 66, 67, 68, 97], link: { part: 58, heading: /system design ladder/i, label: 'Every design by level: the ladder in Part 58' } } },
 ];
 
 // Teaching-block headings (####) that get an icon and a tone. Matched on the start of the heading text.

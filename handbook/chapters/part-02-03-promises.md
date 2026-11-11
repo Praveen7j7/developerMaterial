@@ -198,7 +198,7 @@ console.log('2: sync');
 4: timer
 ```
 
-Synchronous code always runs first. After that, callbacks from already-settled promises run **before** timer callbacks, even a 0 ms timer. The beginner's version of the rule: *promise callbacks go in a small priority queue that is emptied completely before the event loop moves on to timers and I/O.* The proper names are the **microtask queue** (promises) and the **macrotask** or task queues (timers, I/O); Part 10.17 explains them in full. You rarely need this in day-to-day code, but you will need it the first time a test prints lines in an order you did not expect.
+Synchronous code always runs first. After that, callbacks from already-settled promises run **before** timer callbacks, even a 0 ms timer. The beginner's version of the rule: *promise callbacks go in a small priority queue that is emptied completely before the event loop moves on to timers and I/O.* The proper names are the **microtask queue** (promises) and the **macrotask** or task queues (timers, I/O); Part 13.17 explains them in full. You rarely need this in day-to-day code, but you will need it the first time a test prints lines in an order you did not expect.
 
 #### Combining promises
 
@@ -309,7 +309,7 @@ A notification service sent three messages with `Promise.all([sms, email, push])
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior sees `await a; await b; await c` on independent operations as a latency bug and reaches for `Promise.all`. They choose `all` vs `allSettled` deliberately based on whether partial success is acceptable. They never fire an unbounded number of promises in a loop against a shared resource (database, downstream service) without a concurrency limit, because that turns a batch job into a self-inflicted denial-of-service. And they put a timeout on every call that leaves the process, because a promise that waits forever on a hung dependency is how one slow service takes down yours (Part 31 — Reliability Engineering covers timeouts, retries and circuit breakers in depth).
+A senior sees `await a; await b; await c` on independent operations as a latency bug and reaches for `Promise.all`. They choose `all` vs `allSettled` deliberately based on whether partial success is acceptable. They never fire an unbounded number of promises in a loop against a shared resource (database, downstream service) without a concurrency limit, because that turns a batch job into a self-inflicted denial-of-service. And they put a timeout on every call that leaves the process, because a promise that waits forever on a hung dependency is how one slow service takes down yours (Part 34 — Reliability Engineering covers timeouts, retries and circuit breakers in depth).
 
 #### Common mistakes
 

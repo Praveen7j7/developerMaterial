@@ -33,7 +33,7 @@ git show v1.4.0                              # the tag's message and the commit 
 git switch --detach v1.3.2                   # look at the code exactly as released (read-only "detached HEAD")
 ```
 
-Release tags usually follow **semantic versioning**, `MAJOR.MINOR.PATCH` (4.6): bump PATCH for fixes, MINOR for new backward-compatible features, MAJOR for breaking changes. Many CI pipelines (Part 47) build and deploy when a tag matching `v*` is pushed.
+Release tags usually follow **semantic versioning**, `MAJOR.MINOR.PATCH` (4.6): bump PATCH for fixes, MINOR for new backward-compatible features, MAJOR for breaking changes. Many CI pipelines (Part 51) build and deploy when a tag matching `v*` is pushed.
 
 **Detached HEAD** sounds alarming but only means "you are looking at a commit, not at a branch". You can look around and run the code. If you want to keep changes made there, create a branch first: `git switch -c fix/from-v1.3.2`.
 
@@ -180,7 +180,7 @@ git merge origin/main                   # bring main's new commits into your bra
 git push                                # your pull request now includes the merge
 ```
 
-Part 48.5 covers the alternative, `git rebase origin/main`, which replays your commits on top of `main` for a straight history. It rewrites your branch's commits, so it needs `git push --force-with-lease` and should only be used on a branch nobody else is working on.
+Part 52.5 covers the alternative, `git rebase origin/main`, which replays your commits on top of `main` for a straight history. It rewrites your branch's commits, so it needs `git push --force-with-lease` and should only be used on a branch nobody else is working on.
 
 **Answer review comments with new commits:**
 
@@ -238,7 +238,7 @@ The conflict and the CI failure had the same cause: `main` moved. Merging it in 
 
 #### Edge cases & failure modes
 
-- **Force-pushing to a shared branch** after a rebase overwrites a teammate's commits; use merge on shared branches, and `--force-with-lease` only on your own (Part 48).
+- **Force-pushing to a shared branch** after a rebase overwrites a teammate's commits; use merge on shared branches, and `--force-with-lease` only on your own (Part 52).
 - **"Fixing" review comments by opening a new pull request** loses the discussion; push to the same branch.
 - **Huge pull requests** get shallow reviews and many conflicts; split them (5.3).
 - **Resolving a conflict without running the tests** can produce code that compiles and is wrong (5.4).
@@ -584,7 +584,7 @@ e2a9c14 Add cursor pagination to GET /products (#5)
 - Keep pull requests small so they get genuine review; write descriptions covering what, why, how to test and risk.
 - Merge conflicts are Git correctly refusing to guess when two changes overlap; resolve by writing the correct final content, removing the markers, and re-running tests.
 - Prevent most conflicts by keeping branches short and pulling `main` often; `git merge --abort` gives a clean slate when a merge goes wrong.
-- The daily loop — pull, branch, commit, push, PR, review, merge, clean up — is the rhythm of professional development; Part 48 adds the advanced tools on top of it.
+- The daily loop — pull, branch, commit, push, PR, review, merge, clean up — is the rhythm of professional development; Part 52 adds the advanced tools on top of it.
 - Use safe tools on shared history (`git revert`, not rewriting published commits), and remember the reflog can recover almost anything, so Git is never something to fear.
 - Set up your identity and SSH key once per machine, and check them before your first push.
 - Before debugging a regression, read what changed: `git log -- path`, `git show`, `git blame`.

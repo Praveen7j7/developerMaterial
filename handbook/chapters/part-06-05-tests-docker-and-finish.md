@@ -8,7 +8,7 @@ A **test** is code that runs your code and checks the result automatically. We w
 
 #### Why does it exist?
 
-Because every change can break something that used to work, and checking by hand with `curl` after every change is slow and gets skipped. With tests, `npm test` checks 30 behaviours in a few seconds, every time, and CI (Part 47) runs them on every pull request (Part 5). Tests are also the fastest way to know your validation and error work from 6.5 and 6.6 actually does what you think.
+Because every change can break something that used to work, and checking by hand with `curl` after every change is slow and gets skipped. With tests, `npm test` checks 30 behaviours in a few seconds, every time, and CI (Part 51) runs them on every pull request (Part 5). Tests are also the fastest way to know your validation and error work from 6.5 and 6.6 actually does what you think.
 
 #### Mental model
 
@@ -161,15 +161,15 @@ Without the test, `GET /products/<missing>` would have returned `200` with an em
 #### Edge cases & failure modes
 
 - **Tests against the development database** delete your data with `TRUNCATE`; always use a separate test database.
-- **Different wiring in tests and production**: tests that skip `configureApp` pass with errors that look different in production; share one function (Part 76.10 makes the same point for contract tests).
+- **Different wiring in tests and production**: tests that skip `configureApp` pass with errors that look different in production; share one function (Part 80.10 makes the same point for contract tests).
 - **Tests that depend on each other's data** fail randomly when run in another order; reset state in `beforeEach`.
-- **Mocking too much**: a unit test with every method mocked tests the mocks; keep e2e tests for the real wiring (Part 41.5 discusses what to mock).
+- **Mocking too much**: a unit test with every method mocked tests the mocks; keep e2e tests for the real wiring (Part 45.5 discusses what to mock).
 - **Slow e2e tests** from creating the app per test; create it once in `beforeAll`.
 - **Forgetting `await`** on supertest calls: the test ends before the request does and passes without checking anything.
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior writes a few fast unit tests for real logic and a handful of e2e tests for the important paths through the real stack, and makes the error contract part of what the tests assert: status, code, field path and request ID. They run tests against a real PostgreSQL rather than mocking the database for e2e, because constraints like the unique SKU only exist in the real thing (Part 41.7 uses Testcontainers for this). They make tests start from a known state and wire the app the same way as production. And they add a test for every bug they fix, so it cannot return.
+A senior writes a few fast unit tests for real logic and a handful of e2e tests for the important paths through the real stack, and makes the error contract part of what the tests assert: status, code, field path and request ID. They run tests against a real PostgreSQL rather than mocking the database for e2e, because constraints like the unique SKU only exist in the real thing (Part 45.7 uses Testcontainers for this). They make tests start from a known state and wire the app the same way as production. And they add a test for every bug they fix, so it cannot return.
 
 #### Common mistakes
 
@@ -296,11 +296,11 @@ Tests:       8 passed, 8 total
 
 #### Concept
 
-So far the API runs with `npm run start:dev` on your laptop, next to a PostgreSQL container started by hand. In this step we package the API itself as a **Docker image**, replace `synchronize: true` with a **migration**, and describe both containers in one **Docker Compose** file, so anyone can start the whole system with one command: `docker compose up`. Part 44 — Docker for Backend Engineers explains every piece in depth; here we build a first working version.
+So far the API runs with `npm run start:dev` on your laptop, next to a PostgreSQL container started by hand. In this step we package the API itself as a **Docker image**, replace `synchronize: true` with a **migration**, and describe both containers in one **Docker Compose** file, so anyone can start the whole system with one command: `docker compose up`. Part 48 — Docker for Backend Engineers explains every piece in depth; here we build a first working version.
 
 #### Why does it exist?
 
-Because "it works on my machine" is not a deployment plan. A new teammate should not need the right Node version, the right PostgreSQL version and a page of setup steps; a CI server (Part 47) should run exactly what production runs. An image packages your built code with the exact Node runtime it needs. Compose describes how the API and the database start together. And a migration makes schema changes explicit, reviewed and repeatable, instead of letting the ORM guess (6.3).
+Because "it works on my machine" is not a deployment plan. A new teammate should not need the right Node version, the right PostgreSQL version and a page of setup steps; a CI server (Part 51) should run exactly what production runs. An image packages your built code with the exact Node runtime it needs. Compose describes how the API and the database start together. And a migration makes schema changes explicit, reviewed and repeatable, instead of letting the ORM guess (6.3).
 
 #### Mental model
 
@@ -380,9 +380,9 @@ TypeOrmModule.forRoot({
 }),
 ```
 
-Running migrations at start-up is fine for one instance. With several instances starting at once, teams run migrations as a separate step before the new version starts (Part 24, and Part 79.11 shows it in a test stack).
+Running migrations at start-up is fine for one instance. With several instances starting at once, teams run migrations as a separate step before the new version starts (Part 27, and Part 83.11 shows it in a test stack).
 
-**The Dockerfile.** A **multi-stage build** (Part 44.6) compiles TypeScript in a first stage that has all the build tools, then copies only the compiled code and production dependencies into a small final image:
+**The Dockerfile.** A **multi-stage build** (Part 48.6) compiles TypeScript in a first stage that has all the build tools, then copies only the compiled code and production dependencies into a small final image:
 
 ```dockerfile
 # Dockerfile
@@ -435,7 +435,7 @@ services:
   api:
     build: .
     environment:
-      DATABASE_HOST: db                       # the service name: Compose's network resolves it (Part 44.7)
+      DATABASE_HOST: db                       # the service name: Compose's network resolves it (Part 48.7)
       DATABASE_PORT: "5432"
       DATABASE_USER: shop
       DATABASE_PASSWORD: shop_dev_password
@@ -480,12 +480,12 @@ docker compose down                            # stop everything; the db-data vo
 - **Secrets in the image**: a missing `.dockerignore` copies `.env` into the image, where anyone with the image can read it.
 - **`synchronize: true` left on** alongside migrations makes the ORM change the schema behind the migrations' back; set it to `false`.
 - **`docker compose down -v`** deletes the volume and all its data; fine for development, never on a real database.
-- **Apple Silicon versus x86 servers**: images built on an ARM laptop may not run on an x86 server; build in CI (Part 44.15) or use `--platform`.
+- **Apple Silicon versus x86 servers**: images built on an ARM laptop may not run on an x86 server; build in CI (Part 48.15) or use `--platform`.
 - **Port 3000 or 5432 already used** by an old process or container (4.10): stop it first.
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior wants the whole system to start from a clean machine with one command, because that is what makes onboarding, CI and production boring. They build small images with multi-stage builds, run as a non-root user, keep secrets out of images, and gate start-up on real health checks. They treat migrations as code: generated, read, completed by hand where needed, committed and reviewed. And they know this Compose file is a development and test setup; production adds managed databases, secrets from a secret manager and an orchestrator (Parts 45, 46).
+A senior wants the whole system to start from a clean machine with one command, because that is what makes onboarding, CI and production boring. They build small images with multi-stage builds, run as a non-root user, keep secrets out of images, and gate start-up on real health checks. They treat migrations as code: generated, read, completed by hand where needed, committed and reviewed. And they know this Compose file is a development and test setup; production adds managed databases, secrets from a secret manager and an orchestrator (Parts 49, 50).
 
 #### Common mistakes
 
@@ -637,7 +637,7 @@ Compare it with the tiny products API without a framework in Part 3.7: the same 
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior would recognise this project as a sound starting point, and would also see exactly what is missing for production: authentication (Part 40), idempotency for retried creates (Part 15.12), structured JSON logs, metrics and traces (Part 43), a CI pipeline that runs the tests and builds the image (Part 47), and migrations run as a separate deploy step (Part 24). None of those require changing the shape you built. That is the point of getting the shape right first.
+A senior would recognise this project as a sound starting point, and would also see exactly what is missing for production: authentication (Part 44), idempotency for retried creates (Part 18.12), structured JSON logs, metrics and traces (Part 47), a CI pipeline that runs the tests and builds the image (Part 51), and migrations run as a separate deploy step (Part 27). None of those require changing the shape you built. That is the point of getting the shape right first.
 
 #### Practical exercise
 
@@ -645,7 +645,7 @@ The capstone for Volume 0: extend the project with one new resource, `categories
 
 Acceptance criteria:
 
-- A `categories` table created by a new migration, with a unique `slug`, and a `category_id` foreign key on `products` (Part 17.5 explains foreign keys).
+- A `categories` table created by a new migration, with a unique `slug`, and a `category_id` foreign key on `products` (Part 20.5 explains foreign keys).
 - `POST /categories`, `GET /categories`, and `GET /products?category=<slug>` with the same cursor pagination as 6.5.
 - Every error uses the shape from 6.6; creating a product with an unknown category returns `422` with `code: "CATEGORY_NOT_FOUND"` and `issues[0].path` equal to `categoryId`.
 - Unit and e2e tests for the new endpoints pass, and the whole system starts with `docker compose up --build`.
@@ -794,7 +794,7 @@ it('filters products by category slug', async () => {
 - Validate every incoming request with a DTO and a global `ValidationPipe`; `whitelist` and `forbidNonWhitelisted` block injected fields for free.
 - Understand the SQL even when an ORM writes it; parameterize always (never concatenate user input), and push invariants into the database as constraints.
 - Connect NestJS to PostgreSQL with a TypeORM entity and repository; you work in typed objects while the ORM generates safe, parameterized SQL.
-- Never ship `synchronize: true`; production schema changes go through reviewed migrations (Part 24).
+- Never ship `synchronize: true`; production schema changes go through reviewed migrations (Part 27).
 - Persistence is what makes it a backend: data lives in the database, surviving restarts and shared across every server instance.
 - Every input is a door: bodies, paths, query strings and configuration all need validation and bounds.
 - Errors are part of the API: one shape, stable codes, field paths, a request ID, and no internals in responses.

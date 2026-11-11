@@ -4,7 +4,7 @@
 
 #### Concept
 
-PostgreSQL is a relational database: it stores data in **tables** of rows and columns, and you talk to it with **SQL** (Structured Query Language). Before we have NestJS talk to it, you should see the raw SQL, because the ORM we use later just generates SQL for you, and you cannot debug what you do not understand. Part 18 — SQL Mastery teaches SQL properly; this is the minimum to follow the rest of this Part.
+PostgreSQL is a relational database: it stores data in **tables** of rows and columns, and you talk to it with **SQL** (Structured Query Language). Before we have NestJS talk to it, you should see the raw SQL, because the ORM we use later just generates SQL for you, and you cannot debug what you do not understand. Part 21 — SQL Mastery teaches SQL properly; this is the minimum to follow the rest of this Part.
 
 #### Why does it exist?
 
@@ -38,7 +38,7 @@ UPDATE products SET price_cents = 1399 WHERE id = $1;
 DELETE FROM products WHERE id = $1;
 ```
 
-Key ideas visible here. A **primary key** (`id`) uniquely identifies each row. **Constraints** (`NOT NULL`, `CHECK (price_cents >= 0)`) make invalid rows impossible to insert — the database enforces "price is never negative" so even a buggy application cannot violate it, which is a stronger guarantee than application validation alone. **Parameters** (`$1`) are how you safely pass values into a query; never build SQL by gluing strings together with user input, which causes SQL injection (Part 40 — Security, 40.20).
+Key ideas visible here. A **primary key** (`id`) uniquely identifies each row. **Constraints** (`NOT NULL`, `CHECK (price_cents >= 0)`) make invalid rows impossible to insert — the database enforces "price is never negative" so even a buggy application cannot violate it, which is a stronger guarantee than application validation alone. **Parameters** (`$1`) are how you safely pass values into a query; never build SQL by gluing strings together with user input, which causes SQL injection (Part 44 — Security, 44.20).
 
 #### SQL injection: the one security rule to internalize now
 
@@ -59,7 +59,7 @@ In `psql`, create the table, insert two products, select them back, update one p
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior always understands the SQL their ORM generates, because the ORM is a convenience over SQL, not a replacement for understanding it, and performance problems live at the SQL level (Part 20 on indexes and query plans). They push invariants into the database as constraints (`NOT NULL`, `CHECK`, unique indexes, foreign keys) rather than relying only on application checks, because the database is the last line of defense and enforces the rule for every writer, including future code and manual fixes. They treat parameterization as non-negotiable and would flag any string-concatenated query in review instantly.
+A senior always understands the SQL their ORM generates, because the ORM is a convenience over SQL, not a replacement for understanding it, and performance problems live at the SQL level (Part 23 on indexes and query plans). They push invariants into the database as constraints (`NOT NULL`, `CHECK`, unique indexes, foreign keys) rather than relying only on application checks, because the database is the last line of defense and enforces the rule for every writer, including future code and manual fixes. They treat parameterization as non-negotiable and would flag any string-concatenated query in review instantly.
 
 #### Common mistakes
 
@@ -130,7 +130,7 @@ Now we connect the API to the database so products persist. We use **TypeORM**, 
 
 #### Why does it exist?
 
-Writing raw SQL for every operation and manually mapping rows to objects is repetitive and error-prone. An ORM handles the common cases — insert this object, find by id, update these fields — generating correct, parameterized SQL and mapping rows to typed objects automatically. It lets you stay in TypeScript for straightforward data access while dropping to raw SQL for the complex queries where you need control (Part 22 — ORM Engineering covers TypeORM and Sequelize in depth, including when to use the query builder or raw SQL).
+Writing raw SQL for every operation and manually mapping rows to objects is repetitive and error-prone. An ORM handles the common cases — insert this object, find by id, update these fields — generating correct, parameterized SQL and mapping rows to typed objects automatically. It lets you stay in TypeScript for straightforward data access while dropping to raw SQL for the complex queries where you need control (Part 25 — ORM Engineering covers TypeORM and Sequelize in depth, including when to use the query builder or raw SQL).
 
 #### Mental model
 
@@ -169,7 +169,7 @@ import { ProductsModule } from './products/products.module';
 export class AppModule {}
 ```
 
-A critical warning on `synchronize: true`: it makes TypeORM automatically change your database schema to match your entities, which is convenient in development but dangerous in production, where it can drop columns and lose data. In production you use **migrations** (versioned, reviewed schema change scripts, Part 24) and set `synchronize: false`. Learn it now so you never ship `synchronize: true`.
+A critical warning on `synchronize: true`: it makes TypeORM automatically change your database schema to match your entities, which is convenient in development but dangerous in production, where it can drop columns and lose data. In production you use **migrations** (versioned, reviewed schema change scripts, Part 27) and set `synchronize: false`. Learn it now so you never ship `synchronize: true`.
 
 #### The entity
 
@@ -196,7 +196,7 @@ export class Product {
 }
 ```
 
-The entity is the TypeScript mirror of the table. Each `@Column` maps a class property to a database column. Note `name: 'price_cents'` maps the camelCase TypeScript property to the snake_case database column — a common convention (Part 17.10 on mapping).
+The entity is the TypeScript mirror of the table. Each `@Column` maps a class property to a database column. Note `name: 'price_cents'` maps the camelCase TypeScript property to the snake_case database column — a common convention (Part 20.10 on mapping).
 
 #### The repository in the service
 
@@ -215,7 +215,7 @@ export class ProductsService {
   ) {}
 
   async findAll(): Promise<Product[]> {
-    // In a real API this is paginated (Part 15.5); 6.5 adds a cursor.
+    // In a real API this is paginated (Part 18.5); 6.5 adds a cursor.
     return this.repo.find({ order: { createdAt: 'DESC' }, take: 100 });
   }
 
@@ -279,12 +279,12 @@ Restarting the server and still seeing the product is the moment persistence bec
 
 #### Edge cases & failure modes
 
-- **`synchronize: true` in production** can drop columns and destroy data on a schema change; use migrations (Part 24) and `synchronize: false`.
-- **No database connection** (wrong config, database down) makes the app fail to start or every request error; validate config and handle connection errors (Part 19 on connections).
-- **Connection pool exhaustion** under load if too many queries run at once (Part 19.2 on pooling); the pool has a limit and requests queue beyond it.
-- **N+1 queries** when loading related data naively (Part 22) — a classic ORM performance trap.
-- **Returning the raw entity** exposes every column; map to a response shape if any field is internal (Part 13.23).
-- **Large `findAll` with no pagination** can try to load millions of rows; always paginate list endpoints (Part 3, Part 15.5; 6.5 adds it).
+- **`synchronize: true` in production** can drop columns and destroy data on a schema change; use migrations (Part 27) and `synchronize: false`.
+- **No database connection** (wrong config, database down) makes the app fail to start or every request error; validate config and handle connection errors (Part 22 on connections).
+- **Connection pool exhaustion** under load if too many queries run at once (Part 22.2 on pooling); the pool has a limit and requests queue beyond it.
+- **N+1 queries** when loading related data naively (Part 25) — a classic ORM performance trap.
+- **Returning the raw entity** exposes every column; map to a response shape if any field is internal (Part 16.23).
+- **Large `findAll` with no pagination** can try to load millions of rows; always paginate list endpoints (Part 3, Part 18.5; 6.5 adds it).
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -336,7 +336,7 @@ $ docker exec -it shop-db psql -U shop -d shop -c 'SELECT * FROM products;'
 
 They match: `priceCents` is stored in `price_cents` because of `name: 'price_cents'` on the entity, and `createdAt` is the same instant. JSON shows milliseconds in UTC (`.912Z`); PostgreSQL keeps microseconds (`.912337+00`). That difference matters later for cursors (the timestamp-precision edge case in 6.5).
 
-**Turning `synchronize` off.** Set `synchronize: false` and restart: everything still works, because the table already exists. What changes is how the schema may change from now on. To add a column you would write a **migration**: a versioned file whose `up` runs the `ALTER TABLE` and whose `down` reverses it, generated from the entity, read, committed, reviewed like code, and run the same way on every database. 6.8 creates the first one with the TypeORM CLI, and Part 24 covers migrations in depth.
+**Turning `synchronize` off.** Set `synchronize: false` and restart: everything still works, because the table already exists. What changes is how the schema may change from now on. To add a column you would write a **migration**: a versioned file whose `up` runs the `ALTER TABLE` and whose `down` reverses it, generated from the entity, read, committed, reviewed like code, and run the same way on every database. 6.8 creates the first one with the TypeORM CLI, and Part 27 covers migrations in depth.
 
 **Why `synchronize: true` is unsafe, in one sentence for the acceptance criteria.** It changes the production schema to match whatever the entities say at start-up, without review; a renamed property looks to it like "one column removed, another added", so it drops the old column and the data in it.
 
@@ -355,30 +355,30 @@ You now have a working, persistent, validated REST API with clean layering. That
 ```text
 What you built here          Where it goes deep
 -------------------------    --------------------------------------------------
-NestJS structure             Part 13 (patterns; 13.7 dependency injection)
-REST endpoints & status      Part 15 (API design), Part 3 (HTTP)
-DTO validation & security    Part 15.10 (validation), Part 40 (security, injection, mass assignment)
-PostgreSQL & SQL             Parts 17–21 (relational model, SQL, internals, indexes, transactions)
-TypeORM repository           Part 22 (TypeORM, Sequelize and raw SQL in depth)
-Schema changes (migrations)  Part 24 (migrations), Part 25 (compatibility)
-Testing this API             Part 41 (unit, integration and e2e testing)
-Running it in production     Parts 44–47 (Docker, Kubernetes, cloud, CI/CD)
-Making it reliable           Part 31 (reliability), Part 43 (observability), Part 49 (SRE)
-Scaling it                   Parts 23, 27, 28 and 36 (database scaling, caching, messaging, background jobs)
+NestJS structure             Part 16 (patterns; 16.7 dependency injection)
+REST endpoints & status      Part 18 (API design), Part 3 (HTTP)
+DTO validation & security    Part 18.10 (validation), Part 44 (security, injection, mass assignment)
+PostgreSQL & SQL             Parts 20–24 (relational model, SQL, internals, indexes, transactions)
+TypeORM repository           Part 25 (TypeORM, Sequelize and raw SQL in depth)
+Schema changes (migrations)  Part 27 (migrations), Part 28 (compatibility)
+Testing this API             Part 45 (unit, integration and e2e testing)
+Running it in production     Parts 48–51 (Docker, Kubernetes, cloud, CI/CD)
+Making it reliable           Part 34 (reliability), Part 47 (observability), Part 53 (SRE)
+Scaling it                   Parts 26, 30, 31 and 39 (database scaling, caching, messaging, background jobs)
 ```
 
 #### A short list of what to add next, in order
 
 To take this products API from "works on my laptop" toward production, the natural next steps, each covered in a later Part:
 
-1. **Pagination** on the list endpoint (Part 3, Part 15.5; built in 6.5) — never return an unbounded list.
-2. **Tests** (Part 41; first versions in 6.7) — unit-test the service, integration-test the endpoints against a test database.
-3. **Migrations** (Part 24; first one in 6.8) — replace `synchronize` with versioned schema changes.
-4. **Error handling and logging** (Part 15.9, Part 43.2; first version in 6.6) — structured logs, a consistent error format, a request id.
-5. **Authentication** (Part 40 — Security: 40.1 to 40.3, and a complete NestJS module in 40.36) — who can create products?
-6. **Caching** (Part 27) — cache hot reads in Redis.
-7. **Containerization and deployment** (Parts 44–47; a first Docker setup in 6.8) — Docker image, CI/CD pipeline, run it on real infrastructure.
-8. **Observability** (Part 43) — metrics, traces and dashboards so you can see how it behaves in production.
+1. **Pagination** on the list endpoint (Part 3, Part 18.5; built in 6.5) — never return an unbounded list.
+2. **Tests** (Part 45; first versions in 6.7) — unit-test the service, integration-test the endpoints against a test database.
+3. **Migrations** (Part 27; first one in 6.8) — replace `synchronize` with versioned schema changes.
+4. **Error handling and logging** (Part 18.9, Part 47.2; first version in 6.6) — structured logs, a consistent error format, a request id.
+5. **Authentication** (Part 44 — Security: 44.1 to 44.3, and a complete NestJS module in 44.36) — who can create products?
+6. **Caching** (Part 30) — cache hot reads in Redis.
+7. **Containerization and deployment** (Parts 48–51; a first Docker setup in 6.8) — Docker image, CI/CD pipeline, run it on real infrastructure.
+8. **Observability** (Part 47) — metrics, traces and dashboards so you can see how it behaves in production.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -387,18 +387,18 @@ A senior sees this small API and the largest system they have ever built as the 
 #### Common mistakes
 
 - Thinking production systems are a different kind of thing; they are this, hardened and scaled.
-- Adding complexity (microservices, queues, caches) before there is a real need for it (Part 12 on choosing an architecture).
+- Adding complexity (microservices, queues, caches) before there is a real need for it (Part 15 on choosing an architecture).
 - Skipping the fundamentals (tests, migrations, observability) because the happy path works.
 
 #### Interview questions
 
 1. **What is the basic shape of a backend request, from HTTP to storage?** Request arrives, is validated at the boundary, is handled by a service (business logic, no HTTP knowledge), which uses a repository to persist to or read from the database, and a response is returned with an appropriate status code.
 2. **What would you add to a working CRUD API to make it production-ready, and in what order?** Pagination, tests, migrations, structured logging and error handling, authentication, then caching, deployment and observability as load and reliability needs grow.
-3. **Why not start with microservices, queues and caching?** They add operational complexity that should be justified by real pressure (load, team size, reliability); the simplest architecture that meets the requirement wins (Part 12).
+3. **Why not start with microservices, queues and caching?** They add operational complexity that should be justified by real pressure (load, team size, reliability); the simplest architecture that meets the requirement wins (Part 15).
 
 #### Practical exercise
 
-Take your products API and add one production step from the list: implement cursor-based pagination on the list endpoint (Part 15.5; 6.5 shows one way), returning a bounded page and a `nextCursor`. Then write one unit test for the service's `findOne` that asserts it throws `NotFoundException` for a missing id. Acceptance criteria: the list endpoint never returns more than the page size, and the test passes, giving you a first taste of the hardening steps the rest of the book covers.
+Take your products API and add one production step from the list: implement cursor-based pagination on the list endpoint (Part 18.5; 6.5 shows one way), returning a bounded page and a `nextCursor`. Then write one unit test for the service's `findOne` that asserts it throws `NotFoundException` for a missing id. Acceptance criteria: the list endpoint never returns more than the page size, and the test passes, giving you a first taste of the hardening steps the rest of the book covers.
 
 #### Worked answer to the exercise
 

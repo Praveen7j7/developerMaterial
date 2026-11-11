@@ -39,7 +39,7 @@ Read the last column slowly. If reading from the CPU's cache takes a second, rea
 
 - **Why caches win.** A Redis lookup in the same data centre (about 0.2 to 1 ms, mostly network) beats a PostgreSQL query that reads pages from disk (several ms); a value in your process's memory (about 100 ns) beats both by thousands of times. PostgreSQL keeps hot pages in RAM (shared buffers) for the same reason.
 - **Why round trips dominate.** 20 sequential queries at 1 ms each cost 20 ms of waiting even if each does no work. The N+1 query problem is a memory-hierarchy problem before it is an ORM problem.
-- **Why data layout matters.** An array's elements sit side by side, so one 64-byte cache line brings the next few along; a linked structure scattered across memory pays a RAM trip per element. Part 8 — Computer Science Fundamentals: Data Structures returns to this.
+- **Why data layout matters.** An array's elements sit side by side, so one 64-byte cache line brings the next few along; a linked structure scattered across memory pays a RAM trip per element. Part 10 — Computer Science Fundamentals: Data Structures returns to this.
 
 ```mermaid
 flowchart LR
@@ -53,7 +53,7 @@ flowchart LR
 
 #### Production scenario
 
-A product listing endpoint takes 180 ms at the 95th percentile. Tracing shows 3 ms in application code and the rest in 60 sequential queries to PostgreSQL, each around 2.5 ms including the network round trip, one per product to load its price. Rewriting it as one query with a join or `WHERE id = ANY($1)` drops it to 12 ms. No code got "faster"; the endpoint simply stopped paying for 59 round trips. Part 56 — Capacity Estimation and Back-of-the-Envelope Math (56.1) has the full table of numbers to carry in your head, and Part 42 — Performance Engineering shows how to find these costs.
+A product listing endpoint takes 180 ms at the 95th percentile. Tracing shows 3 ms in application code and the rest in 60 sequential queries to PostgreSQL, each around 2.5 ms including the network round trip, one per product to load its price. Rewriting it as one query with a join or `WHERE id = ANY($1)` drops it to 12 ms. No code got "faster"; the endpoint simply stopped paying for 59 round trips. Part 60 — Capacity Estimation and Back-of-the-Envelope Math (60.1) has the full table of numbers to carry in your head, and Part 46 — Performance Engineering shows how to find these costs.
 
 #### Interview questions
 
@@ -81,7 +81,7 @@ To store negative numbers, almost every computer uses **two's complement**. The 
 When a calculation goes past the top of the range, it **overflows**. What happens next depends on the system, and this is exactly the kind of fact the ten questions should dig out:
 
 - **Java and Go integers wrap around silently.** `Integer.MAX_VALUE + 1` in Java is -2,147,483,648. A counter or a money total can turn negative with no error.
-- **PostgreSQL refuses.** Inserting past the range of an `integer` column raises `ERROR: integer out of range`. Right for data, but a table with an `integer` primary key stops accepting rows at about 2.1 billion; teams with a `serial` key on a busy events table have hit this as a full outage, fixed by a slow migration to `bigint` (see Part 17 — Databases and the Relational Model, 17.4.1).
+- **PostgreSQL refuses.** Inserting past the range of an `integer` column raises `ERROR: integer out of range`. Right for data, but a table with an `integer` primary key stops accepting rows at about 2.1 billion; teams with a `serial` key on a busy events table have hit this as a full outage, fixed by a slow migration to `bigint` (see Part 20 — Databases and the Relational Model, 20.4.1).
 - **JavaScript is different again.** Every `number` is a 64-bit floating-point value (next section), which represents integers exactly only up to `Number.MAX_SAFE_INTEGER` = 2^53 - 1 = 9,007,199,254,740,991. Past that, integers silently lose precision. And JavaScript's bitwise operators convert to 32-bit signed integers first, so `(2 ** 31) | 0` is -2147483648.
 
 ```ts
@@ -137,13 +137,13 @@ console.log(toCents('1.15'));  // 115
 The tiny errors are harmless in a physics simulation. In money they are not, because money must add up exactly and must match someone else's ledger. So backends represent money one of two ways:
 
 1. **Integer minor units**: store 1999 meaning 19.99 dollars or rupees, in an integer or `bigint` column. All arithmetic is exact integer arithmetic. Part 1 — Programming Fundamentals in JavaScript and TypeScript introduces this habit in 1.1.1.
-2. **A decimal type**: PostgreSQL `numeric(12,2)`, Java `BigDecimal`, Python `decimal.Decimal`. These store base-10 digits exactly, at some cost in speed. Part 17 (17.4.2 "Money: numeric vs float") compares the two, and Part 63 — Backend Anti-Patterns and Why They Hurt (63.32) tells the story of getting it wrong.
+2. **A decimal type**: PostgreSQL `numeric(12,2)`, Java `BigDecimal`, Python `decimal.Decimal`. These store base-10 digits exactly, at some cost in speed. Part 20 (20.4.2 "Money: numeric vs float") compares the two, and Part 67 — Backend Anti-Patterns and Why They Hurt (67.32) tells the story of getting it wrong.
 
 #### Edge cases & failure modes
 
 - **Not every currency has two decimal places.** Japanese yen has none and some dinars have three. Store the currency alongside the amount and know each currency's minor unit.
 - **Division still needs a rounding rule.** Splitting 1000 cents three ways gives 333, 333 and 334; decide who gets the extra cent, and write it down.
-- **JSON has only one number type,** and many parsers read it as a double. Large amounts or IDs sent as JSON numbers can be silently rounded; send them as strings (Part 76 — Frontend–Backend Contracts, 76.7).
+- **JSON has only one number type,** and many parsers read it as a double. Large amounts or IDs sent as JSON numbers can be silently rounded; send them as strings (Part 80 — Frontend–Backend Contracts, 80.7).
 - **`NaN` and `Infinity` are floating-point values too.** `0 / 0` is `NaN` and `1 / 0` is `Infinity` in JavaScript, with no exception. Validate before you store.
 
 #### Interview questions
@@ -223,7 +223,7 @@ Your NestJS process (PID 4182)
   └── fd 42..51    sockets to PostgreSQL (the connection pool)
 ```
 
-That picture explains why a pool of 10 database connections means 10 sockets and why a connection leak ends as "too many open files". Part 4 — Linux and the Command Line teaches the commands to inspect all of this (4.3 and 4.10), and Part 10 — Operating Systems and the Node.js Runtime goes deep: processes and threads (10.1), memory (10.3, 10.4), file descriptors (10.5), signals and graceful shutdown (10.6) and the event loop (10.16).
+That picture explains why a pool of 10 database connections means 10 sockets and why a connection leak ends as "too many open files". Part 4 — Linux and the Command Line teaches the commands to inspect all of this (4.3 and 4.10), and Part 13 — Operating Systems and the Node.js Runtime goes deep: processes and threads (13.1), memory (13.3, 13.4), file descriptors (13.5), signals and graceful shutdown (13.6) and the event loop (13.16).
 
 ### 0.5.6 The network in one picture
 
@@ -246,7 +246,7 @@ sequenceDiagram
 
 Count the round trips before the request leaves: DNS (often cached), the TCP handshake, one or two for TLS. At 100 ms per round trip, that is 200 to 300 ms of setup before the provider starts on your charge, which is why connection pooling and keep-alive matter and why the first request after a deploy is the slowest.
 
-The layers stack like envelopes: your JSON goes inside an HTTP message, which is encrypted by TLS, carried as a reliable byte stream by TCP, split into packets addressed by IP, and sent over Ethernet or Wi-Fi. Each layer only talks to the layer directly above and below it. When something breaks, the error usually tells you the layer: `ENOTFOUND` is DNS, `ECONNREFUSED` and `ETIMEDOUT` are TCP, `certificate has expired` is TLS, and a `502` or `504` is HTTP from a proxy in the middle. Part 3 — How the Web Works builds this from scratch; Part 11 — Networking and HTTP goes deep, ending with 11.14 "What exactly happens when I call a NestJS API from a browser or Postman?".
+The layers stack like envelopes: your JSON goes inside an HTTP message, which is encrypted by TLS, carried as a reliable byte stream by TCP, split into packets addressed by IP, and sent over Ethernet or Wi-Fi. Each layer only talks to the layer directly above and below it. When something breaks, the error usually tells you the layer: `ENOTFOUND` is DNS, `ECONNREFUSED` and `ETIMEDOUT` are TCP, `certificate has expired` is TLS, and a `502` or `504` is HTTP from a proxy in the middle. Part 3 — How the Web Works builds this from scratch; Part 14 — Networking and HTTP goes deep, ending with 14.14 "What exactly happens when I call a NestJS API from a browser or Postman?".
 
 #### How a Senior Backend Engineer thinks about this
 

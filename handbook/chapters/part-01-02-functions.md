@@ -92,7 +92,7 @@ export class ShippingService {
 }
 ```
 
-The business rules did not change at all. They moved into a class so NestJS can share one instance of `ShippingService` across the whole application. We explain that machinery in Part 6 and, in depth, in Part 13 (dependency injection).
+The business rules did not change at all. They moved into a class so NestJS can share one instance of `ShippingService` across the whole application. We explain that machinery in Part 6 and, in depth, in Part 16 (dependency injection).
 
 #### Edge cases & failure modes
 
@@ -102,7 +102,7 @@ The business rules did not change at all. They moved into a class so NestJS can 
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior aims for functions that are small, named for what they produce, and free of hidden side effects where possible. The test they apply: "Can I describe this function in one sentence without the word 'and'?" If the sentence needs an "and", the function is doing two jobs and should be split. They also prefer **pure functions** — same input always gives same output, no side effects — for business rules, because pure functions are trivial to unit-test (Part 41) without a database or network.
+A senior aims for functions that are small, named for what they produce, and free of hidden side effects where possible. The test they apply: "Can I describe this function in one sentence without the word 'and'?" If the sentence needs an "and", the function is doing two jobs and should be split. They also prefer **pure functions** — same input always gives same output, no side effects — for business rules, because pure functions are trivial to unit-test (Part 45) without a database or network.
 
 #### Common mistakes
 
@@ -168,7 +168,7 @@ Why it is right: `Math.max(0, x)` returns `x` when it is positive and `0` when i
 
 The trap most learners fall into is adding "just one" side effect: a `console.log` inside the function, or updating a running total in an outer variable, or accepting an order object and writing `order.grandTotalCents = ...` onto it. Each of those makes the function harder to test and surprises its callers (1.4.1). A subtler trap: clamping hides bad input. A negative `subtotalCents` is a bug somewhere upstream, and clamping turns it into a silent zero. A stricter version would throw when any input is negative or not an integer, and clamp only the legitimate case of a discount larger than the order.
 
-Check it yourself: run it, then write the two cases as a unit test (Part 41 — Testing Backend Systems with Jest and NestJS, 41.3): `expect(orderSummary(1000, 80, 0, 5000).grandTotalCents).toBe(0)`. Because the function is pure, the test needs no database, no mocks and no setup.
+Check it yourself: run it, then write the two cases as a unit test (Part 45 — Testing Backend Systems with Jest and NestJS, 45.3): `expect(orderSummary(1000, 80, 0, 5000).grandTotalCents).toBe(0)`. Because the function is pure, the test needs no database, no mocks and no setup.
 
 ### 1.4.2 Scope, closures and the call stack
 
@@ -178,7 +178,7 @@ Check it yourself: run it, then write the two cases as a unit test (Part 41 — 
 
 #### Why does it exist?
 
-Scope exists so that two functions can both use a variable named `i` without colliding — each has its own. Closures exist so a function can carry some private state with it, which is how you build things like a counter, a rate limiter, or a configured client. Understanding the call stack is how you read a stack trace, which is the single most useful debugging skill (Part 10.15).
+Scope exists so that two functions can both use a variable named `i` without colliding — each has its own. Closures exist so a function can carry some private state with it, which is how you build things like a counter, a rate limiter, or a configured client. Understanding the call stack is how you read a stack trace, which is the single most useful debugging skill (Part 13.15).
 
 #### Mental model
 
@@ -238,8 +238,8 @@ function makePaymentClient(baseUrl: string, apiKey: string) {
 #### Edge cases & failure modes
 
 - **The classic loop-closure bug.** With `var i` in a `for` loop, all closures share the one `i` and see its final value. With `let i`, each iteration gets a fresh `i`. This is the single most common closure bug and the reason `let` exists.
-- **Stack overflow.** A function that calls itself with no stopping condition fills the call stack until Node crashes with `Maximum call stack size exceeded`. Every recursive function needs a base case (Part 9).
-- **Memory leaks via closures.** A closure keeps its captured variables alive. If a long-lived closure captures a huge object, that object cannot be garbage-collected (Part 10). This is a real source of slow memory growth in long-running servers.
+- **Stack overflow.** A function that calls itself with no stopping condition fills the call stack until Node crashes with `Maximum call stack size exceeded`. Every recursive function needs a base case (Part 11).
+- **Memory leaks via closures.** A closure keeps its captured variables alive. If a long-lived closure captures a huge object, that object cannot be garbage-collected (Part 13). This is a real source of slow memory growth in long-running servers.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -309,7 +309,7 @@ Why it is right: `timestamps` is declared inside `makeRateLimiter`, so every cal
 
 The trap most learners fall into is declaring `const timestamps: number[] = []` at the top of the file, outside `makeRateLimiter`. Everything still works with one limiter, and the moment you create a second one, both share one array: exactly the failure the acceptance criteria test for. The second trap is building a fixed window instead ("reset the counter at the start of each minute"), which lets a client send `maxPerMinute` calls at 10:00:59 and another `maxPerMinute` at 10:01:00.
 
-Passing `now` as a parameter is what makes this testable without waiting a real minute (41.11 covers testing time). Check it yourself: run the file and compare. Note that this limiter lives in one process's memory; with three API instances behind a load balancer, each has its own count, which is why production rate limits usually live in Redis (27.11; 9.17 builds the algorithms properly).
+Passing `now` as a parameter is what makes this testable without waiting a real minute (45.11 covers testing time). Check it yourself: run the file and compare. Note that this limiter lives in one process's memory; with three API instances behind a load balancer, each has its own count, which is why production rate limits usually live in Redis (30.11; 11.17 builds the algorithms properly).
 
 ### 1.4.3 Typing functions well
 

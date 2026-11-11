@@ -55,7 +55,7 @@ flowchart LR
     end
 ```
 
-The most important consequence when moving from Node.js to Java, Go or C#: **your code now really runs in parallel.** In Node.js, two requests never execute JavaScript at the same instant, so `this.counter++` on a shared object is safe (though async interleaving between `await`s is not). In Java or Go, two threads can run `counter++` at once and lose an update (`++` is read, add, write), so you need a lock, an atomic, or no sharing. Part 10 — Operating Systems and the Node.js Runtime covers race conditions (10.8), deadlocks (10.9), mutexes (10.10) and atomic operations (10.12); read those before you write your first multi-threaded service. Part 32 — Concurrency in Node.js and NestJS covers the event-loop side.
+The most important consequence when moving from Node.js to Java, Go or C#: **your code now really runs in parallel.** In Node.js, two requests never execute JavaScript at the same instant, so `this.counter++` on a shared object is safe (though async interleaving between `await`s is not). In Java or Go, two threads can run `counter++` at once and lose an update (`++` is read, add, write), so you need a lock, an atomic, or no sharing. Part 13 — Operating Systems and the Node.js Runtime covers race conditions (13.8), deadlocks (13.9), mutexes (13.10) and atomic operations (13.12); read those before you write your first multi-threaded service. Part 35 — Concurrency in Node.js and NestJS covers the event-loop side.
 
 ### 0.6.4 Memory management: the one real learning curve
 
@@ -63,7 +63,7 @@ Every program allocates memory for its data, and that memory must eventually be 
 
 **Garbage-collected languages**: JavaScript, Java, Go, Python, C#, Kotlin, Ruby. A **garbage collector** (GC) is part of the runtime that periodically finds objects nothing refers to any more and frees them. You allocate freely and never free anything by hand. Moving between these languages is easy because the model is the same. What you still have to know:
 
-- You can still leak, by keeping references you no longer need: a global `Map` used as a cache with no eviction, listeners never removed, closures holding large objects. Part 10 (10.13 and 10.25) covers how.
+- You can still leak, by keeping references you no longer need: a global `Map` used as a cache with no eviction, listeners never removed, closures holding large objects. Part 13 (13.13 and 13.25) covers how.
 - The GC costs CPU and can pause your program briefly, and heap limits are set differently in each runtime (`--max-old-space-size` for Node, `-Xmx` for the JVM, `GOMEMLIMIT` for Go).
 
 **Manual or ownership-based languages**: C, C++, Rust. Here memory management is part of your job, and this is the only part of switching languages that is a genuine learning curve rather than a list of facts.
@@ -273,7 +273,7 @@ What changed and what stayed the same:
 | JSON to typed data | Cast only; no runtime check | Jackson maps to records, and fails on unknown fields by default | Struct tags map fields; unknown fields are ignored by default | Plain dicts; no types unless you add a library such as Pydantic |
 | Money arithmetic | `number` (exact up to 2^53) | `long` with `Math.multiplyExact` to catch overflow | `int64`, wraps silently on overflow | `int`, arbitrary precision, never overflows |
 
-And what stayed exactly the same, in all four: build the URL with the ID escaped; set a deadline; send the request; treat non-200 as an error; parse the JSON; sum integer cents. That list is the engineering; the table is the spelling. Note that "a timeout" means four slightly different things: a two-second per-phase read timeout can let a slowly dripping response run far longer than two seconds overall. Part 31 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure goes deep on deadlines.
+And what stayed exactly the same, in all four: build the URL with the ID escaped; set a deadline; send the request; treat non-200 as an error; parse the JSON; sum integer cents. That list is the engineering; the table is the spelling. Note that "a timeout" means four slightly different things: a two-second per-phase read timeout can let a slowly dripping response run far longer than two seconds overall. Part 34 — Reliability Engineering: Timeouts, Retries, Circuit Breakers and Backpressure goes deep on deadlines.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -348,7 +348,7 @@ Rules that keep your understanding yours:
 - **Keep the hard thinking.** Let the assistant draft boilerplate and test skeletons; do the design, failure analysis and trade-offs yourself, because those skills only grow with use.
 - **Do not paste secrets or customer data** into a tool your company has not approved for it.
 
-Part 53 — AI-Assisted Engineering covers working with AI assistants in production engineering in depth, and Part 65 — The Knowledge Map and Learning Roadmap lays out what to learn in which order across this book.
+Part 57 — AI-Assisted Engineering covers working with AI assistants in production engineering in depth, and Part 69 — The Knowledge Map and Learning Roadmap lays out what to learn in which order across this book.
 
 #### How a Senior Backend Engineer thinks about this
 

@@ -150,7 +150,7 @@ Check it yourself: `stat -c '%A %a %n' secrets.env` on Linux, or `stat -f '%Sp %
 
 #### Concept
 
-A **process** is a running program. Your backend server is a process; the database is a process; the shell itself is a process. Each has an id (a PID), an owner, and resource usage. Managing processes — seeing what is running, how much memory and CPU it uses, and stopping it — is core to operating a server. Part 10 covers processes and threads at the operating-system level; here we cover the day-to-day commands.
+A **process** is a running program. Your backend server is a process; the database is a process; the shell itself is a process. Each has an id (a PID), an owner, and resource usage. Managing processes — seeing what is running, how much memory and CPU it uses, and stopping it — is core to operating a server. Part 13 covers processes and threads at the operating-system level; here we cover the day-to-day commands.
 
 #### Why does it exist?
 
@@ -187,7 +187,7 @@ kill -9 4521         # send SIGKILL: "stop immediately, no cleanup" (last resort
 kill -HUP 4521       # send SIGHUP: often "reload your config"
 ```
 
-The difference between `kill` (SIGTERM) and `kill -9` (SIGKILL) is important. SIGTERM asks the process to shut down cleanly — finish in-flight requests, close database connections, flush logs. A well-written server catches SIGTERM and does exactly that (graceful shutdown, Part 31 — Reliability Engineering, 31.13). SIGKILL cannot be caught; it stops the process instantly, mid-request, leaving connections dangling. Always try SIGTERM first; use SIGKILL only when a process ignores SIGTERM.
+The difference between `kill` (SIGTERM) and `kill -9` (SIGKILL) is important. SIGTERM asks the process to shut down cleanly — finish in-flight requests, close database connections, flush logs. A well-written server catches SIGTERM and does exactly that (graceful shutdown, Part 34 — Reliability Engineering, 34.13). SIGKILL cannot be caught; it stops the process instantly, mid-request, leaving connections dangling. Always try SIGTERM first; use SIGKILL only when a process ignores SIGTERM.
 
 #### Foreground, background and jobs
 
@@ -201,7 +201,7 @@ Ctrl+C                  # send SIGINT: stop the foreground process
 Ctrl+Z                  # suspend the foreground process (resume with fg)
 ```
 
-For real servers you do not run processes with `&`; you use a process manager (`systemd`, or `pm2` for Node, or a container orchestrator like Kubernetes, Part 45) that restarts them on crash and starts them on boot. But knowing the manual commands helps you understand what those managers do.
+For real servers you do not run processes with `&`; you use a process manager (`systemd`, or `pm2` for Node, or a container orchestrator like Kubernetes, Part 49) that restarts them on crash and starts them on boot. But knowing the manual commands helps you understand what those managers do.
 
 #### Practical example — diagnosing a stuck server
 
@@ -224,7 +224,7 @@ The 99% CPU is the tell: the Node event loop is blocked by a synchronous computa
 - **A zombie or stuck process** that ignores SIGTERM needs SIGKILL, but SIGKILL skips cleanup (dangling connections, unflushed data).
 - **`kill -9` on a database** can corrupt data by skipping its shutdown; always prefer graceful shutdown for stateful processes.
 - **Orphaned background jobs** from `&` keep running after you log out only with `nohup` or a process manager; otherwise they may be killed when your session ends.
-- **OOM killer**: when the server runs out of memory, Linux kills a process to survive, often your app; you find "Killed" in logs and an OOM message in `dmesg` (Part 10, Part 45).
+- **OOM killer**: when the server runs out of memory, Linux kills a process to survive, often your app; you find "Killed" in logs and an OOM message in `dmesg` (Part 13, Part 49).
 - **High load average** (from `uptime`/`top`) means more work queued than CPUs can handle; a sustained load above the core count signals saturation.
 
 #### How a Senior Backend Engineer thinks about this

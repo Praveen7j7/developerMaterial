@@ -4,7 +4,7 @@ This is the Part where everything in Volume 0 comes together. You know TypeScrip
 
 We build a **products API** for an e-commerce store — list products, get one, create one — because it is the simplest thing that still exercises every layer: an HTTP endpoint, input validation, business logic, and database persistence. The code here is deliberately production-shaped, not a toy: real validation, real error handling, real SQL. It is small enough to hold in your head and real enough that the habits transfer directly to the systems the rest of the book describes.
 
-This Part is a guided build. Later Parts go deep on each piece: NestJS dependency injection in Part 13 (13.7), API design in Part 15, PostgreSQL in Parts 17–21, TypeORM and Sequelize in Part 22, security in Part 40, testing in Part 41. Sections 6.5 to 6.9 then grow the project step by step: better validation, consistent errors, tests, and running everything with Docker. Here we assemble a working whole so those deep dives have something concrete to attach to.
+This Part is a guided build. Later Parts go deep on each piece: NestJS dependency injection in Part 16 (16.7), API design in Part 18, PostgreSQL in Parts 20–24, TypeORM and Sequelize in Part 25, security in Part 44, testing in Part 45. Sections 6.5 to 6.9 then grow the project step by step: better validation, consistent errors, tests, and running everything with Docker. Here we assemble a working whole so those deep dives have something concrete to attach to.
 
 ## 6.1 Project setup
 
@@ -16,7 +16,7 @@ NestJS is a framework for building backend applications in Node.js and TypeScrip
 
 #### Why does it exist?
 
-You could build an HTTP server with raw Node, but you would hand-write routing, request parsing, validation, error handling, and the plumbing to connect everything — and every project would do it differently. NestJS provides a consistent, well-trodden structure so a team can build and a new engineer can navigate any NestJS codebase. It is opinionated in a way that pays off: the conventions mean less bikeshedding and more shared understanding. Part 13 covers its architecture and dependency injection in depth; here we use it.
+You could build an HTTP server with raw Node, but you would hand-write routing, request parsing, validation, error handling, and the plumbing to connect everything — and every project would do it differently. NestJS provides a consistent, well-trodden structure so a team can build and a new engineer can navigate any NestJS codebase. It is opinionated in a way that pays off: the conventions mean less bikeshedding and more shared understanding. Part 16 covers its architecture and dependency injection in depth; here we use it.
 
 #### Mental model
 
@@ -73,7 +73,7 @@ Service      holds business logic. Called by controllers. Knows nothing about HT
 Module       groups related controllers and services and declares their wiring.
 ```
 
-This separation is the single most important convention in NestJS and in good backend design generally (Part 12, Part 13). The controller's job is to translate between HTTP and your logic — parse the request, call a service, shape the response. The service's job is the actual work, with no knowledge of HTTP. Keeping them separate means your logic is testable without a web server and your HTTP handling is thin and uniform.
+This separation is the single most important convention in NestJS and in good backend design generally (Part 15, Part 16). The controller's job is to translate between HTTP and your logic — parse the request, call a service, shape the response. The service's job is the actual work, with no knowledge of HTTP. Keeping them separate means your logic is testable without a web server and your HTTP handling is thin and uniform.
 
 #### Practical example — the generated hello endpoint
 
@@ -229,7 +229,7 @@ PORT=3000
 
 #### How it works — running PostgreSQL with Docker
 
-Docker runs PostgreSQL in a container so you do not install it directly (Part 44 covers containers properly). One command starts a PostgreSQL 17 database matching the `.env` above:
+Docker runs PostgreSQL in a container so you do not install it directly (Part 48 covers containers properly). One command starts a PostgreSQL 17 database matching the `.env` above:
 
 ```bash
 docker run --name shop-db \
@@ -247,7 +247,7 @@ docker exec -it shop-db psql -U shop -d shop # open a SQL prompt inside it
 # at the psql prompt: \dt lists tables, \q quits
 ```
 
-`psql` is PostgreSQL's command-line client — a shell for running SQL (Part 18 — SQL Mastery). You will use it constantly to inspect data and test queries.
+`psql` is PostgreSQL's command-line client — a shell for running SQL (Part 21 — SQL Mastery). You will use it constantly to inspect data and test queries.
 
 #### Fail fast on missing config
 

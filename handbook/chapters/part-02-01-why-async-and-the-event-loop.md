@@ -2,7 +2,7 @@
 
 Backend code spends most of its life waiting. It waits for the database to answer a query, for a payment provider to respond, for a file to be read from disk, for another service across the network. Those waits are long — a database query is a few milliseconds, a cross-region HTTP call can be a hundred — and if your program stopped dead during every wait, it could serve one user at a time. Asynchronous programming is how JavaScript handles thousands of simultaneous requests on a single thread by never standing still during a wait.
 
-This Part teaches asynchronous JavaScript from the beginning. We start with the event loop at a level a beginner can hold in their head (Part 10 goes much deeper). Then callbacks, the original way to handle "do this when the result arrives", and the "callback hell" that made them painful. Then promises, the object that represents a future value. Then `async`/`await`, the modern syntax that makes asynchronous code read like ordinary code. We finish with error handling in asynchronous code and the pitfalls that catch everyone at least once.
+This Part teaches asynchronous JavaScript from the beginning. We start with the event loop at a level a beginner can hold in their head (Part 13 goes much deeper). Then callbacks, the original way to handle "do this when the result arrives", and the "callback hell" that made them painful. Then promises, the object that represents a future value. Then `async`/`await`, the modern syntax that makes asynchronous code read like ordinary code. We finish with error handling in asynchronous code and the pitfalls that catch everyone at least once.
 
 If this is the one Part of Volume 0 you half-skip, your backend career will be a long series of confusing bugs. Asynchronous code is where beginners write things that work on their laptop with one user and fall apart in production with a thousand. Spend the time here.
 
@@ -30,7 +30,7 @@ The crucial consequence: if the chef ever does a task that cannot be set aside �
 
 #### How it works
 
-Here is the beginner's picture of the event loop. (Part 10.16 to 10.18 cover the event loop phases, microtasks, macrotasks and libuv in full.)
+Here is the beginner's picture of the event loop. (Part 13.16 to 13.18 cover the event loop phases, microtasks, macrotasks and libuv in full.)
 
 ```text
   Your synchronous code runs top to bottom on the one thread.
@@ -144,7 +144,7 @@ t=952 ms  other users served (gap 101 ms)
 t=1053 ms  other users served (gap 101 ms)
 ```
 
-Look at the gap of `648 ms`. The heartbeat wanted to run at 300, 400 and so on up to 800 ms, but the thread was stuck in the `while` loop. Those beats were simply skipped, and the next one ran the moment the loop let go. In a real server, every request that arrived during those 600 ms waited up to 600 ms extra, no matter how simple it was. That delay is called **event-loop lag**, and production teams graph it (Part 10.27 shows how).
+Look at the gap of `648 ms`. The heartbeat wanted to run at 300, 400 and so on up to 800 ms, but the thread was stuck in the `while` loop. Those beats were simply skipped, and the next one ran the moment the loop let go. In a real server, every request that arrived during those 600 ms waited up to 600 ms extra, no matter how simple it was. That delay is called **event-loop lag**, and production teams graph it (Part 13.27 shows how).
 
 #### Production scenario
 
@@ -152,17 +152,17 @@ A NestJS endpoint handles 2,000 requests per second on a single Node process. Ea
 
 #### Failure scenario
 
-At 14:20 an endpoint that validates uploaded CSV files starts timing out for **all** users, not just the ones uploading. The cause: a new feature parsed each uploaded file with a synchronous loop that, for a large file, ran for 800 milliseconds of pure computation. During those 800 ms the one thread was held, so every other request — logins, product pages, checkouts — queued behind it. The dashboard showed the whole service degraded whenever anyone uploaded a big file. The fix was to move the parsing off the main thread (a worker thread, Part 10.20) and to stream the file instead of loading it whole. The lesson: on Node, one slow synchronous operation harms everyone.
+At 14:20 an endpoint that validates uploaded CSV files starts timing out for **all** users, not just the ones uploading. The cause: a new feature parsed each uploaded file with a synchronous loop that, for a large file, ran for 800 milliseconds of pure computation. During those 800 ms the one thread was held, so every other request — logins, product pages, checkouts — queued behind it. The dashboard showed the whole service degraded whenever anyone uploaded a big file. The fix was to move the parsing off the main thread (a worker thread, Part 13.20) and to stream the file instead of loading it whole. The lesson: on Node, one slow synchronous operation harms everyone.
 
 #### Edge cases & failure modes
 
-- A long synchronous loop or heavy computation blocks every request (CPU-bound work needs worker threads or a separate service; Part 10).
+- A long synchronous loop or heavy computation blocks every request (CPU-bound work needs worker threads or a separate service; Part 13).
 - A synchronous file read (`fs.readFileSync`) in a request handler blocks the thread for the duration of the read; always use the asynchronous versions in a server.
-- A catastrophic regular expression (ReDoS) can block the thread for seconds on a crafted input — both a performance and a security problem (Part 40 — Security).
+- A catastrophic regular expression (ReDoS) can block the thread for seconds on a crafted input — both a performance and a security problem (Part 44 — Security).
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior carries one rule from this section into everything: **do not block the event loop.** They know Node's superpower is handling many concurrent waits cheaply and its weakness is CPU-bound work, so they keep request handlers light on computation, push heavy work to background workers (Part 36 — Background Jobs and Schedulers), and measure event-loop lag as a first-class metric (Part 10.27). When someone proposes doing image processing or large-file parsing inside a request handler, the senior's first question is "how long does that hold the thread, and whom does it block while it runs?"
+A senior carries one rule from this section into everything: **do not block the event loop.** They know Node's superpower is handling many concurrent waits cheaply and its weakness is CPU-bound work, so they keep request handlers light on computation, push heavy work to background workers (Part 39 — Background Jobs and Schedulers), and measure event-loop lag as a first-class metric (Part 13.27). When someone proposes doing image processing or large-file parsing inside a request handler, the senior's first question is "how long does that hold the thread, and whom does it block while it runs?"
 
 #### Common mistakes
 

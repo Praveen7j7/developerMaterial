@@ -44,7 +44,7 @@ flowchart LR
 
 1. You push your branch to the remote.
 2. You open a pull request: "please merge `feat/add-coupons` into `main`", with a description of what and why.
-3. Automated checks run (tests, linting — Part 47 on CI/CD).
+3. Automated checks run (tests, linting — Part 51 on CI/CD).
 4. Teammates review the code, leave comments, maybe request changes.
 5. You address feedback with more commits and push again (the PR updates automatically).
 6. Once approved and checks pass, the PR is merged into `main` and the branch is deleted.
@@ -87,7 +87,7 @@ git switch main && git pull                   # bring the merged change into you
 
 #### Edge cases & failure modes
 
-- **Pushing to the wrong branch** or force-pushing over others' work (`git push --force`) can destroy commits; avoid force-push on shared branches (Part 48 covers the safe `--force-with-lease`).
+- **Pushing to the wrong branch** or force-pushing over others' work (`git push --force`) can destroy commits; avoid force-push on shared branches (Part 52 covers the safe `--force-with-lease`).
 - **A stale local `main`**: forgetting to `git pull` before branching means you build on old code and hit conflicts; always start from up-to-date `main`.
 - **A huge PR** (thousands of lines) is nearly impossible to review well; reviewers rubber-stamp it and bugs slip through. Keep PRs small.
 - **Merging your own PR without review** skips the quality gate that catches mistakes; follow the team's review requirement.
@@ -95,7 +95,7 @@ git switch main && git pull                   # bring the merged change into you
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior keeps pull requests small and focused, because a PR a reviewer can actually read in ten minutes gets a real review, while a 2,000-line PR gets a rubber stamp. They write PR descriptions that explain intent and how to verify, treating the reviewer's time as valuable. They always branch from up-to-date `main` and pull frequently to keep divergence small. They never force-push shared branches. They see code review not as a gate to get past but as the main mechanism by which a team shares knowledge and catches defects early, and they both give and receive review thoughtfully (Part 48 — Git from Intermediate to Senior, 48.13, covers the pull request workflow and review).
+A senior keeps pull requests small and focused, because a PR a reviewer can actually read in ten minutes gets a real review, while a 2,000-line PR gets a rubber stamp. They write PR descriptions that explain intent and how to verify, treating the reviewer's time as valuable. They always branch from up-to-date `main` and pull frequently to keep divergence small. They never force-push shared branches. They see code review not as a gate to get past but as the main mechanism by which a team shares knowledge and catches defects early, and they both give and receive review thoughtfully (Part 52 — Git from Intermediate to Senior, 52.13, covers the pull request workflow and review).
 
 #### Common mistakes
 
@@ -231,7 +231,7 @@ git merge --abort                     # OR: give up and go back to before the me
 
 #### Rebase: the other way (brief)
 
-Besides `merge`, Git has `rebase`, which replays your branch's commits on top of the latest `main`, producing a straighter history. It is powerful and common, but it rewrites commits, so it has its own rules and risks. Part 48 covers rebase, when to use it versus merge, and the "golden rule of rebase" (never rebase commits others have based work on). As a beginner, understand merge first; reach for rebase once you are comfortable.
+Besides `merge`, Git has `rebase`, which replays your branch's commits on top of the latest `main`, producing a straighter history. It is powerful and common, but it rewrites commits, so it has its own rules and risks. Part 52 covers rebase, when to use it versus merge, and the "golden rule of rebase" (never rebase commits others have based work on). As a beginner, understand merge first; reach for rebase once you are comfortable.
 
 #### Practical example — resolving a real conflict
 
@@ -261,7 +261,7 @@ git add src/shipping.ts
 git commit                            # completes the merge
 ```
 
-Crucially, you also re-run the tests (Part 41 — Testing Backend Systems) after resolving, because a conflict resolution can be syntactically valid but logically wrong — you might keep both lines, or the wrong one, and only tests catch that.
+Crucially, you also re-run the tests (Part 45 — Testing Backend Systems) after resolving, because a conflict resolution can be syntactically valid but logically wrong — you might keep both lines, or the wrong one, and only tests catch that.
 
 #### Edge cases & failure modes
 
@@ -361,7 +361,7 @@ src/config.ts(4,1): error TS1185: Merge conflict marker encountered.
 src/config.ts(6,1): error TS1185: Merge conflict marker encountered.
 ```
 
-**Why leaving a marker is dangerous.** For Git, `git add` means "resolved", whatever the file contains. It happily records the markers in a commit, and if that commit is pushed, everyone who pulls gets a file that does not compile. The TypeScript compiler catches it here, and so would the test run in CI (Part 47), but only if something runs. To fix it, edit the file to the correct value and make a new commit; before committing, `git merge --abort` would have thrown the whole merge away instead.
+**Why leaving a marker is dangerous.** For Git, `git add` means "resolved", whatever the file contains. It happily records the markers in a commit, and if that commit is pushed, everyone who pulls gets a file that does not compile. The TypeScript compiler catches it here, and so would the test run in CI (Part 51), but only if something runs. To fix it, edit the file to the correct value and make a new commit; before committing, `git merge --abort` would have thrown the whole merge away instead.
 
 **How to verify every time.** Run `git diff --check` (or `git diff --cached --check` after `git add`) before you commit a merge, and run the tests after it.
 
@@ -381,14 +381,14 @@ The everyday professional Git workflow is a short, repeatable loop that ties tog
 3. edit, git add, git commit            make small focused commits with clear messages
 4. git push -u origin feat/...          push your branch
 5. open a pull request                   describe what, why, how to test, risk
-6. automated checks run                   tests and lint (CI, Part 47)
+6. automated checks run                   tests and lint (CI, Part 51)
 7. address review feedback               more commits, git push; PR updates
 8. merge into main                        once approved and green
 9. git switch main && git pull           pull the merged change locally
 10. git branch -d feat/...               delete the finished branch
 ```
 
-This loop runs once per feature or fix, often several times a day. Everything else in Git (rebasing, cherry-picking, bisecting, reflog recovery) is a refinement or a rescue tool layered on top of this core loop, and Part 48 covers those.
+This loop runs once per feature or fix, often several times a day. Everything else in Git (rebasing, cherry-picking, bisecting, reflog recovery) is a refinement or a rescue tool layered on top of this core loop, and Part 52 covers those.
 
 #### A quick command reference
 
@@ -410,7 +410,7 @@ git branch                       git switch <name>                git branch -d 
 # History and inspection
 git log --oneline                git show <commit>                git diff main..feat/x
 
-# Undoing (basics; Part 48 goes deeper)
+# Undoing (basics; Part 52 goes deeper)
 git restore <file>               # discard unstaged changes to a file
 git restore --staged <file>      # unstage a file (keep the edits)
 git revert <commit>              # make a new commit that undoes an old one (safe on shared history)
@@ -418,11 +418,11 @@ git revert <commit>              # make a new commit that undoes an old one (saf
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior has internalized this loop so thoroughly that it costs no thought, which frees their attention for the actual work. They know the small set of "undo" commands for the common mistakes (discard a change, unstage a file, revert a commit) and know that for anything scarier, `git reflog` (Part 48) can recover almost anything, so they are never afraid of Git. They favor the safe tools on shared history — `git revert` rather than rewriting published commits — because the history others depend on is not theirs to rewrite. Above all they keep the loop small and frequent: short branches, small commits, small PRs, frequent merges, which keeps the whole team moving smoothly.
+A senior has internalized this loop so thoroughly that it costs no thought, which frees their attention for the actual work. They know the small set of "undo" commands for the common mistakes (discard a change, unstage a file, revert a commit) and know that for anything scarier, `git reflog` (Part 52) can recover almost anything, so they are never afraid of Git. They favor the safe tools on shared history — `git revert` rather than rewriting published commits — because the history others depend on is not theirs to rewrite. Above all they keep the loop small and frequent: short branches, small commits, small PRs, frequent merges, which keeps the whole team moving smoothly.
 
 #### Common mistakes
 
-- Treating Git as scary and avoiding it, leading to lost work and bad habits; the reflog makes almost everything recoverable (Part 48).
+- Treating Git as scary and avoiding it, leading to lost work and bad habits; the reflog makes almost everything recoverable (Part 52).
 - Rewriting shared history; use `git revert` on anything others have.
 - Skipping `git pull` before branching, building on stale code.
 

@@ -138,12 +138,12 @@ Scenario 3, the superseded call:
 
 #### Production scenario
 
-This exact shape protects a real checkout page. When the pricing service (normally about 40 ms) is down, checkout still works with the last known price and the order is flagged for review. When a shopper changes the quantity three times in a second, only the last price request survives. Part 31 — Reliability Engineering takes the same ideas further: deadlines across several calls, retry budgets, and circuit breakers.
+This exact shape protects a real checkout page. When the pricing service (normally about 40 ms) is down, checkout still works with the last known price and the order is flagged for review. When a shopper changes the quantity three times in a second, only the last price request survives. Part 34 — Reliability Engineering takes the same ideas further: deadlines across several calls, retry budgets, and circuit breakers.
 
 #### Edge cases & failure modes
 
 - **Retrying non-retryable errors.** A `404 product not found` will not get better on attempt 2. A real version only retries timeouts, network errors and `5xx` responses.
-- **Retrying writes.** Retrying a price read is safe. Retrying "charge the card" is not, unless the call carries an idempotency key (Part 30 — Distributed Transactions).
+- **Retrying writes.** Retrying a price read is safe. Retrying "charge the card" is not, unless the call carries an idempotency key (Part 33 — Distributed Transactions).
 - **Stale cache.** A week-old fallback price may be wrong. Real systems store the time the price was cached and refuse very old ones.
 - **Unref'd timers.** `AbortSignal.timeout` does not keep the process alive by itself. A server keeps itself alive, but a script whose only pending work is such a timeout exits early with a "Detected unsettled top-level await" warning, which is why the mock's "hung" mode uses a real one-minute timer.
 
@@ -200,7 +200,7 @@ Name the cause and the fix for each, using the table.
 
 1. The rows are saved inside a `forEach(async ...)` (or a `.then` that does not return), so the count is read before the inserts finish. Use `for...of` with `await`, or `await Promise.all(rows.map(save))`.
 2. The callback logged the error but did not `return`, so it carried on and used the missing `user`. Write `if (err) return console.error(...)`.
-3. The spreadsheet is parsed synchronously on the main thread, blocking the event loop for everyone. Parse it in a worker thread (Part 10.20) or a background job (Part 36), and stream it instead of loading 40 MB at once.
+3. The spreadsheet is parsed synchronously on the main thread, blocking the event loop for everyone. Parse it in a worker thread (Part 13.20) or a background job (Part 39), and stream it instead of loading 40 MB at once.
 
 ## Senior Checklist — Part 2
 

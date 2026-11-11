@@ -157,12 +157,12 @@ async function readBody(req: IncomingMessage, maxBytes = 10_000): Promise<string
 - **Valid JSON, wrong shape** (missing fields, wrong types) parses fine but is invalid for your purpose; you must validate separately.
 - **Numbers losing precision**: JSON numbers are floating-point, so a huge integer id (a 64-bit database id) can lose precision. Send such ids as strings.
 - **`JSON.stringify` drops `undefined` and functions** and turns `Date` into an ISO string; parsing it back gives you a string, not a `Date`, which surprises people.
-- **Deeply nested or huge JSON** can be slow to parse and can be used as a denial-of-service (a 50 MB body, or an object nested 100,000 levels deep); limit body size at the gateway (Part 40 — Security).
+- **Deeply nested or huge JSON** can be slow to parse and can be used as a denial-of-service (a 50 MB body, or an object nested 100,000 levels deep); limit body size at the gateway (Part 44 — Security).
 - **Circular references** (an object that contains itself) make `JSON.stringify` throw.
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior treats every incoming JSON body as hostile until validated: parse it (catching malformed input as a `400`), then validate its shape and values against a schema before a single field reaches business logic. They cap body size to stop oversized-payload attacks. They send large integer ids as strings to avoid precision loss. They know `JSON.stringify` loses `undefined`, functions and `Date` types, so they map domain objects to explicit response shapes (Part 13.23) rather than stringifying raw internal objects, which both fixes the type issues and prevents leaking internal fields.
+A senior treats every incoming JSON body as hostile until validated: parse it (catching malformed input as a `400`), then validate its shape and values against a schema before a single field reaches business logic. They cap body size to stop oversized-payload attacks. They send large integer ids as strings to avoid precision loss. They know `JSON.stringify` loses `undefined`, functions and `Date` types, so they map domain objects to explicit response shapes (Part 16.23) rather than stringifying raw internal objects, which both fixes the type issues and prevents leaking internal fields.
 
 #### Common mistakes
 

@@ -77,7 +77,7 @@ async function bootstrap() {
 bootstrap();
 ```
 
-`whitelist: true` strips any field the client sends that is not in the DTO — so a client cannot sneak extra fields (like `isAdmin: true`) into your logic. `forbidNonWhitelisted` goes further and rejects such requests outright. These two settings are a meaningful security measure (Part 40 — Security, mass-assignment protection), and they are one line each.
+`whitelist: true` strips any field the client sends that is not in the DTO — so a client cannot sneak extra fields (like `isAdmin: true`) into your logic. `forbidNonWhitelisted` goes further and rejects such requests outright. These two settings are a meaningful security measure (Part 44 — Security, mass-assignment protection), and they are one line each.
 
 #### The controller
 
@@ -145,9 +145,9 @@ You wrote no validation logic, yet bad input, negative prices and injected field
 #### Edge cases & failure modes
 
 - **Forgetting to enable the `ValidationPipe`** means DTO decorators do nothing and invalid data flows straight through — a silent, dangerous gap. Enable it globally in `main.ts`.
-- **Not setting `whitelist`** lets clients send extra fields that may reach your logic or ORM (mass assignment, Part 40).
+- **Not setting `whitelist`** lets clients send extra fields that may reach your logic or ORM (mass assignment, Part 44).
 - **Business logic creeping into the controller** makes it untestable and tangles concerns; keep it in the service.
-- **Returning raw entities** can leak internal fields; map to a response shape for anything sensitive (Part 13.23).
+- **Returning raw entities** can leak internal fields; map to a response shape for anything sensitive (Part 16.23).
 - **Missing `Content-Type: application/json`** on the request means the body is not parsed as JSON (Part 3).
 
 #### How a Senior Backend Engineer thinks about this

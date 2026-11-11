@@ -8,7 +8,7 @@ An **environment variable** is a named value that the shell and every program it
 
 #### Why does it exist?
 
-The same code runs on your laptop, in staging and in production, but it must connect to a different database and use different secrets in each. You cannot hardcode those values — that would mean a different build per environment, and secrets committed to source control. Environment variables solve this: the code reads `process.env.DATABASE_URL`, and each environment supplies a different value from the outside. This separation of configuration from code is a core principle of well-built applications (the "twelve-factor app", Part 44 — Docker for Backend Engineers, 44.9).
+The same code runs on your laptop, in staging and in production, but it must connect to a different database and use different secrets in each. You cannot hardcode those values — that would mean a different build per environment, and secrets committed to source control. Environment variables solve this: the code reads `process.env.DATABASE_URL`, and each environment supplies a different value from the outside. This separation of configuration from code is a core principle of well-built applications (the "twelve-factor app", Part 48 — Docker for Backend Engineers, 48.9).
 
 #### Mental model
 
@@ -44,7 +44,7 @@ NODE_ENV=development
 PORT=3000
 ```
 
-The `.env` file must be in `.gitignore` so it is never committed — it contains secrets. A committed `.env.example` with placeholder values documents which variables are needed without leaking the real ones. In production, secrets usually come from a secret manager (AWS Secrets Manager, Part 46.11) rather than a file on disk.
+The `.env` file must be in `.gitignore` so it is never committed — it contains secrets. A committed `.env.example` with placeholder values documents which variables are needed without leaking the real ones. In production, secrets usually come from a secret manager (AWS Secrets Manager, Part 50.11) rather than a file on disk.
 
 #### Reading them in Node
 
@@ -204,14 +204,14 @@ Two directories and two files matter:
 
 #### Semantic versioning
 
-Versions follow `MAJOR.MINOR.PATCH` (for example `4.18.2`). A `MAJOR` bump may break compatibility; `MINOR` adds features compatibly; `PATCH` fixes bugs compatibly. The `^` in `^4.18.0` means "any `4.x.y` at or above this", allowing compatible updates but not a breaking major bump. Understanding this tells you how risky an upgrade is (Part 25 covers compatibility in depth).
+Versions follow `MAJOR.MINOR.PATCH` (for example `4.18.2`). A `MAJOR` bump may break compatibility; `MINOR` adds features compatibly; `PATCH` fixes bugs compatibly. The `^` in `^4.18.0` means "any `4.x.y` at or above this", allowing compatible updates but not a breaking major bump. Understanding this tells you how risky an upgrade is (Part 28 covers compatibility in depth).
 
 #### Edge cases & failure modes
 
 - **Committing `node_modules`** bloats the repository enormously; it must be in `.gitignore` and rebuilt from the lock file.
 - **Not committing the lock file** means different machines install different versions, causing "works on my machine" bugs; always commit the lock file.
 - **`npm install` in CI** can quietly update the lock file; use `npm ci` for reproducible builds.
-- **Supply-chain risk**: a dependency (or one of its dependencies) can be malicious or compromised; this is a real attack vector (Part 40 — Security, 40.28). Audit with `npm audit` and be cautious adding dependencies.
+- **Supply-chain risk**: a dependency (or one of its dependencies) can be malicious or compromised; this is a real attack vector (Part 44 — Security, 44.28). Audit with `npm audit` and be cautious adding dependencies.
 - **Global vs local installs**: `npm install -g` installs system-wide; prefer local project dependencies so each project pins its own versions.
 - **Version conflicts** when two dependencies need incompatible versions of a third; package managers resolve most but not all.
 
@@ -291,7 +291,7 @@ The three explanations the acceptance criteria ask for:
 - **What the lock file guarantees**: the exact version of every package in the tree, including the dependencies of your dependencies, plus an integrity hash for each one. `package.json` says "`express` at `^5.1.0` or a compatible newer version"; the lock file says "exactly 5.1.0, and this is what its files must hash to". `npm ci` installs precisely that, so your laptop, CI and production get identical code.
 - **Dependency vs dev dependency**: `express` runs in production, so it is a dependency. `jest` is only needed to run tests on a developer machine or in CI, so it is a dev dependency, and `npm ci --omit=dev` (what a production Docker image should run) leaves it out.
 
-The trap most learners fall into is forgetting `--save-dev` for tools like `jest`, `typescript` or `eslint`. They land in `dependencies`, get installed into every production image, and enlarge both the image and the attack surface (Part 40 — Security, 40.28). The second trap: editing `package.json` by hand and then running `npm ci`, which refuses to continue because `package.json` and `package-lock.json` disagree. Run `npm install` once to update the lock file, commit both files, and use `npm ci` from then on.
+The trap most learners fall into is forgetting `--save-dev` for tools like `jest`, `typescript` or `eslint`. They land in `dependencies`, get installed into every production image, and enlarge both the image and the attack surface (Part 44 — Security, 44.28). The second trap: editing `package.json` by hand and then running `npm ci`, which refuses to continue because `package.json` and `package-lock.json` disagree. Run `npm install` once to update the lock file, commit both files, and use `npm ci` from then on.
 
 Check it yourself: `npm ls --depth=0` lists both packages after `npm ci`, and `npm ls --omit=dev --depth=0` lists only `express`.
 
@@ -338,7 +338,7 @@ The private key is the most sensitive file you own — anyone with it can log in
 
 #### Practical example — a deploy over SSH
 
-A simple manual deploy (real deploys use CI/CD, Part 47, but this shows the primitives):
+A simple manual deploy (real deploys use CI/CD, Part 51, but this shows the primitives):
 
 ```bash
 # Build locally, then copy the build up and restart the service on the server:

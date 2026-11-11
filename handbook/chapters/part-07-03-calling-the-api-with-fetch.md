@@ -150,7 +150,7 @@ Note `page.items`, not `page`. In 6.2 the list endpoint returned a plain array; 
 
 - **Treating every resolved `fetch` as success**: a `500` body gets rendered as if it were products, or `page.items` is `undefined` and the page breaks.
 - **An HTML error page from a proxy** (a load balancer's `502`) is not JSON; checking `Content-Type` before parsing avoids a confusing `SyntaxError: Unexpected token '<'`.
-- **Responses that arrive out of order**: press Refresh twice quickly and the older, slower response can land last. Cancelling the previous request with its `AbortController` fixes it; Part 74 (74.10) covers this pattern.
+- **Responses that arrive out of order**: press Refresh twice quickly and the older, slower response can land last. Cancelling the previous request with its `AbortController` fixes it; Part 78 (78.10) covers this pattern.
 
 ### 7.5.2 Creating a product: errors next to fields, timeouts and double submits
 
@@ -239,13 +239,13 @@ Step by step:
 
 **The timeout.** `api()` creates an `AbortController`, passes its `signal` to `fetch`, and calls `controller.abort()` after 8 seconds. Aborting makes the pending `fetch` (or a body read in progress) reject with an `AbortError`, which `api()` turns into `code: 'TIMEOUT'`. Modern browsers also offer `AbortSignal.timeout(8000)` as a one-line version; it rejects with a `TimeoutError` instead. The explicit controller is shown because the same object also lets you cancel a request on purpose, such as when the user presses Refresh again.
 
-A timeout on a `POST` carries a catch that Part 2 (2.5) and Part 3 (3.1) warned about: **the request may have succeeded on the server.** The browser stopped waiting; PostgreSQL may have committed the row a moment later. Retrying blindly could create a duplicate. Here the unique SKU protects us: a retry of the same product gets a `409 PRODUCT_SKU_TAKEN`, and the user can press Refresh and see that it exists. Resources without a natural unique key need an idempotency key sent by the client; Part 15 (15.12) designs that on the server and Part 74 (74.6) sends it from the browser.
+A timeout on a `POST` carries a catch that Part 2 (2.5) and Part 3 (3.1) warned about: **the request may have succeeded on the server.** The browser stopped waiting; PostgreSQL may have committed the row a moment later. Retrying blindly could create a duplicate. Here the unique SKU protects us: a retry of the same product gets a `409 PRODUCT_SKU_TAKEN`, and the user can press Refresh and see that it exists. Resources without a natural unique key need an idempotency key sent by the client; Part 18 (18.12) designs that on the server and Part 78 (78.6) sends it from the browser.
 
-**Double-submit protection.** The `submitting` flag and the disabled button work together. The flag stops a second submit that starts before the first `await`, such as a fast double press of Enter. The disabled button tells the user something is happening and stops a second click. Both are reset in `finally`, so an error cannot leave the form stuck. Part 73 (73.8) shows the same idea in React.
+**Double-submit protection.** The `submitting` flag and the disabled button work together. The flag stops a second submit that starts before the first `await`, such as a fast double press of Enter. The disabled button tells the user something is happening and stops a second click. Both are reset in `finally`, so an error cannot leave the form stuck. Part 77 (77.8) shows the same idea in React.
 
 #### Edge cases & failure modes
 
-- **Server messages use DTO names**: "priceCents must not be less than 0" sits under a field labelled "Price". Mapping `code`s and paths to friendly text is a contract question Part 76 (76.6) handles; for an internal tool the raw message is acceptable.
+- **Server messages use DTO names**: "priceCents must not be less than 0" sits under a field labelled "Price". Mapping `code`s and paths to friendly text is a contract question Part 80 (80.6) handles; for an internal tool the raw message is acceptable.
 - **A `400` with an issue path the form does not have** (a nested path, a field added on the server later): it falls through to the form-level message, so it is never silently lost.
 - **Prices in currencies without cents** (the Japanese yen has no minor unit): dividing by 100 is wrong; the Part 6 model assumes two decimal places, which is a product decision to make explicit.
 

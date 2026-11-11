@@ -23,7 +23,7 @@ git config --global user.name "Asha Rao"
 git config --global user.email "asha.rao@shop.example"       # use the email your Git host knows
 git config --global init.defaultBranch main                   # new repositories start on main
 git config --global core.editor "nano"                         # the editor Git opens for messages (4.8)
-git config --global pull.rebase false                          # git pull merges; see Part 48 before changing this
+git config --global pull.rebase false                          # git pull merges; see Part 52 before changing this
 git config --list --show-origin                                # see every setting and which file it comes from
 ```
 
@@ -82,7 +82,7 @@ Then create a small commit on a branch (5.2) and `git push -u origin` it (5.3) t
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior sets up identity and SSH on day one and checks them with `git config --list --show-origin` and `ssh -T` before touching a real repository. They use a separate work identity per repository where needed, protect the SSH key with a passphrase (4.7), and many teams also sign commits (with an SSH or GPG key) so the host can show them as verified; Part 48 goes further.
+A senior sets up identity and SSH on day one and checks them with `git config --list --show-origin` and `ssh -T` before touching a real repository. They use a separate work identity per repository where needed, protect the SSH key with a passphrase (4.7), and many teams also sign commits (with an SSH or GPG key) so the host can show them as verified; Part 52 goes further.
 
 #### Common mistakes
 
@@ -228,7 +228,7 @@ git commit --amend --no-edit               # rewrite the last commit without .en
 git show --stat HEAD                       # .env is gone; .gitignore is there
 ```
 
-If it **was pushed**, amending your local copy does not remove it from the remote or from anyone who pulled. Treat the values in it as leaked: rotate every secret (Part 40 — Security, 40.32), then remove the file with a normal commit. Rewriting the shared history to erase it is possible (Part 48) but needs the whole team's coordination and does not un-leak anything.
+If it **was pushed**, amending your local copy does not remove it from the remote or from anyone who pulled. Treat the values in it as leaked: rotate every secret (Part 44 — Security, 44.32), then remove the file with a normal commit. Rewriting the shared history to erase it is possible (Part 52) but needs the whole team's coordination and does not un-leak anything.
 
 #### Practical example — a commit broke `main`
 
@@ -249,8 +249,8 @@ History now shows what happened honestly: the change, and its reversal. When the
 #### Edge cases & failure modes
 
 - **`git reset --hard` and `git restore` delete uncommitted work permanently**; the reflog cannot bring back what was never committed.
-- **Amending or resetting pushed commits** makes your branch disagree with the remote; `git push` is then rejected, and forcing it rewrites history for everyone (Part 48 covers `--force-with-lease` and when it is acceptable on your own branch).
-- **Reverting a merge commit** needs `git revert -m 1 <sha>` to say which parent to keep; Part 48.8 explains it.
+- **Amending or resetting pushed commits** makes your branch disagree with the remote; `git push` is then rejected, and forcing it rewrites history for everyone (Part 52 covers `--force-with-lease` and when it is acceptable on your own branch).
+- **Reverting a merge commit** needs `git revert -m 1 <sha>` to say which parent to keep; Part 52.8 explains it.
 - **`HEAD~1` with uncommitted changes**: `reset --hard` throws those away too; run `git status` first.
 - **The reflog is per machine** and expires; it is a rescue tool, not a backup.
 
@@ -438,7 +438,7 @@ The "weird" string type is deliberate, and the commit message says why. Without 
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior reads history before changing strange code, and before debugging a regression they list what changed in the area since it last worked. They search history by text (`-S`), by ticket (`--grep`) and by path, and they read the commit and the pull request behind a line before deciding it is a bug. For regressions with no obvious suspect, Part 48.9 shows `git bisect`, which finds the breaking commit by binary search. And they write commit messages with this future reader in mind.
+A senior reads history before changing strange code, and before debugging a regression they list what changed in the area since it last worked. They search history by text (`-S`), by ticket (`--grep`) and by path, and they read the commit and the pull request behind a line before deciding it is a bug. For regressions with no obvious suspect, Part 52.9 shows `git bisect`, which finds the breaking commit by binary search. And they write commit messages with this future reader in mind.
 
 #### Common mistakes
 

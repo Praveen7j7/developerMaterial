@@ -276,7 +276,7 @@ df -h /                                         # 5. Use% 18%: space is back, wr
 sudo nano /etc/myapp/config.env                 # 6. set LOG_LEVEL=info, then restart the app (4.8)
 ```
 
-Why `truncate` and not `rm`? If you delete a file that a running program still has open, the program keeps writing to it and the space is **not** freed until the program closes it: `df` still shows 100 %. Emptying the file in place frees the space immediately. The lasting fix is log rotation (the `logrotate` tool, or logging to stdout and letting the platform handle it, Part 43.2) and a disk-space alert at 80 %.
+Why `truncate` and not `rm`? If you delete a file that a running program still has open, the program keeps writing to it and the space is **not** freed until the program closes it: `df` still shows 100 %. Emptying the file in place frees the space immediately. The lasting fix is log rotation (the `logrotate` tool, or logging to stdout and letting the platform handle it, Part 47.2) and a disk-space alert at 80 %.
 
 #### Practical example — the "slow server" check
 
@@ -294,7 +294,7 @@ All three gauges are normal, so the machine is not the problem. The next step is
 
 - **Deleting an open log file** does not free space until the process closes it; use `truncate -s 0` or restart the process.
 - **Inodes can run out** before bytes do: millions of tiny files (session files, cache entries) fill the filesystem's file table. `df -i` shows inode usage; "No space left on device" with free bytes means this.
-- **Containers** have their own view: inside a container, `free` may show the host's memory, not the container's limit (Part 44.10 explains limits).
+- **Containers** have their own view: inside a container, `free` may show the host's memory, not the container's limit (Part 48.10 explains limits).
 - **`du` on a huge directory** can take minutes and add disk load; start high and narrow down instead of running it on `/` with no `-s`.
 - **Load average is not CPU percent**: processes waiting for slow disk also count, so a high load with idle CPUs points to disk or network waits.
 
@@ -474,7 +474,7 @@ The old process was a copy started in another terminal two days ago and forgotte
 - **Self-signed certificates**: `curl -k` skips certificate checks; fine on a local test server, never as a habit against real servers.
 - **Secrets on the command line**: `curl -H 'Authorization: Bearer eyJ...'` lands in shell history; read the token from an environment variable instead: `-H "Authorization: Bearer $TOKEN"` (double quotes, so the shell expands the variable).
 - **`jq` errors on non-JSON**: an HTML error page from a proxy makes `jq` fail with "parse error"; look at it with `curl -i` first.
-- **`localhost` inside a container** is the container itself, not your laptop (Part 44.7).
+- **`localhost` inside a container** is the container itself, not your laptop (Part 48.7).
 
 #### How a Senior Backend Engineer thinks about this
 

@@ -58,7 +58,7 @@ flowchart LR
 
 Your team lead says: "We are adding a search box to the product catalogue. Look at Meilisearch." You have never heard of it. Without a method, you open the quickstart, copy the Docker command, index ten products and report back "it works and it is fast". With the method, you spend the same afternoon and come back with:
 
-- It solves full-text search with typo tolerance; before it, you would use PostgreSQL full-text search or Elasticsearch/OpenSearch (see Part 34 — Search: PostgreSQL Full-Text to Elasticsearch/OpenSearch).
+- It solves full-text search with typo tolerance; before it, you would use PostgreSQL full-text search or Elasticsearch/OpenSearch (see Part 37 — Search: PostgreSQL Full-Text to Elasticsearch/OpenSearch).
 - Its core abstraction is an index of JSON documents, separate from your database, so you now have **two copies of every product** and a sync problem.
 - Indexing is asynchronous: you submit a task and it completes later, so a product saved at 10:00:00 might not be searchable until a moment after. You must decide whether that is acceptable.
 - You checked how it stores data on disk, what happens if the container is killed mid-index, and what the upgrade path looks like between major versions.
@@ -68,7 +68,7 @@ Same afternoon. Completely different quality of answer. That is the whole argume
 
 #### Production scenario
 
-A 30-engineer company running PostgreSQL, Redis, RabbitMQ and a NestJS monolith requires every new-technology proposal to answer the ten questions on one page (Part 83 — Writing as an Architect: RFCs, Design Docs and Decision Records covers the document). Of six proposals in two years, four die at question 9 ("PostgreSQL already does this well enough at our size"). The two adopted arrive with a runbook, because questions 6 and 8 forced someone to write down failure and operations before the first incident.
+A 30-engineer company running PostgreSQL, Redis, RabbitMQ and a NestJS monolith requires every new-technology proposal to answer the ten questions on one page (Part 88 — Writing as an Architect: RFCs, Design Docs and Decision Records covers the document). Of six proposals in two years, four die at question 9 ("PostgreSQL already does this well enough at our size"). The two adopted arrive with a runbook, because questions 6 and 8 forced someone to write down failure and operations before the first incident.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -131,7 +131,7 @@ flowchart TB
 
 ### 0.2.2 Where to find the answers
 
-Each question has a usual hiding place. Questions 1 and 2 live in the project's "why" page, its announcement post and its "concepts" or "architecture" page, which is rarely the first page of the docs. Question 3 lives in the architecture page and in talks by the authors; draw it as boxes and arrows, because every later question is answered by pointing at a box. Questions 4 to 8 live in the "limits", "production checklist", "operations" and "known issues" pages, and in other teams' postmortems. Question 9 lives in comparisons written by people who chose something else (Part 64 — Architecture Decision Framework has worked decision tables). Question 10 lives only on your own laptop. Throughout, apply the senior mantra: *Can it time out? Can it fail? Can it become slow? Can it duplicate? Can it return a wrong response? Can it partially succeed?*
+Each question has a usual hiding place. Questions 1 and 2 live in the project's "why" page, its announcement post and its "concepts" or "architecture" page, which is rarely the first page of the docs. Question 3 lives in the architecture page and in talks by the authors; draw it as boxes and arrows, because every later question is answered by pointing at a box. Questions 4 to 8 live in the "limits", "production checklist", "operations" and "known issues" pages, and in other teams' postmortems. Question 9 lives in comparisons written by people who chose something else (Part 68 — Architecture Decision Framework has worked decision tables). Question 10 lives only on your own laptop. Throughout, apply the senior mantra: *Can it time out? Can it fail? Can it become slow? Can it duplicate? Can it return a wrong response? Can it partially succeed?*
 
 ### 0.2.3 An incident: the cart store nobody questioned
 
@@ -151,7 +151,7 @@ Here is how the ten questions would have caught it before the sale:
 | 7. What does it trade away? | Durability and capacity for speed. Acceptable for a cache; not automatically acceptable for user data |
 | 8. How is it operated? | `maxmemory-policy`, `evicted_keys`, `used_memory`, and persistence settings are the knobs that matter, and none were on a dashboard |
 
-The fix had three parts. Carts moved to a separate Redis instance with `maxmemory-policy noeviction`, so a full instance returns an error on write (loud) instead of deleting data (silent), and with AOF persistence enabled. An alert on `evicted_keys > 0` was added for that instance. And the team added a rule to their design-review template: any proposal that stores user data in a new system answers questions 4, 6 and 7 in writing. The deeper lesson in the postmortem was one line: *the tool did exactly what it was configured to do; we never asked what that was.* Part 27 — Caching and Redis covers eviction policies and persistence in depth.
+The fix had three parts. Carts moved to a separate Redis instance with `maxmemory-policy noeviction`, so a full instance returns an error on write (loud) instead of deleting data (silent), and with AOF persistence enabled. An alert on `evicted_keys > 0` was added for that instance. And the team added a rule to their design-review template: any proposal that stores user data in a new system answers questions 4, 6 and 7 in writing. The deeper lesson in the postmortem was one line: *the tool did exactly what it was configured to do; we never asked what that was.* Part 30 — Caching and Redis covers eviction policies and persistence in depth.
 
 #### Edge cases & failure modes
 

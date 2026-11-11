@@ -8,7 +8,7 @@ A REST API is a style of building web APIs where you expose your data as **resou
 
 #### Why does it exist?
 
-Before REST became the common style, every API invented its own conventions, so learning one taught you nothing about the next. REST is a set of conventions widely enough agreed that a developer who has used one REST API can guess how another works: `GET /things` lists, `GET /things/5` fetches one, `POST /things` creates, and the status codes mean what they always mean. That predictability is the value. Part 15 covers REST design as a craft and Part 16 covers the alternatives (GraphQL, gRPC) and when they win; here we establish the baseline.
+Before REST became the common style, every API invented its own conventions, so learning one taught you nothing about the next. REST is a set of conventions widely enough agreed that a developer who has used one REST API can guess how another works: `GET /things` lists, `GET /things/5` fetches one, `POST /things` creates, and the status codes mean what they always mean. That predictability is the value. Part 18 covers REST design as a craft and Part 19 covers the alternatives (GraphQL, gRPC) and when they win; here we establish the baseline.
 
 #### Mental model
 
@@ -54,7 +54,7 @@ Offset pagination:  ?page=2&limit=20   (simple; slow and unstable deep in large 
 Cursor pagination:  ?cursor=eyJ...&limit=20  (stable and fast; the professional default)
 ```
 
-Part 15.5 covers why cursor pagination is preferred for large tables; for now, remember that every list endpoint is paginated and returns a bounded page plus a way to get the next one.
+Part 18.5 covers why cursor pagination is preferred for large tables; for now, remember that every list endpoint is paginated and returns a bounded page plus a way to get the next one.
 
 #### Practical example — a consistent response shape
 
@@ -94,11 +94,11 @@ An early API grew without conventions: `POST /getProducts`, `GET /product_delete
 - **Unbounded lists** with no pagination, which fall over on large tables.
 - **Inconsistent response shapes** across endpoints, forcing clients into special cases.
 - **Actions that are not CRUD** (create/read/update/delete) — like "refund an order" or "send a password reset" — do not fit neatly; model them as a sub-resource (`POST /orders/1/refunds`) or accept a pragmatic action endpoint. Dogmatic REST is not the goal; a usable, consistent API is.
-- **Breaking changes**: once published, a URL and its response shape are a contract; changing them breaks every consumer (Part 25 on versioning and compatibility).
+- **Breaking changes**: once published, a URL and its response shape are a contract; changing them breaks every consumer (Part 28 on versioning and compatibility).
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior uses REST as a strong default because its predictability lowers the cost for everyone who consumes the API, but they are not dogmatic — when an operation is genuinely an action rather than a CRUD operation, they model it pragmatically rather than contorting it. They paginate every list from day one, keep response shapes consistent, use status codes honestly, and treat every published endpoint as a long-lived contract. They also know when REST is the wrong tool: a mobile app that needs to fetch deeply nested data in one round trip may be better served by GraphQL, and internal service-to-service calls may be better as gRPC (Part 16).
+A senior uses REST as a strong default because its predictability lowers the cost for everyone who consumes the API, but they are not dogmatic — when an operation is genuinely an action rather than a CRUD operation, they model it pragmatically rather than contorting it. They paginate every list from day one, keep response shapes consistent, use status codes honestly, and treat every published endpoint as a long-lived contract. They also know when REST is the wrong tool: a mobile app that needs to fetch deeply nested data in one round trip may be better served by GraphQL, and internal service-to-service calls may be better as gRPC (Part 19).
 
 #### Common mistakes
 
@@ -113,7 +113,7 @@ A senior uses REST as a strong default because its predictability lowers the cos
 1. **What makes an API "RESTful" in practical terms?** Resources as nouns with URLs, standard HTTP methods for actions, JSON bodies, honest status codes, consistent shapes, and self-contained (stateless) requests.
 2. **How do you handle filtering and pagination in REST?** In the query string (`?status=paid&limit=20&cursor=...`), never in the path; every list is paginated.
 3. **How would you model "refund an order" in a REST API?** As a sub-resource action, for example `POST /orders/{id}/refunds`, since a refund is a thing you create against an order.
-4. **Why is a published URL a contract, and what does that imply?** Clients (apps, integrations) depend on it; changing it breaks them, so changes must be backward-compatible or versioned (Part 25).
+4. **Why is a published URL a contract, and what does that imply?** Clients (apps, integrations) depend on it; changing it breaks them, so changes must be backward-compatible or versioned (Part 28).
 
 #### Practical exercise
 
@@ -175,20 +175,20 @@ sequenceDiagram
     Br->>Br: render products into the page
 ```
 
-1. **DNS lookup**: turn the domain name into an IP address (Part 11.3).
-2. **Connect and TLS**: open a TCP connection and set up encryption (Part 11.4 and 11.12).
+1. **DNS lookup**: turn the domain name into an IP address (Part 14.3).
+2. **Connect and TLS**: open a TCP connection and set up encryption (Part 14.4 and 14.12).
 3. **Request the document**: `GET /`, receive HTML.
 4. **Fetch sub-resources**: the browser parses the HTML and requests the CSS, JavaScript, fonts and images it references, in parallel.
 5. **Run JavaScript**: modern apps then call your API (via `fetch`) to get the dynamic data as JSON and render it.
 6. **Keep going**: as the user interacts, the JavaScript sends more API requests.
 
-For a backend engineer, steps 5 and 6 are where your work lives: the browser's JavaScript calls your API, your API returns JSON, and the browser renders it. Part 71 — How the Browser Builds a Page follows the rest of the journey, from HTML bytes to pixels (71.1).
+For a backend engineer, steps 5 and 6 are where your work lives: the browser's JavaScript calls your API, your API returns JSON, and the browser renders it. Part 75 — How the Browser Builds a Page follows the rest of the journey, from HTML bytes to pixels (75.1).
 
 #### CORS: the rule that confuses every beginner
 
 Browsers enforce a security rule called the **same-origin policy**: JavaScript running on `shop.example.com` cannot, by default, read responses from `api.other.com`. This stops a malicious site from using your logged-in browser to read your bank's API. **CORS** (Cross-Origin Resource Sharing) is how a server opts in to allowing specific other origins to call it: the server sends headers like `Access-Control-Allow-Origin: https://shop.example.com`, and the browser then permits the call.
 
-The key insight for a beginner: CORS is enforced **by the browser, for browser JavaScript only**. A request from Postman, `curl`, or another server is not subject to CORS — those are not browsers. So "it works in Postman but fails in the browser with a CORS error" is extremely common and means exactly one thing: your server is not sending the CORS headers the browser requires. The fix is on the server (allow the frontend's origin), not in the frontend. NestJS enables CORS with one line (Part 11.13).
+The key insight for a beginner: CORS is enforced **by the browser, for browser JavaScript only**. A request from Postman, `curl`, or another server is not subject to CORS — those are not browsers. So "it works in Postman but fails in the browser with a CORS error" is extremely common and means exactly one thing: your server is not sending the CORS headers the browser requires. The fix is on the server (allow the frontend's origin), not in the frontend. NestJS enables CORS with one line (Part 14.13).
 
 #### Watching a CORS preflight with curl
 
@@ -245,11 +245,11 @@ Content-Type: application/json
 {"items":[]}
 ```
 
-(Some response headers are trimmed from both outputs.) Look closely: the server **still answered with the data**. There is simply no `Access-Control-Allow-Origin` header, so a browser would refuse to hand the response to the evil page's JavaScript. curl does not care and printed it anyway. That is the whole lesson in one picture: CORS protects users' browsers from other websites; it is **not** a way to stop anyone else from calling your API. Authentication does that. Part 11.13 shows the NestJS `app.enableCors({ origin: [...] })` setup, and Part 77 covers browser security in depth.
+(Some response headers are trimmed from both outputs.) Look closely: the server **still answered with the data**. There is simply no `Access-Control-Allow-Origin` header, so a browser would refuse to hand the response to the evil page's JavaScript. curl does not care and printed it anyway. That is the whole lesson in one picture: CORS protects users' browsers from other websites; it is **not** a way to stop anyone else from calling your API. Authentication does that. Part 14.13 shows the NestJS `app.enableCors({ origin: [...] })` setup, and Part 81 covers browser security in depth.
 
 #### Cookies and tokens
 
-The browser stores cookies the server sets (via `Set-Cookie`) and automatically attaches them to future requests to that domain (via `Cookie`). This is how a server remembers a logged-in session across the stateless request-response model. Modern APIs often use a token in the `Authorization` header instead (Part 40.3). Either way, the thing the backend engineer must know: the browser handles cookies automatically, which is convenient but also why cookie security settings (`HttpOnly`, `Secure`, `SameSite`) matter (Part 11.8 and Part 40).
+The browser stores cookies the server sets (via `Set-Cookie`) and automatically attaches them to future requests to that domain (via `Cookie`). This is how a server remembers a logged-in session across the stateless request-response model. Modern APIs often use a token in the `Authorization` header instead (Part 44.3). Either way, the thing the backend engineer must know: the browser handles cookies automatically, which is convenient but also why cookie security settings (`HttpOnly`, `Secure`, `SameSite`) matter (Part 14.8 and Part 44).
 
 #### Practical example — why a page is slow
 

@@ -45,7 +45,7 @@ UPDATE users SET email = 'locked@example.com' WHERE id = 1;
 -- It hangs. Back here, run COMMIT and watch the other session finish.
 ```
 
-The second half is the important half. You have just reproduced, in one minute, the "idle in transaction" problem that takes down real APIs when application code opens a transaction and then awaits a slow HTTP call inside it. Deep dives: Part 17 — Databases and the Relational Model, Part 19 — PostgreSQL Internals, Part 20 — Database Indexing, Part 21 — Database Transactions and Concurrency Control.
+The second half is the important half. You have just reproduced, in one minute, the "idle in transaction" problem that takes down real APIs when application code opens a transaction and then awaits a slow HTTP call inside it. Deep dives: Part 20 — Databases and the Relational Model, Part 22 — PostgreSQL Internals, Part 23 — Database Indexing, Part 24 — Database Transactions and Concurrency Control.
 
 ```mermaid
 sequenceDiagram
@@ -93,7 +93,7 @@ docker exec -it kafka-lab /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-se
   --describe --group billing
 ```
 
-Try: a second consumer in the same group (partitions split between them); a fourth consumer with three partitions (one sits idle); stop all consumers, produce 20 records and read the lag; a consumer in a new group with `--from-beginning` reads history the first group already consumed, which a classic queue cannot do. Deep dive: Part 28 — Messaging: Queues, Topics, Kafka, RabbitMQ and SQS, especially 28.3 and 28.3.8 "When Kafka is overkill".
+Try: a second consumer in the same group (partitions split between them); a fourth consumer with three partitions (one sits idle); stop all consumers, produce 20 records and read the lag; a consumer in a new group with `--from-beginning` reads history the first group already consumed, which a classic queue cannot do. Deep dive: Part 31 — Messaging: Queues, Topics, Kafka, RabbitMQ and SQS, especially 31.3 and 31.3.8 "When Kafka is overkill".
 
 ```mermaid
 flowchart LR
@@ -121,7 +121,7 @@ flowchart LR
 | 9 | When not | Mostly static content is better as server-rendered HTML; one small widget may not justify a framework; many apps should adopt a React-based server-rendering framework such as Next.js instead. |
 | 10 | 30-minute proof | `npm create vite@latest order-lab -- --template react-ts`; log in three nested components, click a counter in the parent and watch which children re-render. Then add an effect with no dependency array that fetches and sets state, and watch the Network tab fill. |
 
-React row 6, "an effect that fetches in a loop", is a backend problem too: it arrives at your API as thousands of identical requests per minute from one user. Part 7 — Your First Frontend introduces the browser side from scratch; Part 73 — React Fundamentals for Backend Engineers goes deep, including 73.4 "Effects: `useEffect` done right" and 73.8 "Double-submit protection and idempotency from the form".
+React row 6, "an effect that fetches in a loop", is a backend problem too: it arrives at your API as thousands of identical requests per minute from one user. Part 7 — Your First Frontend introduces the browser side from scratch; Part 77 — React Fundamentals for Backend Engineers goes deep, including 77.4 "Effects: `useEffect` done right" and 77.8 "Double-submit protection and idempotency from the form".
 
 ### 0.3.4 What transferred
 
@@ -165,7 +165,7 @@ You read specs when two systems disagree and you need to know who is right: "May
 2. **Jump to your question** with the table of contents, and read the examples there.
 3. **Check whether it is obsoleted.** Every RFC header says "Obsoletes" and the IETF data tracker says "Obsoleted by". HTTP/1.1 was RFC 2616, then RFCs 7230 to 7235, and now RFC 9110 to 9112. A blog post quoting RFC 2616 is quoting a dead document.
 
-For example, RFC 8259 says object member names "SHOULD be unique", not "MUST". That single word explains why different JSON parsers handle `{"amount": 100, "amount": 1}` differently (most keep the last value, but you cannot rely on it), and why a payment API that forwards raw JSON between two services written in different languages can be tricked by duplicate keys: one service validates the first value, the other acts on the last. Parsing differences between systems are a classic source of security bugs; Part 40 — Security (40.27 and 40.29) covers the wider family.
+For example, RFC 8259 says object member names "SHOULD be unique", not "MUST". That single word explains why different JSON parsers handle `{"amount": 100, "amount": 1}` differently (most keep the last value, but you cannot rely on it), and why a payment API that forwards raw JSON between two services written in different languages can be tricked by duplicate keys: one service validates the first value, the other acts on the last. Parsing differences between systems are a classic source of security bugs; Part 44 — Security (44.27 and 44.29) covers the wider family.
 
 ### 0.4.3 How to read an unfamiliar codebase
 

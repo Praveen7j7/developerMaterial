@@ -107,7 +107,7 @@ function canTransition(from: Status, to: Status): boolean {
 canTransition('pending', 'shipped'); // false: must be paid first
 ```
 
-This data-driven approach (a lookup table of allowed transitions) is cleaner than a tangle of `if`s and is easy to extend. We return to state machines in Part 69.
+This data-driven approach (a lookup table of allowed transitions) is cleaner than a tangle of `if`s and is easy to extend. We return to state machines in Part 73.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -266,14 +266,14 @@ A counted `for` loop is the right tool here because we need the attempt number a
 
 #### Edge cases & failure modes
 
-- **Infinite loops.** A `while (true)` with no `break`, or a `for` whose condition never becomes false, hangs the process. On a single-threaded Node server, an infinite loop freezes the entire server for every user, not just one request (Part 10).
+- **Infinite loops.** A `while (true)` with no `break`, or a `for` whose condition never becomes false, hangs the process. On a single-threaded Node server, an infinite loop freezes the entire server for every user, not just one request (Part 13).
 - **`for...in` over arrays** iterates indices as strings and includes inherited properties; use `for...of` for array values.
 - **Modifying an array while iterating it** with a classic `for` can skip or repeat elements. Build a new array instead.
 - **`await` inside a loop** runs iterations one after another (serial). If they are independent, that is needlessly slow; use `Promise.all` (Part 2) to run them together.
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior defaults to array methods for data transformation and reserves explicit loops for early exit, index math, and side effects that read more clearly as a loop. They are acutely aware that on Node a long synchronous loop blocks the event loop and therefore every concurrent request (Part 10), so a loop over a million rows gets rewritten to stream or to yield control. They watch for the accidental-serial-`await`-in-a-loop pattern, one of the most common causes of a slow endpoint.
+A senior defaults to array methods for data transformation and reserves explicit loops for early exit, index math, and side effects that read more clearly as a loop. They are acutely aware that on Node a long synchronous loop blocks the event loop and therefore every concurrent request (Part 13), so a loop over a million rows gets rewritten to stream or to yield control. They watch for the accidental-serial-`await`-in-a-loop pattern, one of the most common causes of a slow endpoint.
 
 #### Common mistakes
 
@@ -284,7 +284,7 @@ A senior defaults to array methods for data transformation and reserves explicit
 
 #### Interview questions
 
-1. **Why can a long synchronous loop freeze an entire Node server?** Node runs your JavaScript on one thread; while the loop runs, the event loop cannot handle any other request (see Part 10).
+1. **Why can a long synchronous loop freeze an entire Node server?** Node runs your JavaScript on one thread; while the loop runs, the event loop cannot handle any other request (see Part 13).
 2. **What is wrong with `for (const x of items) { await save(x); }` when saves are independent?** It runs serially; `await Promise.all(items.map(save))` runs them concurrently and is far faster.
 3. **When do you write a manual `for` loop instead of `map`/`filter`?** When you need early exit (`break`), the index, custom stepping, or side effects that are clearer as a loop.
 
@@ -412,7 +412,7 @@ export * from './orders.controller';
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior treats a module's exports as its public API and keeps it small: export the service, not every helper. They avoid circular imports (file A imports B which imports A), which cause subtle `undefined` bugs at startup, by keeping dependencies flowing in one direction — controllers depend on services, services depend on repositories, never the reverse. The module boundary is the first and cheapest form of architecture, long before you reach for layers or microservices (Part 12).
+A senior treats a module's exports as its public API and keeps it small: export the service, not every helper. They avoid circular imports (file A imports B which imports A), which cause subtle `undefined` bugs at startup, by keeping dependencies flowing in one direction — controllers depend on services, services depend on repositories, never the reverse. The module boundary is the first and cheapest form of architecture, long before you reach for layers or microservices (Part 15).
 
 #### Common mistakes
 
@@ -741,37 +741,3 @@ The last two lines show the one honest weakness of the signature the exercise as
 The trap most learners fall into is writing it with `reduce` and spread: `items.reduce((acc, item) => ({ ...acc, [keyFn(item)]: [...(acc[keyFn(item)] ?? []), item] }), {})`. It looks elegant, but it copies the whole accumulator for every item, which is quadratic and very slow on 100,000 rows. The second trap is a key function that returns a plain `string` (for example when `status` is typed as `string`), which makes `K` just `string` and loses the precise keys.
 
 Check it yourself: run it and compare the four lines, then uncomment the `byStatus.payed` line and confirm the compile error.
-
-## Senior Checklist — Part 1
-
-- [ ] I understand the concept
-- [ ] I can explain it simply
-- [ ] I can implement it
-- [ ] I understand its failure modes
-- [ ] I understand its scaling limitations
-- [ ] I understand its security implications
-- [ ] I understand its operational implications
-- [ ] I can choose between alternatives
-- [ ] I can explain the tradeoffs
-- [ ] I can answer senior-level interview questions
-- [ ] I store money as integer cents and know why floating-point dollars are wrong
-- [ ] I use `const` by default and know `const` protects the binding, not the object
-- [ ] I use `===` and `??`, and I can list the falsy values
-- [ ] I write small, well-named, side-effect-free functions and read stack traces
-- [ ] I use `map`/`filter`/`reduce` and know which array methods mutate
-- [ ] I model domain shapes with interfaces, unions and discriminated unions
-- [ ] I use generics to remove duplication without losing type safety
-- [ ] I split code into modules with small, explicit exports and no circular imports
-
-## Part 1 — Key Takeaways
-
-- Store money as integer cents; floating-point dollars accumulate rounding errors that break reconciliation.
-- Default to `const`; it protects the variable binding, not the contents of an object.
-- Use `===` always and `??` for defaults when `0`, `""` or `false` are valid values.
-- TypeScript types are erased at runtime; their value is catching shape errors before the code runs. Enable `strict` and treat external data as `unknown`.
-- Keep functions small, named for their output, and free of hidden side effects; pure functions are trivial to test.
-- Closures carry their captured variables with them — useful for private state, dangerous for memory if captured by something long-lived.
-- `map`/`filter`/`reduce` say what you mean; know that `sort`/`reverse`/`splice` mutate the original and copy first when the array is shared.
-- Model the domain with interfaces and discriminated unions so illegal states cannot be represented.
-- Use generics (`Page<T>`, `Repository<T>`) to reuse code across element types without resorting to `any`.
-- Modules with small, explicit exports and one-way dependencies are the cheapest form of architecture.

@@ -2,7 +2,7 @@
 
 Every real software project uses version control, and in practice that means Git. Git records the history of your code: every change, who made it, when, and why. It lets many people work on the same codebase without overwriting each other, lets you undo mistakes, and lets you see how any line of code came to be. You cannot work on a team — or even safely on your own — without it.
 
-This Part is the beginner's on-ramp to Git. Part 48 covers Git deeply (internals, rebasing strategies, bisect, reflog recovery, advanced workflows); this Part teaches the foundation you need before that makes sense: what Git is and why, the core commands (`init`, `clone`, `add`, `commit`, `status`, `log`), branches and merging, remotes and pull requests, and how to resolve a conflict without panic. By the end you will be able to clone a repository, make a change on a branch, commit it, push it, open a pull request, and handle a merge conflict — the everyday loop of professional development.
+This Part is the beginner's on-ramp to Git. Part 52 covers Git deeply (internals, rebasing strategies, bisect, reflog recovery, advanced workflows); this Part teaches the foundation you need before that makes sense: what Git is and why, the core commands (`init`, `clone`, `add`, `commit`, `status`, `log`), branches and merging, remotes and pull requests, and how to resolve a conflict without panic. By the end you will be able to clone a repository, make a change on a branch, commit it, push it, open a pull request, and handle a merge conflict — the everyday loop of professional development.
 
 We teach the command line Git here, because it is universal and because understanding the commands makes the graphical tools make sense. Once you know the commands, use whatever interface you like.
 
@@ -90,7 +90,7 @@ Some files should never be committed: `node_modules/` (huge, rebuildable), `.env
 
 #### Edge cases & failure modes
 
-- **Committing secrets** (`.env`, API keys) puts them in history forever, even if deleted in a later commit; this is a security incident requiring secret rotation (Part 40 — Security, 40.32). Prevent it with `.gitignore`.
+- **Committing secrets** (`.env`, API keys) puts them in history forever, even if deleted in a later commit; this is a security incident requiring secret rotation (Part 44 — Security, 44.32). Prevent it with `.gitignore`.
 - **Committing `node_modules`** bloats the repository massively; always gitignore it.
 - **Huge commits** mixing many unrelated changes are hard to review and hard to revert cleanly; make focused commits.
 - **Useless messages** ("stuff", "wip", "fix") make history worthless for understanding why code is the way it is.

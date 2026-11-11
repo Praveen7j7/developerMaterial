@@ -48,7 +48,7 @@ export class ListProductsQuery {
 }
 ```
 
-**Cursor pagination.** Part 15.5 compares offset pagination (`?page=3`) with cursor pagination. A cursor says "continue after this item", so pages stay correct while new products are added, and the database does not have to skip thousands of rows. Our cursor is the last item's `createdAt` and `id`, encoded so the client treats it as an opaque token:
+**Cursor pagination.** Part 18.5 compares offset pagination (`?page=3`) with cursor pagination. A cursor says "continue after this item", so pages stay correct while new products are added, and the database does not have to skip thousands of rows. Our cursor is the last item's `createdAt` and `id`, encoded so the client treats it as an opaque token:
 
 ```ts
 // src/products/cursor.ts
@@ -197,7 +197,7 @@ Every door now has a guard, and every guard answers with `400` and a reason.
 
 - **Query values are strings**: without `@Type(() => Number)` and `transform: true`, `@IsInt()` rejects `"20"`, or worse, code compares `"20" > 100` as strings.
 - **Unbounded limits**: no `@Max` means a client (or a bug) can ask for every row in the table.
-- **Offset pagination drift**: with `?page=2`, a product added between page requests shifts items, so users see duplicates or miss items; cursors avoid it (Part 15.5).
+- **Offset pagination drift**: with `?page=2`, a product added between page requests shifts items, so users see duplicates or miss items; cursors avoid it (Part 18.5).
 - **Timestamp precision**: PostgreSQL stores microseconds, JavaScript `Date` keeps milliseconds; two products created in the same millisecond still sort correctly because of the `id` tie-breaker, but a cursor built from a rounded timestamp can skip a row created in that same millisecond. Many teams store `created_at` with millisecond precision (`timestamptz(3)`) to make cursors exact.
 - **`PATCH` with an empty body** passes validation and changes nothing; decide whether that is fine or a `400`.
 - **Configuration typos** like `DATABSE_HOST` leave the real variable missing; validation catches the missing one.
@@ -216,7 +216,7 @@ A senior lists every input of an endpoint (body, path, query, headers, configura
 #### Interview questions
 
 1. **Why does `?limit=20` need `@Type(() => Number)`?** Query strings arrive as text; the transform converts it so numeric rules apply and the code receives a number.
-2. **Why cursor pagination instead of page numbers for a product list?** Stable pages while data changes, and no large `OFFSET` scans; Part 15.5 compares both.
+2. **Why cursor pagination instead of page numbers for a product list?** Stable pages while data changes, and no large `OFFSET` scans; Part 18.5 compares both.
 3. **Why add `id` to the `ORDER BY`?** Two rows can share a timestamp; a unique tie-breaker gives a total order, so cursors never skip or repeat rows.
 4. **What should happen when a required environment variable is missing?** The app refuses to start with a clear message naming the variable.
 
@@ -333,7 +333,7 @@ Without the id check the request reaches PostgreSQL, which rejects `'not-a-uuid'
 
 Right now our API's errors come in several shapes. A validation failure returns NestJS's default `{ "statusCode": 400, "message": [...], "error": "Bad Request" }`. A missing product returns `{ "statusCode": 404, "message": "Product ... not found" }`. A database error, such as a duplicate value in a unique column, returns a bare `500` with `"Internal server error"`. In this step we give every error **one shape**, with a stable machine-readable `code`, a list of `issues` for field problems, and a `requestId` that links the response to the server's log line.
 
-The shape follows the **problem details** standard for HTTP APIs (RFC 9457, the successor of RFC 7807) that the rest of this book uses (Part 15.9, and Part 76.6 for how a frontend consumes it):
+The shape follows the **problem details** standard for HTTP APIs (RFC 9457, the successor of RFC 7807) that the rest of this book uses (Part 18.9, and Part 80.6 for how a frontend consumes it):
 
 ```json
 {
@@ -496,7 +496,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
 }
 ```
 
-Two things to notice. The duplicate check is done by the **database**, not by a `SELECT` before the `INSERT`: two requests at the same moment could both pass a `SELECT`, but only one can pass a unique constraint (Part 21 explains why). And the `500` branch logs the stack trace but returns only `INTERNAL_ERROR` and the request ID: stack traces and SQL in responses help attackers, not users.
+Two things to notice. The duplicate check is done by the **database**, not by a `SELECT` before the `INSERT`: two requests at the same moment could both pass a `SELECT`, but only one can pass a unique constraint (Part 24 explains why). And the `500` branch logs the stack trace but returns only `INTERNAL_ERROR` and the request ID: stack traces and SQL in responses help attackers, not users.
 
 Wiring it all in one place, so tests (6.7) can use exactly the same setup as `main.ts`:
 
@@ -574,16 +574,16 @@ And the server log for that 404 has the same request ID, so a support ticket tha
 }
 ```
 
-Because one entry spans several lines, `grep 5c2e` finds only the `requestId` line; `grep -B 3 -A 4 5c2e` shows the whole entry. Production setups switch to one JSON object per line, which log tools search and filter directly (Part 43.2).
+Because one entry spans several lines, `grep 5c2e` finds only the `requestId` line; `grep -B 3 -A 4 5c2e` shows the whole entry. Production setups switch to one JSON object per line, which log tools search and filter directly (Part 47.2).
 
 #### Edge cases & failure modes
 
 - **A `SELECT`-then-`INSERT` duplicate check** races: two requests both see "no such SKU" and both insert, or one fails with an unhandled `500`; rely on the unique constraint and map its error.
 - **Leaking internals**: returning `exception.message` from unknown errors can expose SQL, table names or file paths.
-- **Inconsistent codes**: `NOT_FOUND` here, `PRODUCT_NOT_FOUND` there; keep a list of codes in one file and review additions like API changes (Part 25).
+- **Inconsistent codes**: `NOT_FOUND` here, `PRODUCT_NOT_FOUND` there; keep a list of codes in one file and review additions like API changes (Part 28).
 - **Error text as an API**: clients that match on `title` break when the wording changes; they must use `code`.
 - **Request IDs from clients** can be anything, including very long or malicious strings; validate the format or generate a new one.
-- **Logging personal data** (emails, addresses, tokens) in error logs; log IDs and codes, not payloads (Part 40.31).
+- **Logging personal data** (emails, addresses, tokens) in error logs; log IDs and codes, not payloads (Part 44.31).
 
 #### How a Senior Backend Engineer thinks about this
 

@@ -265,7 +265,7 @@ The API server cannot reach the database at all. That is a network or database p
 history | tail -n 15 > ~/incident-2026-11-05.txt    # the exact commands you ran, for the incident notes
 ```
 
-In the morning, the database team finds that a security-group change at 01:46 removed the API servers' access to port 5432 (Part 46.9 covers VPC networking). The postmortem's action items include an alert on database connection errors and a script, `ci/check-db-reachability.sh`, that runs the `nc` check from every API server after each infrastructure change.
+In the morning, the database team finds that a security-group change at 01:46 removed the API servers' access to port 5432 (Part 50.9 covers VPC networking). The postmortem's action items include an alert on database connection errors and a script, `ci/check-db-reachability.sh`, that runs the `nc` check from every API server after each infrastructure change.
 
 #### What made this fast
 
