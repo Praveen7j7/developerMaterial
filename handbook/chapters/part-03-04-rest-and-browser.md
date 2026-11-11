@@ -182,7 +182,7 @@ sequenceDiagram
 5. **Run JavaScript**: modern apps then call your API (via `fetch`) to get the dynamic data as JSON and render it.
 6. **Keep going**: as the user interacts, the JavaScript sends more API requests.
 
-For a backend engineer, steps 5 and 6 are where your work lives: the browser's JavaScript calls your API, your API returns JSON, and the browser renders it. Part 69 — How the Browser Builds a Page follows the rest of the journey, from HTML bytes to pixels (69.1).
+For a backend engineer, steps 5 and 6 are where your work lives: the browser's JavaScript calls your API, your API returns JSON, and the browser renders it. Part 71 — How the Browser Builds a Page follows the rest of the journey, from HTML bytes to pixels (71.1).
 
 #### CORS: the rule that confuses every beginner
 
@@ -245,7 +245,7 @@ Content-Type: application/json
 {"items":[]}
 ```
 
-(Some response headers are trimmed from both outputs.) Look closely: the server **still answered with the data**. There is simply no `Access-Control-Allow-Origin` header, so a browser would refuse to hand the response to the evil page's JavaScript. curl does not care and printed it anyway. That is the whole lesson in one picture: CORS protects users' browsers from other websites; it is **not** a way to stop anyone else from calling your API. Authentication does that. Part 11.13 shows the NestJS `app.enableCors({ origin: [...] })` setup, and Part 75 covers browser security in depth.
+(Some response headers are trimmed from both outputs.) Look closely: the server **still answered with the data**. There is simply no `Access-Control-Allow-Origin` header, so a browser would refuse to hand the response to the evil page's JavaScript. curl does not care and printed it anyway. That is the whole lesson in one picture: CORS protects users' browsers from other websites; it is **not** a way to stop anyone else from calling your API. Authentication does that. Part 11.13 shows the NestJS `app.enableCors({ origin: [...] })` setup, and Part 77 covers browser security in depth.
 
 #### Cookies and tokens
 

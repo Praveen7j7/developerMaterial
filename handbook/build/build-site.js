@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { PATHS } = require('./site/config');
 const { loadBook } = require('./site/content');
-const { parseRoadmap } = require('./site/roadmap');
+const { parseRoadmap, findRoadmapPart } = require('./site/roadmap');
 const { homePage } = require('./site/pages/home');
 const { volumePage } = require('./site/pages/volume');
 const { roadmapPage } = require('./site/pages/roadmap');
@@ -33,7 +33,7 @@ const { writeAssets } = require('./site/assets');
 const t0 = Date.now();
 fs.mkdirSync(PATHS.SITE_ASSETS, { recursive: true });
 const book = loadBook();
-const stages = parseRoadmap(book.parts[64], book.parts);
+const stages = parseRoadmap(findRoadmapPart(book.parts), book.parts);
 const write = (name, html) => { fs.writeFileSync(path.join(PATHS.SITE, name), html); return Buffer.byteLength(html); };
 
 const sizes = {};
@@ -49,7 +49,9 @@ const a = writeAssets();
 
 console.log(`\nSite built to ${PATHS.SITE} in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 console.log(`Home + roadmap + ${book.volumes.length} volume pages, ${idx.length} search entries.`);
-console.log(`Roadmap stages parsed from Part 64: ${stages.map(s => `${s.n}:${s.parts.length}`).join(' ')}`);
+console.log(`Roadmap stages parsed from Part ${findRoadmapPart(book.parts).num}: ${stages.map(s => `${s.n}:${s.parts.length}`).join(' ')}`);
+const tries = book.order.reduce((a, p) => a + Object.keys(p.tries).length, 0);
+console.log(`Try-it-first cards: ${tries} in Parts ${book.order.filter(p => Object.keys(p.tries).length).map(p => p.num).join(', ')}`);
 const kb = n => (n / 1024).toFixed(1) + ' KB';
 console.log(`Assets: ${Object.entries(a).map(([k, n]) => `${k} ${kb(n)}`).join(', ')}`);
 console.log(`CSS + JS per page: volume ${kb(a['site.css'] + a['read.css'] + a['site.js'] + a['read.js'])}, home ${kb(a['site.css'] + a['home.css'] + a['site.js'])}, roadmap ${kb(a['site.css'] + a['roadmap.css'] + a['site.js'])} (Mermaid not counted)`);

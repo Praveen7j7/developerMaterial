@@ -37,7 +37,7 @@ SELECT add_retention_policy('metrics', INTERVAL '90 days');
 -- (keeps queries over long ranges cheap by reading aggregates, not raw rows)
 ```
 
-The key wins: time-range queries read only the relevant chunks (not the whole table), old data is removed by dropping chunks (instant, versus a week-long `DELETE` of billions of rows, Part 54), and continuous aggregates pre-compute rollups so dashboards over long ranges are cheap. And because it is PostgreSQL, you keep SQL, joins to your relational data, and one database to operate — the same "stay in PostgreSQL" advantage as pgvector (Part 38).
+The key wins: time-range queries read only the relevant chunks (not the whole table), old data is removed by dropping chunks (instant, versus a week-long `DELETE` of billions of rows, Part 55), and continuous aggregates pre-compute rollups so dashboards over long ranges are cheap. And because it is PostgreSQL, you keep SQL, joins to your relational data, and one database to operate — the same "stay in PostgreSQL" advantage as pgvector (Part 38).
 
 #### PostgreSQL example — chunk exclusion, continuous aggregates and compression
 
@@ -271,10 +271,10 @@ Each derived store is eventually consistent; the app tolerates the lag.
 
 Migrations go both ways, for real reasons:
 
-- **NoSQL to PostgreSQL** happens when a team discovers they need transactions, joins or query flexibility they gave up — the common "we modeled relational data in a document store by default" realization (26.2). The migration re-normalizes documents into relational tables, often via a dual-write or backfill-and-cutover (Part 84 on large migrations).
+- **NoSQL to PostgreSQL** happens when a team discovers they need transactions, joins or query flexibility they gave up — the common "we modeled relational data in a document store by default" realization (26.2). The migration re-normalizes documents into relational tables, often via a dual-write or backfill-and-cutover (Part 86 on large migrations).
 - **PostgreSQL to NoSQL** happens when a specific workload genuinely outgrows the relational model — write scale past a single primary, or an access pattern that fits a key-value model at massive scale. The migration denormalizes into the target's access-pattern-first model.
 
-Both are large migrations with the usual pitfalls (Part 84): they fail when underestimated, so they use incremental strategies, dual writes or CDC-based sync, backfills, and reconciliation to verify nothing was lost. The reasons must be specific; migrating stores is expensive and risky, so it is justified by a concrete requirement, not a preference.
+Both are large migrations with the usual pitfalls (Part 86): they fail when underestimated, so they use incremental strategies, dual writes or CDC-based sync, backfills, and reconciliation to verify nothing was lost. The reasons must be specific; migrating stores is expensive and risky, so it is justified by a concrete requirement, not a preference.
 
 #### The decision matrix
 
@@ -300,7 +300,7 @@ Default: PostgreSQL. Move or add a store only for a specific, measured requireme
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior defaults to PostgreSQL and adds a second store only for a specific, measured requirement it cannot meet, treating each additional store as a permanent operational tax — another system to run, secure, back up, monitor and, hardest of all, keep in sync with the source of truth via outbox or CDC, with eventual consistency the application must tolerate. They keep one source of truth and make other stores derived, never dual-authoritative. They treat migrating between stores as a serious migration (Part 84) justified by a concrete need, done incrementally with sync and reconciliation. When choosing among stores they match the store to the specific access pattern and scale requirement using the matrix, and they resist polyglot sprawl, because every store added is complexity and cost forever, and the simplest architecture that meets the requirement wins.
+A senior defaults to PostgreSQL and adds a second store only for a specific, measured requirement it cannot meet, treating each additional store as a permanent operational tax — another system to run, secure, back up, monitor and, hardest of all, keep in sync with the source of truth via outbox or CDC, with eventual consistency the application must tolerate. They keep one source of truth and make other stores derived, never dual-authoritative. They treat migrating between stores as a serious migration (Part 86) justified by a concrete need, done incrementally with sync and reconciliation. When choosing among stores they match the store to the specific access pattern and scale requirement using the matrix, and they resist polyglot sprawl, because every store added is complexity and cost forever, and the simplest architecture that meets the requirement wins.
 
 #### Common mistakes
 
@@ -308,7 +308,7 @@ A senior defaults to PostgreSQL and adds a second store only for a specific, mea
 - Treating two stores as both authoritative for the same data, causing divergence.
 - Not keeping derived stores in sync via outbox/CDC, so they drift from the source.
 - Not designing the application to tolerate the eventual consistency of derived stores.
-- Migrating stores without a concrete reason, or without incremental sync and reconciliation (Part 84).
+- Migrating stores without a concrete reason, or without incremental sync and reconciliation (Part 86).
 
 #### Interview questions
 

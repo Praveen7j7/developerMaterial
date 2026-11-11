@@ -78,8 +78,14 @@
 [data-vol="7"] { --v-l: #006e98; --vd-l: #005073; --vt-l: #e0f4fe; --vm-l: #b7def3; --v-d: #75caf2; --vd-d: #2a92bb; --vt-d: #152c37; --vm-d: #204e62; }
 [data-vol="8"] { --v-l: #92446c; --vd-l: #6e2e4f; --vt-l: #feeaf2; --vm-l: #f2cbdc; --v-d: #efa3c7; --vd-d: #b7698f; --vt-d: #36222b; --vm-d: #603a4c; }
 
+/* design levels (Try-it-first cards, rail, roadmap): one colour each, from the palettes above */
+[data-level="beginner"] { --v-l: #327437; --vd-l: #1d5522; --vt-l: #e6f5e6; --vm-l: #c4e1c4; --v-d: #95cf96; --vd-d: #59985b; --vt-d: #1e2e1e; --vm-d: #325033; }
+[data-level="intermediate"] { --v-l: #3e61a4; --vd-l: #28467d; --vt-l: #e7f1ff; --vm-l: #c6d8f9; --v-d: #9bbeff; --vd-d: #6185c8; --vt-d: #1f293a; --vm-d: #364868; }
+[data-level="advanced"] { --v-l: #8c5500; --vd-l: #693c00; --vt-l: #fbeedf; --vm-l: #edd2b5; --v-d: #e7b375; --vd-d: #b07932; --vt-d: #342615; --vm-d: #5c4221; }
+[data-level="staff"] { --v-l: #92446c; --vd-l: #6e2e4f; --vt-l: #feeaf2; --vm-l: #f2cbdc; --v-d: #efa3c7; --vd-d: #b7698f; --vt-d: #36222b; --vm-d: #603a4c; }
+
 /* resolve the accent on every element that sets a volume, so nested volumes work */
-:root, [data-vol] { --v: var(--v-l); --v-deep: var(--vd-l); --v-tint: var(--vt-l); --v-mid: var(--vm-l); }
+:root, [data-vol], [data-level] { --v: var(--v-l); --v-deep: var(--vd-l); --v-tint: var(--vt-l); --v-mid: var(--vm-l); }
 
 /* dark theme */
 :root[data-theme="dark"] {
@@ -91,7 +97,7 @@
   --sh-1: 0 1px 2px rgba(0, 0, 0, .4); --sh-2: 0 8px 24px -8px rgba(0, 0, 0, .6); --sh-3: 0 24px 64px -16px rgba(0, 0, 0, .8);
   color-scheme: dark;
 }
-:root[data-theme="dark"], :root[data-theme="dark"] [data-vol] { --v: var(--v-d); --v-deep: var(--vd-d); --v-tint: var(--vt-d); --v-mid: var(--vm-d); }
+:root[data-theme="dark"], :root[data-theme="dark"] [data-vol], :root[data-theme="dark"] [data-level] { --v: var(--v-d); --v-deep: var(--vd-d); --v-tint: var(--vt-d); --v-mid: var(--vm-d); }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -103,7 +109,7 @@
     --sh-1: 0 1px 2px rgba(0, 0, 0, .4); --sh-2: 0 8px 24px -8px rgba(0, 0, 0, .6); --sh-3: 0 24px 64px -16px rgba(0, 0, 0, .8);
     color-scheme: dark;
   }
-  :root:not([data-theme="light"]), :root:not([data-theme="light"]) [data-vol] { --v: var(--v-d); --v-deep: var(--vd-d); --v-tint: var(--vt-d); --v-mid: var(--vm-d); }
+  :root:not([data-theme="light"]), :root:not([data-theme="light"]) [data-vol], :root:not([data-theme="light"]) [data-level] { --v: var(--v-d); --v-deep: var(--vd-d); --v-tint: var(--vt-d); --v-mid: var(--vm-d); }
 }
 
 @media (min-width: 768px) { :root { --gutter: max(24px, env(safe-area-inset-left, 0px)); --gutter-r: max(24px, env(safe-area-inset-right, 0px)); } }

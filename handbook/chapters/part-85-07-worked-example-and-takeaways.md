@@ -1,291 +1,427 @@
-## 85.7 Worked example: redesigning team and service boundaries for a food-delivery company at 60 engineers
+## 85.7 Worked example: rolling out a standard error format and OpenAPI-first contracts across 25 services
 
-This section brings the whole Part together: redesigning the team and service boundaries for a food-delivery company that has grown to 60 engineers. It uses Conway's Law and the inverse maneuver, Team Topologies, cognitive load, platform engineering, and DevEx measurement. It also contains the failure story the outline asks for: a microservices split that followed the org chart and created a distributed monolith, and how to fix it.
+This section brings the whole Part together: introducing two standards — a uniform error format and OpenAPI-first API contracts — across 25 NestJS services, using paved roads, fitness functions, waivers and compliance measurement rather than a mandate from a review board. It is the canonical "governance rollout" problem, and doing it well is a principal-level skill.
 
 #### The situation
 
-QuickBite is a food-delivery company at 60 engineers. It grew fast and its org grew haphazardly: a handful of large, broadly-scoped teams (a "backend team" of 25, a "mobile team", a "web team", an "infra team") and a monolith that someone started splitting into microservices a year ago — a split that has gone wrong. A principal engineer is asked to redesign the org and architecture together.
+An e-commerce org has 25 NestJS services, each with its own error format and each documenting its API however it likes (some with hand-written docs, some with nothing). Clients and the API gateway have to special-case every service. Incidents are hard to correlate because errors do not carry a consistent `trace_id`. The principal engineer wants two standards adopted fleet-wide: the error format from 85.3, and OpenAPI-first (the contract is written first and the code is verified against it). The naive approach — mandate it via a review board and chase 25 teams — would take a year and breed resentment. Here is the governance approach.
 
-#### The failure she finds: a distributed monolith from the org chart
+#### The rollout, step by step
 
-```markdown
-# Diagnosis: the microservices split created a distributed monolith
+**1. Bake the standard into the paved road (make the right thing the default).**
+The shared paved-road package gets a `StandardErrorFilter` (produces the standard error format automatically) and OpenAPI generation wired into the service template. Any *new* service gets both for free, with zero effort. This stops the problem from growing while you fix the existing fleet.
 
-## What was done
-A year ago, the monolith was split into 12 microservices. But the ORG was
-not changed — the 25-person "backend team" still owns and works across all
-12 services. The split followed the old code structure / org chart, not
-bounded contexts.
+**2. Write the fitness functions (make drift impossible going forward).**
+Two fitness functions, added to the shared CI config:
+- `error-format.spec`: asserts the service wires `StandardErrorFilter` and that sampled error responses match the schema (the 85.5 convention check).
+- `openapi-contract.spec`: asserts the service publishes an OpenAPI spec and that the live endpoints match it (contract-first verification).
 
-## The result (Conway's Law in action)
-- Because one broad team owns all 12 services, the services are coupled
-  across (team-less) boundaries: they share database tables, call each other
-  synchronously in deep chains, and must be deployed together.
-- A single feature touches 5-6 services (all owned by the one team).
-- Deploys are MORE coordinated than before (12 deploy targets, must be
-  ordered), with distributed debugging and 12 on-call surfaces.
-- This is strictly WORSE than the monolith: all the cost of distribution,
-  none of the independence.
-
-## Why it happened
-The split was done WITHOUT splitting the team (fighting Conway's Law, 55.1)
-and WITHOUT data ownership (shared tables, 54.4). The services mirror the
-broad-team org, so they're coupled. This is the canonical distributed-
-monolith failure.
+```ts
+// openapi-contract fitness function (sketch)
+it('every endpoint is described in the OpenAPI contract', async () => {
+  const app = await buildTestApp();
+  const document = loadPublishedOpenApiSpec();     // the committed contract
+  const liveRoutes = extractRoutesFromApp(app);     // what the code exposes
+  const documented = extractPathsFromSpec(document);
+  // The contract and the code must not drift apart
+  expect(liveRoutes.sort()).toEqual(documented.sort());
+});
 ```
 
-This is the failure story: microservices split along the existing org/code structure, with one broad team spanning all the services and shared databases underneath, producing a distributed monolith. The diagnosis traces it directly to the two root causes from this Part and Part 84: fighting Conway's Law (splitting services without splitting teams) and skipping data ownership (shared tables).
+**3. Migrate the fleet incrementally, highest-value first (not big-bang).**
+Rank the 25 services by how much they would benefit: the ones in the gateway's hot path and the ones most involved in incidents go first. Each migration is small: swap in the `StandardErrorFilter` (the paved road makes this a few lines), generate the OpenAPI spec, turn the fitness functions from warn to error. Because the error format is produced by the shared filter, migrating a service is mostly deleting its bespoke error handling and adopting the filter — a day or two of work, not a rewrite.
 
-#### The redesign: inverse Conway + Team Topologies
+**4. Measure with scorecards (make progress visible, not policed).**
+Each service's scorecard (85.6) shows the two standards as checks. Teams see their own gaps and a fleet-wide dashboard shows the migration trend. Nobody is named or shamed; teams migrate because they can see the gap and want a green scorecard, and because the paved road makes it easy.
 
-She redesigns the org and architecture together. First, she defines the target architecture as bounded contexts: ordering, restaurant, delivery, payments, and search. Then — the inverse Conway maneuver (85.1) — she designs the teams to produce that architecture:
+**5. Grant waivers where legitimate (keep an escape hatch).**
+Two of the 25 services are legacy systems slated for decommissioning in six months. Mandating migration there is waste. They get a recorded, time-boxed waiver ("decommissioning by Q4; no migration required; revisit if timeline slips"). This keeps the governance credible — teams see it is pragmatic, not dogmatic.
 
-```markdown
-# QuickBite org + architecture redesign (60 engineers)
+**6. Use office hours, not a review board (reserve human attention).**
+Teams with tricky cases — a service with an unusual error-handling need, or a public API where the OpenAPI spec affects external partners — book office hours for help. No gate, no queue; advice on demand.
 
-## Stream-aligned teams (per bounded context — Team Topologies 55.2)
-| Team | Owns (code + DATA + deploys) | Size |
-|---|---|---|
-| Ordering | ordering service + order tables | 8 |
-| Restaurant | restaurant service + restaurant tables | 7 |
-| Delivery | delivery service + delivery tables | 8 |
-| Payments | payments service + payment tables | 6 |
-| Search | search service + its index | 6 |
-(Mobile and web folded INTO the stream teams — each stream team is full-stack,
- ending the technology-layer handoff queues, 55.2.)
-
-## Platform team (1 — 55.4)
-| Developer Platform | paved road, CI/CD, observability, self-service deploy | 7 |
-(Was the "infra team"; re-chartered as platform-as-a-product, measured on
- stream-team lead time.)
-
-## Enabling team (1, small — 55.2)
-| Reliability enablement | pairs with stream teams to improve SLOs, then leaves | 3 |
-
-## The fixes this encodes
-- Split the 25-person backend team into stream-aligned teams by bounded
-  context -> service boundaries now mirror TEAM boundaries (Conway, 55.1).
-- Each team owns its DATA (no shared tables) -> ends the distributed monolith
-  (54.4). Shared tables are separated during the migration.
-- Technology-layer teams (mobile/web/infra) dissolved into stream teams or
-  re-chartered as platform -> ends handoff queues (55.2).
-- Cognitive load: each team owns ONE coherent context, sized ~6-8 (55.3).
-```
-
-#### Fixing the distributed monolith under the new org
-
-With the teams now aligned to bounded contexts, fixing the distributed monolith becomes tractable (it was intractable under the broad-team org, because Conway's Law kept re-coupling the services). Each stream team now owns a coherent subset of the 12 services and, crucially, its own data. They separate the shared database tables along ownership lines (Part 84.4 data-ownership work), replace the synchronous cross-service chains with APIs and events along the team boundaries, and consolidate the over-split services within a team where the split bought nothing (merging services that were always changed together, 85.6). The 12 ill-defined services become 5 well-bounded ones that mirror the 5 teams, each independently deployable because each team owns its code and data. Conway's Law, which was producing coupling under the broad-team org, now produces clean boundaries under the bounded-context org.
-
-#### Platform and DevEx
-
-The old "infra team" is re-chartered as a platform team running the developer platform as a product (85.4), measured on the stream teams' lead time, building the thinnest viable platform friction-first. A DevEx dashboard (85.5) is stood up: DORA plus lead-time breakdown plus a survey. The initial measurement shows the distributed-monolith deploy coordination as the top friction; as the redesign lands and services become independently deployable, deployment frequency rises and lead time falls, confirming the redesign worked (and catching it if it had not).
-
-#### Why this redesign succeeds
-
-Trace it against the Part. It designs org and architecture *together*, using the inverse Conway maneuver (85.1) to make the teams the mould that produces the target architecture. It uses Team Topologies (85.2) to make most teams stream-aligned (ending technology-layer handoff queues) with a platform team run as a product and a small enabling team. It respects cognitive load (85.3) by giving each team one coherent, appropriately-sized context. It fixes the distributed monolith by splitting teams *and* data ownership (the two things the failed split omitted). It re-charters the platform as a product (85.4) measured on stream-team success. And it measures DevEx (85.5) to confirm the redesign actually helped. The failed microservices split went wrong by fighting Conway's Law and skipping data ownership; the redesign succeeds by aligning the org to the architecture and owning the data — which is the entire thesis of this Part. Org design is architecture, and the two must be designed as one.
-
-#### Practical exercise
-
-Take your own org (or QuickBite as a template) and redesign its team and service boundaries together. Define the target architecture as bounded contexts. Design stream-aligned teams, one per context, each owning code and data, using the inverse Conway maneuver. Add the minimal platform, enabling, and complicated-subsystem teams, justified. Check each team's cognitive load (one coherent context, appropriate size). Identify any existing distributed-monolith symptoms (services split without teams, shared databases) and show how the redesign fixes them.
-
-**Acceptance criteria:** the org design and architecture are designed as one (teams mirror the target bounded contexts); each stream team owns its data, not just its code; most teams are stream-aligned with handoff-queue technology-layer teams dissolved; each team's cognitive load is a coherent, appropriately-sized context; and if a distributed monolith exists, your redesign addresses both root causes (split teams AND split data ownership), with a DevEx measurement to confirm it worked.
-
-## 85.8 Executing an org change safely, and distributed-team considerations
-
-#### Concept
-
-Two aspects of org design beyond the structure itself. **Executing an org change safely** is the how of a reorg — because a reorg is an architectural change (85.6) but also a deeply human one, and a poorly-executed reorg, even with the right target structure, causes damage (lost people, lost context, dropped momentum). The techniques: communicate the why, preserve ownership and context, sequence the change, and support people through it. **Distributed-team considerations** is how org design changes when teams are remote or spread across time zones — Conway's Law still operates, but the communication structure (and therefore the architecture it produces) is shaped by distance and asynchrony, which changes how you draw team and service boundaries.
-
-#### Why does it exist?
-
-Imagine a reorg with the right target structure (correct team boundaries matching the target architecture) but executed badly: announced abruptly with no explanation, ownership reshuffled so people lose the systems they knew, no transition period, key people blindsided. Even though the structure is correct, the execution causes the best people to leave (they feel disrespected and disrupted), institutional context to be lost (people no longer own what they built), and momentum to drop for longer than necessary. The right structure, wrongly executed, still damages the organisation. Safe execution exists because a reorg is a human event as much as an architectural one, and the human damage of poor execution can outweigh the benefit of the better structure.
-
-Distributed-team considerations exist because Conway's Law operates through the communication structure, and distance and asynchrony fundamentally change that structure. A co-located team communicates constantly and cheaply; a team split across time zones communicates slowly and asynchronously. This changes which boundaries work: a service boundary that assumes constant communication fails across a twelve-hour time-zone gap. Org design for distributed teams must account for how distance shapes communication and therefore architecture.
-
-#### Mental model
-
-For executing a reorg, imagine moving house. The destination (new house) might be better, but how you move matters enormously: pack carefully (preserve context), tell everyone the plan in advance (communicate the why), move in a sequence that keeps life functioning (sequence the change), and support the family through the disruption (support people). A move to a better house, done chaotically — no warning, belongings lost, no transition — is traumatic despite the better destination. A reorg is a move; the destination structure matters, but the execution determines whether people arrive intact.
-
-For distributed teams, imagine building with teams in different cities who can only exchange letters (asynchronous, slow) rather than talking across a table (synchronous, fast). The letter-exchanging teams naturally build with cleaner, more explicit interfaces between their parts (because coordinating across letters is expensive, they minimise it and define clear contracts), while the table-sharing team builds with tighter, more implicit coupling (because coordinating is cheap). Distance changes the communication structure, which (Conway) changes the architecture. Designing for distributed teams means designing boundaries that work with letter-speed communication, not table-speed.
-
-#### How it works
-
-**Executing an org change safely:**
+#### The timeline and outcome
 
 ```text
-- Communicate the WHY: explain the reasoning (the architectural/strategic driver,
-  55.6) so people understand it's deliberate, not arbitrary. Unexplained reorgs
-  feel like chaos or politics and destroy trust.
-- Preserve ownership and context: where possible, keep people with the systems
-  they know, or ensure a real handover. Reshuffling people off their systems
-  loses institutional context (and risks orphaned services, 55.3).
-- Sequence the change: don't reorg everything at once; phase it so the org keeps
-  functioning and people adapt gradually.
-- Support people through it: 1-1s, address concerns, help people find their place
-  in the new structure. A reorg is stressful; support reduces attrition.
-- Pair with the architecture change: the team change and the service-boundary
-  change go together (Conway, 55.1/55.6), sequenced deliberately.
-- Minimise frequency: reorgs are costly (55.6), so execute them well and rarely.
-```
-
-**Distributed-team considerations:**
-
-```text
-- Conway's Law + distance: remote/time-zone-split teams communicate async and
-  slowly, so the architecture they produce has cleaner, more explicit interfaces
-  (expensive coordination -> minimise it). Design boundaries that suit this.
-- Team boundaries along time zones: a team split across a 12-hour gap struggles;
-  prefer teams that are co-located OR fully async-capable, and draw service
-  boundaries so that tightly-coupled work stays within one time zone/team.
-- Async-first communication: distributed orgs rely even more on writing (Part 81)
-  — decisions, designs, and context must be written, because the hallway
-  conversation isn't available across time zones.
-- Minimise cross-time-zone dependencies: a dependency that requires synchronous
-  coordination across a 12-hour gap is painfully slow; design so teams can work
-  independently (X-as-a-service, 55.2) across distance.
-- Cognitive load + distance: distributed teams have higher coordination cost, so
-  keeping ownership coherent and self-contained (55.3) matters even more.
-```
-
-```mermaid
-flowchart TB
-    R["Reorg (right structure, 55.6)"] --> WHY["Communicate the WHY"]
-    R --> CTX["Preserve ownership + context"]
-    R --> SEQ["Sequence, don't big-bang"]
-    R --> SUP["Support people through it"]
-    WHY --> SAFE["Safe execution: structure improves WITHOUT losing people/context"]
-    CTX --> SAFE
-    SEQ --> SAFE
-    SUP --> SAFE
-    DIST["Distributed teams"] --> ASYNC["Async-first (writing, Part 81)"]
-    DIST --> IND["Minimise cross-time-zone sync dependencies (X-as-a-service)"]
-    DIST --> BND["Draw boundaries so coupled work stays within a team/time zone"]
+Month 1: Standards in the paved road; new services compliant by default.
+         Fitness functions written, run as WARN on existing services.
+Month 2: Top 8 services (hot path, incident-prone) migrated. Fitness
+         functions flipped to ERROR on those 8.
+Month 3-4: Next 15 services migrated opportunistically (teams pull it in
+         when touching the service), scorecards driving self-correction.
+Month 4: 2 legacy services waived (decommissioning). Fleet compliance ~92%.
+         Error correlation across services now trivial via trace_id;
+         gateway and clients handle all services uniformly.
 ```
 
 #### Artifact example
 
-A reorg execution plan and distributed-team design notes — the artifacts that make an org change safe and account for distance.
+The rollout plan as a one-pager — the artifact the principal circulates to align the org.
 
 ```markdown
-# Reorg execution plan: split ordering team (the WHAT is in 55.6)
+# Rollout: standard error format + OpenAPI-first (25 services)
 
-## Communicating the why (so it's not felt as arbitrary/political)
-- All-hands: explain the driver (ordering + promotions are two domains; coupling
-  slows both; splitting enables independent delivery — the architecture reason).
-- 1-1s with every affected person BEFORE the announcement (no one blindsided).
+## Why (the problem, with evidence)
+25 services, 25 error formats. Incidents take hours to correlate (no
+consistent trace_id in errors). Clients & gateway special-case every
+service. 2 of last quarter's long incidents were prolonged by this.
 
-## Preserving ownership + context
-- Ordering engineers stay with the ordering service (keep their context).
-- Promotions: 3 engineers who've worked on promotions move to the new team
-  (they carry the context) + 2 hires. No orphaned systems (55.3).
+## How we're doing it (governance, not mandate)
+1. Baked into the paved road -> new services compliant free, problem stops growing.
+2. Two fitness functions -> drift impossible once a service is migrated.
+3. Migrate incrementally, highest-value first -> not a big-bang.
+4. Scorecards -> teams self-correct; no policing.
+5. Waivers for legacy/decommissioning services -> pragmatic, credible.
+6. Office hours for tricky cases -> help on demand, no gate.
 
-## Sequencing
-- Week 1: announce, 1-1s. Weeks 2-4: new team forms, service boundary work
-  begins (paired with the team split, Conway). Not a big-bang.
+## What we are NOT doing
+- NOT mandating via a review board (bottleneck, resentment).
+- NOT a big-bang cutover (too risky across 25 services).
+- NOT forcing migration on services being decommissioned (waste).
 
-## Supporting people
-- Weekly 1-1s through the transition; address concerns; help the new promotions
-  tech lead settle. Watch for attrition risk on the 2 most-affected people.
-
----
-# Distributed-team design notes (teams in SF, London, Bangalore)
-- Conway + distance: draw service boundaries so tightly-coupled work stays within
-  ONE time zone. The payments service (lots of internal coordination) is owned by
-  ONE co-located team (London), not split across time zones.
-- Cross-team interactions are X-as-a-service (55.2) with clear async contracts,
-  so a London team doesn't block waiting for Bangalore synchronously.
-- Writing culture (Part 81) is mandatory: decisions and designs written, because
-  the hallway conversation isn't available across the 12-hour SF-Bangalore gap.
-- Avoid: a service co-owned by SF + Bangalore requiring daily sync coordination —
-  that's a 12-hour-latency coupling that will be painfully slow.
+## Success measure
+Fleet compliance > 90% in 4 months; error correlation across services via
+trace_id in one query; gateway handles all services uniformly.
 ```
 
-The reorg execution plan's power is that it treats the reorg as a human event — communicating the why (so it is not felt as arbitrary), preserving context (keeping people with their systems or ensuring handover), sequencing (not big-bang), and supporting people (reducing attrition) — so the right structure is achieved without the human damage of poor execution. The distributed-team notes apply Conway's Law to distance, drawing boundaries so coupled work stays within a time zone and cross-team interactions are async contracts, because the communication structure (and thus the architecture) is shaped by distance. Both go beyond the org structure to how it is achieved and how it works across distance.
+Every mechanism from this Part appears: paved road (make it the default), fitness functions (enforce it), incremental migration (manage risk), scorecards (measure without policing), waivers (escape hatch), office hours (reserve human attention). No mandate, no review-board gate, and it lands in four months with ~92% compliance and rising, because the right thing was made the easy thing and drift was made impossible.
 
-#### Real-world scenario
+#### Why this beats the mandate approach
 
-A principal engineer executes a necessary reorg (splitting an overgrown team) carefully. She communicates the why in an all-hands and in one-on-ones with every affected person before the announcement, so no one is blindsided and everyone understands it is a deliberate architectural decision, not politics. She preserves context by keeping people with the systems they know where possible and ensuring real handovers where not, avoiding orphaned services. She sequences the change over weeks rather than flipping everything at once, and she supports people through the transition with regular one-on-ones. The reorg achieves the better structure *and* retains the people and the context — nobody leaves, momentum recovers quickly. A peer executes a structurally-identical reorg badly: announced abruptly, people reshuffled off their systems, no transition, no explanation. The structure is the same, but two key engineers leave (feeling disrespected and disrupted), institutional context is lost, and momentum drops for two quarters. The target structures were identical; the execution determined whether the reorg strengthened or damaged the organisation. Separately, when the principal designs a distributed org across three time zones, she draws service boundaries so coupled work stays within a co-located team and cross-team interactions are async contracts, avoiding the 12-hour-latency couplings that would make work painfully slow — because she knows Conway's Law operates through the communication structure, which distance reshapes.
-
-#### How a Senior Backend Engineer thinks about this
-
-They treat a reorg as a human event as much as an architectural one, because they know the right target structure, executed badly, still damages the organisation — losing the best people, the institutional context, and the momentum. So they execute reorgs carefully: communicating the why (so it is not felt as arbitrary or political), preserving ownership and context (keeping people with their systems or ensuring real handovers, avoiding orphaned services), sequencing the change (not big-bang), and supporting people through the stressful transition. They pair the team change with the architecture change (Conway, 85.6) and execute reorgs well and rarely, because they are costly.
-
-For distributed teams, they understand that Conway's Law operates through the communication structure and that distance and asynchrony fundamentally reshape it — so they draw service boundaries so that tightly-coupled work (which needs frequent coordination) stays within one co-located team or time zone, make cross-team interactions async X-as-a-service contracts (so no team blocks on synchronous coordination across a 12-hour gap), and lean even harder on a writing culture (Part 81), because the hallway conversation that co-located teams rely on is not available across time zones. The senior engineer knows that org design is both structure and execution, and that it must account for how distance shapes the communication that Conway's Law turns into architecture — designing boundaries that work at letter-speed, not just table-speed.
-
-#### Common mistakes
-
-- **Executing a reorg abruptly** with no explanation, so it feels arbitrary/political and destroys trust.
-- **Reshuffling people off their systems** without handover, losing institutional context and risking orphans.
-- **Big-bang reorgs** that disrupt everything at once rather than sequencing the change.
-- **Not supporting people through the transition,** causing avoidable attrition.
-- **Drawing service boundaries that split tightly-coupled work across time zones,** creating painfully slow cross-time-zone synchronous couplings.
-- **Relying on synchronous coordination in a distributed org** instead of async contracts and a writing culture.
-
-#### Interview questions
-
-1. **A reorg has the right target structure but risks going badly. What makes execution safe?**
-   *Expected answer:* communicate the why (so it's deliberate, not arbitrary/political), preserve ownership and context (keep people with their systems or ensure handover, avoiding orphans), sequence the change (not big-bang), support people through the stressful transition (1-1s, address concerns, reduce attrition), and pair the team change with the architecture change. The right structure executed badly still loses people, context, and momentum. *Why it matters:* a reorg is a human event as much as an architectural one.
-
-2. **How does org and service-boundary design change for distributed, cross-time-zone teams?**
-   *Expected answer:* Conway's Law operates through the communication structure, which distance and asynchrony reshape — so draw service boundaries so tightly-coupled work (needing frequent coordination) stays within one co-located team/time zone, make cross-team interactions async X-as-a-service contracts (so no team blocks on synchronous coordination across a 12-hour gap), and lean harder on a writing culture because the hallway conversation isn't available across time zones. *Why it matters:* distance fundamentally changes what boundaries work.
-
-3. **Two identical reorgs, one strengthens the org and one damages it. What's the difference?**
-   *Expected answer:* execution — the one that communicated the why, preserved people's context, sequenced the change, and supported people through it achieved the better structure while retaining people and context; the one executed abruptly (no explanation, reshuffled people off their systems, no transition) achieved the same structure but lost key people, institutional context, and momentum. The target structure was identical; execution determined the outcome. *Why it matters:* tests whether they understand reorg execution is as important as reorg structure.
+The mandate approach — a review board decrees the standard and chases 25 teams — would take far longer, breed resentment, and leave compliance fragile (services drift back the moment the chasing stops, because nothing enforces it). The governance approach lands faster, with buy-in, and compliance is *durable*, because the paved road makes new services compliant for free and the fitness functions make drift impossible. The difference is the difference between enforcing architecture with people (does not scale, decays) and enforcing it with infrastructure (scales, holds). That difference is the entire thesis of this Part.
 
 #### Practical exercise
 
-Take the reorg you designed earlier in this Part (or a real one) and write its execution plan: how you will communicate the why, preserve ownership and context, sequence the change, and support people through it. Then, if your org is (or could be) distributed across time zones, write the distributed-team design notes: how you would draw service boundaries so coupled work stays within a team/time zone, make cross-team interactions async, and strengthen the writing culture.
+Pick a standard your org needs across many services (error format, logging, a security header, OpenAPI contracts). Write the full rollout plan using the six mechanisms: bake it into the paved road, write the fitness functions, migrate incrementally highest-value-first, measure with scorecards, grant waivers where legitimate, and use office hours for tricky cases. Include a timeline and a compliance success measure.
 
-**Acceptance criteria:** your execution plan communicates the why, preserves context (keeping people with their systems or ensuring handover, avoiding orphans), sequences the change rather than big-bang, and supports people to reduce attrition — so the right structure is achieved without human damage; and your distributed-team notes draw boundaries so tightly-coupled work stays within a co-located team/time zone, use async X-as-a-service contracts across distance, and rely on a writing culture — demonstrating that you treat org design as both structure and safe execution, accounting for how distance shapes the communication Conway's Law turns into architecture.
+**Acceptance criteria:** the plan makes the standard the default for new services (so the problem stops growing), enforces it with at least one automated fitness function (so drift is impossible), sequences migration by value rather than all-at-once, measures progress via team-facing scorecards rather than policing, and includes a time-boxed waiver path for legitimate exceptions. A reader can see that it will land without a mandate and that compliance will be durable rather than fragile.
 
-## 85.9 A quick-reference for org design
+## 85.8 Event schema governance and the schema registry
 
-A compact reference distilling the Part into the checks that matter most when you design or assess an organisation.
+#### Concept
 
-#### The org-design checklist
+Of all the standards an organisation needs, event schemas are among the most important and most often neglected. When services communicate through events (Part 28), every event has a shape, and if those shapes are inconsistent or change incompatibly, consumers break. **Event schema governance** is the discipline of standardising how events are defined, versioned, and evolved, enforced by a **schema registry** — a central service that holds the canonical schema for every event type and enforces compatibility rules, so a producer cannot publish an event that breaks existing consumers. It is the governance that keeps an event-driven architecture from decaying into a mess of incompatible, undocumented messages.
+
+#### Why does it exist?
+
+Imagine twenty services communicating through events, each team defining its event shapes however it likes, with no central definition and no compatibility checking. One team changes an event's field from a string to an object, and every consumer of that event breaks in production, because nothing stopped the incompatible change. Another team's events have no documented schema, so consumers reverse-engineer the shape from examples and break when an edge case appears. Events arrive that no consumer can parse because the producer and consumer disagree on the format. The event-driven architecture, meant to decouple services, has instead coupled them through undocumented, unstable message shapes.
+
+Event schema governance and a registry exist to prevent exactly this: to give every event a canonical, documented schema, and to enforce that schema changes are backward-compatible so a producer cannot break its consumers. They exist because events are contracts between services (Part 25), and contracts without governance drift into incompatibility, turning the loose coupling of events into the tight, fragile coupling of undocumented message shapes.
+
+#### Mental model
+
+Imagine a postal system where anyone can define their own envelope and address format. Some letters have the address on the front, some on the back, some in a format the sorting machine cannot read; and one day the post office changes the address format, so all existing letters become undeliverable. Chaos. A schema registry is the standard that says: every envelope has this format, the address goes here, and you cannot change the format in a way that makes existing letters undeliverable. The registry is the post office's envelope standard, enforced, so every letter (event) can be delivered and understood by any recipient (consumer), and format changes never break letters already in the system.
+
+#### How it works
+
+The pieces of event schema governance:
 
 ```text
-[ ] Is the org designed TOGETHER with the architecture? (Conway: the org chart
-    becomes the architecture diagram.)
-[ ] Does each team's boundary match a bounded context you want as a service
-    boundary? (Inverse Conway: shape teams to produce the architecture.)
-[ ] Does each team own its DATA, not just its code? (Else coupling via shared DB.)
-[ ] Are most teams STREAM-ALIGNED (own a flow end to end)? (Not technology-layer
-    teams with handoff queues.)
-[ ] Is each non-stream team (platform, enabling, complicated-subsystem) justified?
-[ ] Are interactions mostly X-AS-A-SERVICE? (Collaboration time-boxed; permanent
-    collaboration = a wrong boundary.)
-[ ] Is each team's COGNITIVE LOAD a coherent domain it can hold? (Not a sprawl.)
-[ ] Is ownership EXPLICIT (a catalog)? Any ORPHANED services? (Time bombs.)
-[ ] Is the platform run as a PRODUCT, measured on stream-team success? (Thinnest
-    viable platform; self-service.)
-[ ] Is DevEx measured to help teams (DORA/SPACE/surveys), not to judge individuals?
+- A schema format: every event has a defined schema (JSON Schema, Avro,
+  Protobuf). The schema is the contract — it defines the event's shape.
+- A schema registry: a central service holding the canonical schema for each
+  event type, versioned. Producers register schemas; consumers fetch them.
+- Compatibility enforcement: when a producer tries to register a new version of
+  a schema, the registry CHECKS it against compatibility rules and REJECTS
+  incompatible changes. This is the key mechanism — it prevents breaking changes.
+- Compatibility modes (per Part 25):
+  * Backward: new consumers can read old events (add optional fields, don't remove).
+  * Forward: old consumers can read new events.
+  * Full: both. Usually the target for events with many independent consumers.
+- Conventions: naming (order.placed.v1), required metadata (event id, timestamp,
+  tenant_id), envelope structure — standardised across all events.
 ```
 
-#### The warning signs
+The registry's enforcement is what makes it governance rather than documentation: a producer physically cannot publish an event whose schema change would break existing consumers, because the registry rejects the incompatible schema. This turns "please don't make breaking changes" (a wish) into "you cannot make breaking changes" (an enforced invariant).
 
-Signals that the org design is wrong:
+```mermaid
+flowchart LR
+    P["Producer: register schema v2"] --> REG{"Schema registry: compatible with v1?"}
+    REG -->|"incompatible"| REJ["REJECTED — breaking change blocked"]
+    REG -->|"compatible"| ACC["Accepted — v2 registered"]
+    ACC --> PUB["Producer publishes events (validated against schema)"]
+    PUB --> C1["Consumer A fetches schema, parses safely"]
+    PUB --> C2["Consumer B fetches schema, parses safely"]
+```
+
+#### Artifact example
+
+An event schema standard and a registry compatibility check — the artifacts that keep an event-driven architecture coherent.
+
+```markdown
+# Event schema standard (owner: platform/data team)
+
+## Every event MUST have
+- A registered schema in the schema registry (no schema, no publish).
+- A standard envelope: { event_id (uuid), event_type, version, occurred_at,
+  tenant_id, payload }.
+- A versioned type name: `order.placed.v1`.
+
+## Schema evolution rules (enforced by the registry)
+- Compatibility mode: FULL (events have many independent consumers).
+- Allowed changes: add OPTIONAL fields, add new event types.
+- Forbidden changes: remove a field, change a field's type, rename a field,
+  make an optional field required. (A truly breaking change = a new version,
+  e.g. order.placed.v2, with both running until all consumers migrate — the
+  strangler/parallel approach, Part 86.)
+
+## Enforcement (this makes it governance, not a wish)
+- The registry REJECTS an incompatible schema registration at publish time.
+- A fitness function (Part 83.5) in CI validates events against their schema.
+- A producer cannot publish an unregistered or schema-violating event.
+
+---
+# Registry compatibility check (what happens on a schema change)
+Producer attempts to register order.placed.v1 with `total` changed string->object:
+-> Registry: INCOMPATIBLE (type change on existing field). REJECTED.
+-> Producer must either: keep `total` as-is, OR publish order.placed.v2 and run
+   both until all consumers migrate. The breaking change CANNOT reach consumers.
+```
+
+The standard's power is that it defines the event contract precisely (envelope, versioning, evolution rules) and — crucially — names the enforcement: the registry rejects incompatible changes at registration time, so a breaking change physically cannot reach consumers. This turns event compatibility from a fragile convention that teams forget into a database-of-schemas-enforced invariant, which is exactly what keeps a twenty-service event-driven architecture from decaying into incompatible-message chaos.
+
+#### Real-world scenario
+
+An organisation with a schema registry avoids a class of production incidents that plague event-driven architectures without one. A team, under deadline pressure, changes an event's field type in a way that would break three downstream consumers — exactly the kind of change that, without governance, ships and causes a multi-service incident. But the registry rejects the incompatible schema at registration time, with a clear message that the change breaks compatibility, so the producer learns about the problem in CI before it ships, not in a production incident after. The team instead publishes a new event version and runs both until the consumers migrate (Part 86's parallel approach). The registry converted a would-be multi-service breakage into a caught-in-CI non-event. Over time, this is the difference between an event-driven architecture that stays coherent as it grows and one that decays into a minefield of incompatible messages where every schema change is a gamble — the registry is the governance that keeps events as the reliable contracts they are meant to be.
+
+#### How a Senior Backend Engineer thinks about this
+
+They treat event schemas as contracts between services (Part 25) that require governance, because they know that events without governance drift into incompatibility, turning the intended loose coupling of an event-driven architecture into the fragile tight coupling of undocumented, unstable message shapes. They insist on a schema registry that enforces compatibility, because they understand the difference between "please don't make breaking changes" (a wish teams forget) and "you cannot register an incompatible schema" (an enforced invariant) — and only the enforced version keeps a growing event-driven architecture coherent.
+
+They standardise the event envelope and versioning conventions so every event is self-describing and every consumer can parse any event, and they handle genuinely breaking changes with versioning and parallel running (Part 86) rather than breaking consumers. They wire the registry into CI with a fitness function (85.5) so schema violations are caught before production. The senior engineer's view is that event schema governance is among the highest-value standards an organisation can enforce, because events are the contracts that hold a distributed architecture together, and a registry is what keeps those contracts from silently breaking — converting a whole class of multi-service incidents into caught-in-CI non-events.
+
+#### Common mistakes
+
+- **No schema registry,** so event shapes drift and incompatible changes break consumers in production.
+- **No compatibility enforcement,** relying on teams to remember not to make breaking changes.
+- **No standard envelope,** so events lack consistent metadata (id, timestamp, tenant_id) and cannot be handled generically.
+- **Breaking changes shipped as in-place edits** instead of new versions run in parallel until consumers migrate.
+- **Schemas documented but not enforced,** so the documentation drifts from the actual events (the 85.3 failure applied to events).
+
+#### Interview questions
+
+1. **Why do event-driven architectures need a schema registry?**
+   *Expected answer:* events are contracts between services, and without governance their shapes drift and incompatible changes break consumers in production — turning the intended loose coupling into fragile tight coupling through undocumented, unstable messages. A schema registry holds the canonical versioned schema for each event type and enforces compatibility, rejecting incompatible changes at registration so a producer physically cannot break its consumers. *Why it matters:* this is critical governance for any event-driven system.
+
+2. **How do you handle a genuinely breaking change to an event schema?**
+   *Expected answer:* you cannot make it in place (the registry rejects it and it would break consumers); instead publish a new version (order.placed.v2) and run both v1 and v2 in parallel until all consumers have migrated to v2, then retire v1 — the strangler/parallel approach (Part 86). The registry enforces that the breaking change goes into a new version, not an edit to the existing one. *Why it matters:* tests schema evolution under compatibility constraints.
+
+3. **What's the difference between documenting event schemas and governing them, and why does it matter?**
+   *Expected answer:* documentation describes the schemas but relies on teams to comply and drifts from reality; governance via a registry enforces the schemas — a producer cannot publish an unregistered or incompatible event because the registry rejects it and a CI fitness function validates events — so the schemas are an enforced invariant, not a wish. Only enforcement keeps a growing event architecture coherent. *Why it matters:* tests the enforce-don't-document principle applied to events.
+
+#### Practical exercise
+
+Design event schema governance for a set of services communicating through events. Define the standard event envelope (required metadata), the versioning convention, and the compatibility mode (and why). Specify how a schema registry would enforce compatibility (rejecting incompatible changes at registration), and how you would handle a genuinely breaking change. Add the CI fitness function that validates events against their schemas.
+
+**Acceptance criteria:** every event has a registered, versioned schema with a standard envelope (id, timestamp, tenant_id, etc.); the registry enforces a compatibility mode (backward/forward/full, justified) by rejecting incompatible changes at registration, not by asking teams nicely; a genuinely breaking change is handled as a new version run in parallel until consumers migrate (not an in-place edit); and a CI fitness function validates events against their schemas — demonstrating that event compatibility is an enforced invariant, not documentation that drifts.
+
+## 85.9 Governance anti-patterns and measuring governance health
+
+#### Concept
+
+A final lens on the Part: the recurring **governance anti-patterns** that make governance fail, and how to **measure whether governance is actually healthy** — producing consistency and quality without becoming a bottleneck or being routed around. Governance is itself something to be governed: a principal watches for the anti-patterns that creep in (heavy gates, stale standards, unmaintained paved roads) and measures the health signals (adoption, drift, compliance trends, developer satisfaction with the paved road) to know whether the governance is helping or harming.
+
+#### Why does it exist?
+
+Imagine governance that everyone assumes is working because it exists — there is a review board, there are standards, there is a paved road. But nobody checks: the review board has quietly become a three-week bottleneck, the standards describe a system that no longer exists, the paved road is two years stale and teams avoid it. The governance looks healthy (all the structures are present) but is actually harmful (bottleneck, fiction, avoided). Without measuring governance health, you cannot tell the difference between governance that works and governance that merely exists, so you keep investing in structures that are actively hurting.
+
+Measuring governance health exists to make the difference visible: adoption (are teams using the paved road voluntarily, or avoiding it), drift (are services complying or diverging), bottleneck signals (is a gate delaying things), and satisfaction (do engineers find the governance helpful or obstructive). The anti-patterns catalogue exists because governance decays in predictable ways, and naming the decay patterns lets a principal catch them before the governance turns from help into harm.
+
+#### Mental model
+
+Imagine a garden you planted well but never inspect. You assume it is fine because you planted it, but weeds (heavy gates) have crept in, some plants have died (stale standards), and the path you laid (the paved road) is overgrown and nobody walks it. A gardener who never inspects cannot tell a thriving garden from an overgrown one. Measuring governance health is inspecting the garden: checking what is actually growing (adoption, compliance), what has died (stale standards), and what has become a weed (a gate that is now a bottleneck). The anti-patterns are the weeds and dead plants to watch for, and measurement is the inspection that catches them before the garden is lost.
+
+#### How it works
+
+**The governance anti-patterns** (drawn from across the Part):
 
 ```text
-- Services split but teams not (distributed monolith — all cost, no independence).
-- A team spanning many unrelated domains (cognitive overload — will collapse).
-- Permanent cross-team collaboration (a boundary is drawn wrong).
-- Features crossing many teams with handoff queues (technology-layer teams).
-- Orphaned services with no owner (silent time bombs).
-- A platform team measured on its own output, building what nobody adopts.
-- Frequent reorgs (thrash — full cost, no coherent-architecture benefit).
-- Architects who've stopped shipping (ivory tower; designs teams ignore).
+- The universal gate: a review board that gates everything, becoming a
+  bottleneck teams route around (53.1).
+- The stale standard: a standard documented but not enforced, now fiction that
+  misleads (53.3).
+- The abandoned paved road: a road built and not maintained, now spreading rot
+  to every new service (53.2).
+- The illusory fitness function: a check that tests unrealistic conditions
+  (empty DB) and enforces an illusion (53.5).
+- The ossified shared library: a reflexively-shared, ownerless library that
+  became the worst coupling (53.6).
+- The permanent waiver: an exception never revisited, decaying the standard (53.6).
+- The policing metric: compliance measured as a leaderboard, breeding gaming (53.6).
+- Governance by poster: declared standards that nothing enforces (the whole
+  anti-thesis of the Part — enforcement by infrastructure, not declaration).
+```
+
+**Measuring governance health** — the signals that tell you governance is helping, not harming:
+
+```text
+- Paved-road adoption: % of new services / deploys using the paved road
+  VOLUNTARILY. High = the road is genuinely the easiest path. Low = it's stale
+  or not good enough; teams are avoiding it.
+- Compliance / drift trend: % of services meeting standards, over time (from
+  scorecards, 53.6). Rising = governance working; falling = decaying.
+- Bottleneck signals: time-in-queue for any human gate (office hours wait, RFC
+  decision latency). Rising = a gate becoming a bottleneck.
+- Fitness-function health: are checks green, stable (not flaky), and testing
+  realistic conditions. Flaky/disabled checks = enforcement evaporating.
+- Developer satisfaction with governance: survey — do engineers find the paved
+  road and standards helpful or obstructive? Obstructive = governance is harming.
+- Estate-wide leverage realised: can you make a fleet-wide change (security fix,
+  version bump) via the paved road quickly? Slow = the leverage isn't there.
+```
+
+The key health principle: healthy governance is *adopted voluntarily* (because it is the easiest path) and *drift is low* (because it is enforced), while unhealthy governance is *routed around* (because it is a bottleneck) or *drifted-from* (because it is not enforced). Measuring adoption and drift tells you which you have.
+
+```mermaid
+flowchart TB
+    M["Measure governance health"] --> A["Paved-road adoption (voluntary %)"]
+    M --> D["Compliance/drift trend"]
+    M --> B["Gate bottleneck signals (queue time)"]
+    M --> S["Developer satisfaction with governance"]
+    A --> H{"Healthy?"}
+    D --> H
+    B --> H
+    S --> H
+    H -->|"adopted + low drift + no bottleneck + satisfied"| GOOD["Healthy: helping"]
+    H -->|"routed around / drifting / bottleneck / obstructive"| BAD["Unhealthy: fix the anti-pattern"]
+```
+
+#### Artifact example
+
+A governance health dashboard — the artifact that makes the difference between governance-that-works and governance-that-merely-exists visible.
+
+```markdown
+# Governance health dashboard (quarterly)
+
+## Paved road
+- New-service adoption: 94% use the paved road voluntarily (HEALTHY — it's the
+  easiest path). (If this were low, the road would be stale/avoided.)
+- Paved-road version currency: template is current (NestJS 10, patched libs).
+- Estate leverage: last security fix propagated to 92% of services in 3 days
+  via a template+library bump (HEALTHY — the leverage is real).
+
+## Standards compliance (from scorecards, 53.6)
+- Error format: 96% of services compliant (up from 80% — trend RISING, healthy).
+- Fitness functions: all green, stable, testing realistic data. 2 flaky checks
+  fixed this quarter (prevented them being disabled).
+
+## Gates (watching for bottlenecks)
+- Office hours wait: same-week (HEALTHY — not a bottleneck).
+- RFC decision latency: median 5 days (HEALTHY). Watching — if it rises, act.
+
+## Developer satisfaction with governance (survey)
+- "The paved road makes me faster": 4.3/5 (HEALTHY — governance is helping).
+- Open feedback: 2 teams want a paved road for data pipelines (a gap — not yet
+  paved; prioritise).
+
+## Anti-pattern watch (none active, but monitored)
+- No universal gate. No stale standards (all enforced). Paved road maintained.
+- 3 active waivers, all time-boxed with revisit dates (none permanent).
+```
+
+The dashboard's power is that it measures whether governance is actually *helping* — voluntary adoption (the road is the easiest path), rising compliance (enforcement working), low gate latency (no bottleneck), and high developer satisfaction (governance helps, not obstructs) — rather than assuming governance works because the structures exist. It also actively watches for the anti-patterns (no universal gate, no stale standards, no permanent waivers). This turns governance from a set-and-forget assumption into a measured, maintained system, which is how you keep it on the helpful side of the line over time.
+
+#### How a Senior Backend Engineer thinks about this
+
+They treat governance as something that must itself be governed — measured and maintained — because they know governance decays in predictable ways (gates become bottlenecks, standards become fiction, paved roads rot) and that the structures existing is not the same as the governance working. They measure the health signals that reveal the difference: voluntary paved-road adoption (healthy governance is chosen because it is the easiest path, not mandated), compliance/drift trends (rising means enforcement works), gate latency (rising means a bottleneck is forming), and developer satisfaction (obstructive means governance is harming).
+
+They watch actively for the anti-patterns — the universal gate, the stale standard, the abandoned paved road, the policing metric, the permanent waiver, governance-by-poster — because they have seen each one turn governance from help into harm, and they catch them via the health signals before they do damage. Above all, they hold the Part's central principle as the test of governance health: governance should make the right thing the easy thing, so healthy governance is adopted voluntarily and drift is low, while governance that is routed around or drifted-from has failed regardless of how impressive its structures look. The senior engineer inspects the governance garden regularly, because governance that is not measured and maintained decays into the very bottleneck and bureaucracy it was meant to replace.
+
+#### Common mistakes
+
+- **Assuming governance works because the structures exist,** without measuring adoption, drift, or bottlenecks.
+- **Not measuring voluntary paved-road adoption,** so you don't notice teams avoiding a stale road.
+- **Not watching gate latency,** so a review mechanism becomes a bottleneck unnoticed.
+- **Ignoring developer satisfaction with governance,** so obstructive governance persists.
+- **Letting anti-patterns creep in** (universal gates, stale standards, permanent waivers) without a watch for them.
+
+#### Interview questions
+
+1. **How do you tell whether your governance is actually healthy versus just existing?**
+   *Expected answer:* measure the health signals — voluntary paved-road adoption (healthy governance is chosen because it's the easiest path), compliance/drift trends (rising means enforcement works), gate latency (rising means a bottleneck is forming), and developer satisfaction (obstructive means it's harming) — rather than assuming it works because the structures (board, standards, paved road) exist. Healthy governance is adopted voluntarily with low drift; unhealthy is routed around or drifted-from. *Why it matters:* tests whether they measure governance or assume it.
+
+2. **What are the recurring ways governance decays, and how do you catch them?**
+   *Expected answer:* the universal gate becoming a bottleneck, standards becoming stale fiction, paved roads rotting, fitness functions testing illusions, shared libraries ossifying, waivers becoming permanent, policing metrics breeding gaming, and governance-by-poster. Catch them by measuring the health signals (adoption, drift, latency, satisfaction) and actively watching for each anti-pattern. *Why it matters:* governance decays predictably, and a principal must catch it before it harms.
+
+3. **Why is voluntary adoption the best signal of paved-road health?**
+   *Expected answer:* because the whole governance thesis is making the right thing the easy thing — a paved road teams choose freely is genuinely the easiest, best path (healthy), while a road teams avoid or must be mandated onto is stale, not good enough, or obstructive (unhealthy). Voluntary adoption directly measures whether governance is achieving consistency through convenience rather than coercion. *Why it matters:* ties the health metric to the Part's core principle.
+
+#### Practical exercise
+
+Build a governance health dashboard for your org. Measure (or estimate) voluntary paved-road adoption, compliance/drift trends, gate latency (any human review queue time), and developer satisfaction with the governance. Then audit for the anti-patterns: is there a universal gate, a stale standard, an unmaintained paved road, a permanent waiver, or a policing metric. Identify whether your governance is on the healthy side (adopted voluntarily, low drift, no bottleneck) or the unhealthy side (routed around, drifting, bottleneck, obstructive).
+
+**Acceptance criteria:** your dashboard measures whether governance is helping (voluntary adoption, rising compliance, low gate latency, developer satisfaction) rather than assuming it works because structures exist; your anti-pattern audit identifies at least one decay pattern present or at risk; and you can state whether your governance achieves consistency through convenience (healthy — adopted voluntarily) or through coercion/neglect (unhealthy — routed around or drifted-from), with a plan to fix any anti-pattern found.
+
+## 85.10 A quick-reference for governance that scales
+
+A compact reference distilling the Part into the decisions and checks that matter most when you design or assess governance.
+
+#### The governance-mechanism decision
+
+Match the mechanism to the stakes — the core move of the whole Part:
+
+```text
+Routine decision of a known shape    -> paved road + fitness functions (NO humans)
+A new shared library / convention     -> RFC + review guild (async, lightweight)
+Genuinely novel, cross-cutting,       -> selective ARB (advisory) OR office hours
+  hard-to-reverse                        (reserve scarce human judgement here only)
+Need advice on a tricky design        -> office hours (a service, not a gate)
+Enforcing a standard on every change  -> a fitness function in CI (not a document)
+```
+
+#### The "is this governance healthy?" check
+
+```text
+[ ] Is the right thing the EASY thing? (Paved road, not mandates.)
+[ ] Is the paved road ADOPTED VOLUNTARILY? (Low adoption = stale/avoided.)
+[ ] Are standards ENFORCED by infrastructure, not documents? (Else they drift.)
+[ ] Are standards MINIMAL? (The interoperability interface, not the internals.)
+[ ] Is human review reserved for the genuinely novel? (Not a universal gate.)
+[ ] Do fitness functions test REALISTIC conditions and stay stable? (Not illusions.)
+[ ] Is the dependency fleet upgradable and auditable? (Automated upgrades + registry.)
+[ ] Is shared code deliberate and owned? (Avoid the shared-library trap.)
+[ ] Are waivers time-boxed and revisited? (No permanent undocumented exceptions.)
+[ ] Is compliance measured to HELP teams (scorecards), not to police them?
+```
+
+#### The standard-rollout recipe (from 85.7)
+
+To roll out any standard across many services without a mandate:
+
+```text
+1. Bake it into the paved road (new services compliant free; problem stops growing).
+2. Write the fitness functions (drift impossible once migrated).
+3. Migrate incrementally, highest-value first (not big-bang).
+4. Measure with team-facing scorecards (self-correction, not policing).
+5. Grant time-boxed waivers where legitimate (pragmatic, credible).
+6. Use office hours for tricky cases (help on demand, no gate).
 ```
 
 #### The enduring principle
 
-The whole Part reduces to one idea: **org design IS architecture, because Conway's Law guarantees the org chart becomes the architecture diagram.** So you design the two together — shaping teams (and their data ownership) to produce the architecture you want, keeping each team's cognitive load coherent, making ownership explicit, running the platform as a product, and measuring developer experience to improve the system. When you face an architecture problem, ask whether it is really an org problem in disguise (it often is), and when you change the org, remember you are changing the software. Design the org as deliberately as you design the system, because they are the same thing viewed from two angles.
+The whole Part reduces to one shift: **enforce architecture with infrastructure, not with people.** People-enforced governance (approval gates, wiki standards, hoped-for compliance) does not scale and decays; infrastructure-enforced governance (paved roads, fitness functions, registries, scorecards) scales and holds. Everything else — paved roads, standards, fitness functions, the lightweight review alternatives, the compliance measurement — is an application of that one principle. When you design or assess governance, ask: is this enforced by infrastructure that makes the right thing the easy thing, or by people who will become a bottleneck and whose vigilance will decay? The first scales; the second does not.
 
-Return to this reference when designing or assessing an org; the reasoning behind each line is in the sections above.
+Return to this reference when designing or assessing governance; the reasoning behind each line is in the sections above.
 
-#### The first question to ask about any architecture problem
+#### Where to start if you inherit ungoverned chaos
 
-When you hit a persistent architecture problem — a boundary that won't stay clean, a coupling you can't eliminate, a service that keeps growing tangled — ask first: *is this really an org problem in disguise?* More often than engineers expect, the answer is yes, and the root cause is a team structure that Conway's Law is turning into the architecture you don't want. The clean boundary won't hold because one undifferentiated team spans it; the coupling persists because the teams that own the two sides communicate constantly, so the cost of coupling is invisible to them; the service grows tangled because no single team owns it. In each case, no amount of architectural willpower fixes it, because the org keeps reshaping the architecture back. The fix is the org change (the inverse Conway maneuver, 85.1) — align the teams to the architecture you want, and the architecture follows. Treating an org-rooted architecture problem as a purely technical one is a common, expensive mistake; a principal's instinct is to check the org chart first.
+If you arrive at an organisation with no effective governance — forty services each doing everything differently, no paved road, standards that are wiki fiction — the temptation is to impose a review board and a thick standards document. Resist it; that is the heavy-governance failure (85.1). Instead, start where the leverage is highest and the resistance lowest:
+
+```text
+1. Build a paved road for the single most common operation (usually service
+   creation or deploy). Make it genuinely the easiest path. This stops the chaos
+   from GROWING — new services are consistent by default — while you deal with
+   the existing mess. (Highest leverage, voluntary adoption, no mandate.)
+2. Pick the ONE standard whose inconsistency hurts most (often the error format
+   or logging/trace IDs, because they cripple incident debugging). Bake it into
+   the paved road and enforce it with a fitness function. One standard, enforced.
+3. Build a service catalog to surface what exists and who owns it — including the
+   orphans (Part 85.3) that are your biggest hidden risk.
+4. Only then, and only if needed, add lightweight human mechanisms (office hours,
+   a guild) for the genuinely novel decisions. Never a universal gate.
+```
+
+The sequence matters: paved road first (stop the bleeding, highest leverage, voluntary), then one enforced standard (prove the model works), then visibility (the catalog), then — minimally — the human mechanisms. This builds governance that teams adopt because it helps them, establishing the infrastructure-not-approval model from the start, rather than imposing a bottleneck they will resent and route around. Governance earned through usefulness holds; governance imposed through authority decays.
 
 ## Senior Checklist — Part 85
 
@@ -299,27 +435,27 @@ When you hit a persistent architecture problem — a boundary that won't stay cl
 - [ ] I can choose between alternatives
 - [ ] I can explain the tradeoffs
 - [ ] I can answer senior-level interview questions
-- [ ] I understand Conway's Law and use the inverse maneuver to design the org that produces the architecture I want
-- [ ] I never split services without splitting teams, and I always include data ownership
-- [ ] I design teams using the four Team Topologies types, defaulting to stream-aligned and X-as-a-service
-- [ ] I treat cognitive load as a finite design constraint and size each team's ownership to a coherent domain
-- [ ] I make service ownership explicit with a catalog and hunt down orphaned services
-- [ ] I run the platform as a product, measured on stream-team success, and build the thinnest viable platform
-- [ ] I measure developer experience (DORA, SPACE, lead-time stages, surveys) to locate and remove friction, never to judge individuals
-- [ ] I treat a reorg as a deliberate, sparingly-used architectural change, not a political lever
-- [ ] I work as a player-coach, staying hands-on so my judgement and credibility stay grounded
-- [ ] I can recognise and fix a distributed monolith caused by splitting services without splitting teams and data
+- [ ] I can explain why heavy approval-based governance fails and what scales instead
+- [ ] I build paved roads that are opinionated, complete for the common case, and maintained as a product
+- [ ] I enforce standards through infrastructure and automated checks, not documents and goodwill
+- [ ] I reserve human review for genuinely novel, cross-cutting decisions, and use office hours and guilds for the rest
+- [ ] I can write a fitness function that enforces a real architectural property against realistic conditions
+- [ ] I keep the dependency fleet upgradable and auditable, with automated upgrades and a support window
+- [ ] I share code deliberately and avoid the shared-library trap
+- [ ] I run a waiver process that is explicit, time-boxed and revisited
+- [ ] I measure compliance to help teams, via scorecards, not to police them
+- [ ] I can roll out a standard across many services without a mandate, so compliance is durable
 
 ## Part 85 — Key Takeaways
 
-- Conway's Law: organisations produce systems that mirror their communication structure; team boundaries become service boundaries whether you plan it or not, so architecture and org are the same problem.
-- Use the inverse Conway maneuver: decide the target architecture, then design the teams as the mould that produces it, because fighting the org to impose an architecture is a losing battle.
-- Splitting services without splitting teams (and without data ownership) produces a distributed monolith — all the cost of distribution, none of the independence, worse than the monolith you started with.
-- Team Topologies gives four team types (stream-aligned, platform, enabling, complicated-subsystem) and three interactions (collaboration, X-as-a-service, facilitating); default to stream-aligned teams and X-as-a-service, and time-box collaboration.
-- Cognitive load is a finite design constraint; a team overloaded past its limit collapses rather than slowing gracefully, so size each team's ownership to a coherent domain and remove extraneous load via the platform.
-- Make service ownership explicit with a catalog and the "you build it, you run it" model; orphaned services are the silent time bombs of every grown organisation, and the catalog's job is to make them visible.
-- Run the platform as a product with the stream-aligned teams as customers, measured on their success, built as the thinnest viable platform that removes real friction, with self-service as the defining property.
-- Measure developer experience with DORA, SPACE dimensions, lead-time stages and surveys — to locate and remove friction at the system level, never to judge individuals, which triggers gaming and fear.
-- Treat a reorg as a deliberate architectural change used sparingly; pair every team split with the matching service boundary, and never reorg what works, because frequent reorgs are thrash that pay the full cost for no coherent-architecture benefit.
-- Position architects as embedded player-coaches who still ship and take on-call, not as a central advisory board, because credibility at this level is renewed by delivery and an architect disconnected from the code produces designs teams ignore.
-- Design the org and the architecture together, always, because Conway's Law guarantees the org chart will become the architecture diagram.
+- Governance exists to produce consistency across many teams, but heavy, approval-based governance fails because human gates do not scale, become bottlenecks, and get routed around.
+- The core shift is from enforcement-by-approval to enforcement-by-default: make the right thing the easy thing through paved roads, standards and automated checks.
+- A paved road is the single highest-leverage governance investment; it achieves consistency through convenience, and it gives you estate-wide leverage (fix once, propagate everywhere).
+- An unmaintained paved road is worse than none; it spreads rot to every new service, so it must be owned and maintained as a product.
+- Standards scale only when enforced by infrastructure, kept minimal (the interoperability interface, not the internals), and owned with an evolution path; a wiki-only standard decays into fiction.
+- Reserve scarce human judgement for genuinely novel, cross-cutting, hard-to-reverse decisions; use office hours, review guilds and named advisors for everything else, and never scale a bottleneck by enlarging it.
+- Architecture fitness functions are the automated immune system that keeps architecture correct for years; they must test realistic conditions, stay stable, and be owned, or they enforce an illusion.
+- Keep the dependency fleet upgradable and auditable with automated upgrades, a support window, and a registry, so a security fix is a one-day propagation, not an archaeology project.
+- Share code deliberately and sparingly; a reflexively-shared, ownerless, unversioned library becomes the worst coupling in the system (the shared-library trap).
+- Give standards an escape hatch: a waiver process that is explicit, time-boxed and revisited, or teams route around governance entirely.
+- Measure compliance to help teams, with scorecards addressed to owners and trends rather than leaderboards; the moment a compliance metric becomes a stick, it gets gamed and stops measuring reality.

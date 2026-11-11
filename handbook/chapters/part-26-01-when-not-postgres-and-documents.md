@@ -4,7 +4,7 @@ This book's default datastore is PostgreSQL, and that is a deliberate, defensibl
 
 This Part covers the main NoSQL families and how to model for each: **document databases** (MongoDB), **key-value and wide-column at scale** (DynamoDB), **wide-column** (Cassandra), **time-series** (TimescaleDB), and **graph** (Neo4j concepts). It covers **polyglot persistence** (using more than one store and keeping them consistent), **migrating** between NoSQL and PostgreSQL in both directions, and a decision matrix across all of them. The running examples stay in the book's domain: orders, products, trips, metrics.
 
-The honest throughline, consistent with the whole book: do not reach for NoSQL by default or by hype. Reach for it when a specific access pattern or scale requirement makes the relational model a poor fit, understanding what you give up (usually joins, transactions across entities, and flexible ad-hoc queries) for what you gain (usually horizontal scale, a particular access pattern, or a data shape that fits naturally). This Part builds on the SQL-vs-NoSQL decision (Part 63) and Redis (Part 27), going wider and deeper.
+The honest throughline, consistent with the whole book: do not reach for NoSQL by default or by hype. Reach for it when a specific access pattern or scale requirement makes the relational model a poor fit, understanding what you give up (usually joins, transactions across entities, and flexible ad-hoc queries) for what you gain (usually horizontal scale, a particular access pattern, or a data shape that fits naturally). This Part builds on the SQL-vs-NoSQL decision (Part 64) and Redis (Part 27), going wider and deeper.
 
 ## 26.1 When PostgreSQL is not the right store
 
@@ -94,7 +94,7 @@ At 09:40 on a Monday a team launched a new "marketplace" product built on a docu
 
 #### Edge cases & failure modes
 
-- **"We will need to scale later"**: speculative scale is not a requirement; measure current and projected load (see Part 55 — Capacity Estimation and Back-of-the-Envelope Math) before trading away transactions.
+- **"We will need to scale later"**: speculative scale is not a requirement; measure current and projected load (see Part 56 — Capacity Estimation and Back-of-the-Envelope Math) before trading away transactions.
 - **One hot workload inside an otherwise relational system**: move only that workload (for example GPS pings), not the whole domain.
 - **Flexible attributes**: `jsonb` plus GIN usually covers it; a separate document store adds a second source of truth.
 - **Multi-region active-active writes**: this is a genuine trigger; PostgreSQL has no built-in multi-primary conflict resolution, so a store designed for it (DynamoDB global tables, Cassandra) may be justified.
@@ -103,7 +103,7 @@ At 09:40 on a Monday a team launched a new "marketplace" product built on a docu
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior defaults to PostgreSQL and treats the decision to add or move to a NoSQL store as a significant architectural choice requiring a specific, measured justification (an ADR, Part 63), not a preference or a resume item. They ask: what exact requirement does PostgreSQL fail to meet — write scale past one primary, a specific access pattern at massive volume, a data shape that is genuinely non-relational? They are clear-eyed about what they give up (transactions, joins, query flexibility) and whether the application can tolerate it. They know that most applications never need NoSQL and that premature NoSQL adoption is a common, costly mistake — teams model orders in a document database, then discover they need a transaction across two documents, which the store makes painful. The anti-hype principle of the whole book applies: the simplest store that meets the requirement wins, and that is usually PostgreSQL.
+A senior defaults to PostgreSQL and treats the decision to add or move to a NoSQL store as a significant architectural choice requiring a specific, measured justification (an ADR, Part 64), not a preference or a resume item. They ask: what exact requirement does PostgreSQL fail to meet — write scale past one primary, a specific access pattern at massive volume, a data shape that is genuinely non-relational? They are clear-eyed about what they give up (transactions, joins, query flexibility) and whether the application can tolerate it. They know that most applications never need NoSQL and that premature NoSQL adoption is a common, costly mistake — teams model orders in a document database, then discover they need a transaction across two documents, which the store makes painful. The anti-hype principle of the whole book applies: the simplest store that meets the requirement wins, and that is usually PostgreSQL.
 
 #### Common mistakes
 

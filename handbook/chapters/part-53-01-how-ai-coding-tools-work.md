@@ -1,6 +1,6 @@
 # Part 53 — AI-Assisted Engineering
 
-Parts 37 and 38 taught you to build features *with* language models: an order-support assistant, a catalog search, an agent that can look up an order. This Part is about something different and more personal. It is about engineering *alongside* AI tools: the completion that appears as you type, the chat panel you paste a stack trace into, and the agent in your terminal that reads files, runs your tests and edits code in a loop while you watch.
+Parts 37, 38 taught you to build features *with* language models: an order-support assistant, a catalog search, an agent that can look up an order. This Part is about something different and more personal. It is about engineering *alongside* AI tools: the completion that appears as you type, the chat panel you paste a stack trace into, and the agent in your terminal that reads files, runs your tests and edits code in a loop while you watch.
 
 Almost every engineer now uses these tools daily, from the person on their first job to the principal setting policy for four hundred engineers. They are genuinely useful. They are also confidently wrong often enough that an engineer who trusts them blindly ships bugs faster than ever before. The skill is not "using AI". The skill is knowing what the tool actually sees, what it is good and bad at, how to check its work, how much power to give it, and who is accountable when it is wrong. (The short answer to the last one: you are.)
 

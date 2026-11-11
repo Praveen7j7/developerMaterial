@@ -98,6 +98,42 @@ html:not(.js) .learn-more { display: none; }
 .tb-practice + .tb-practice { margin-top: -.6rem; }
 .tb-practice .tb-h .ic { background: var(--v); color: var(--on-v); box-shadow: none; }
 
+/* ---------- Try it first + the folded model design ---------- */
+.try { margin: 1.2rem 0 1rem; border: 1px solid var(--v-mid); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--sh-1); overflow: hidden; font-size: .97em; }
+.try-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 18px; background: var(--v-tint); border-bottom: 1px solid var(--v-mid); font-family: var(--font-ui); }
+.try-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-md); background: var(--v); color: var(--on-v); }
+.try-icon .ic { width: 18px; height: 18px; }
+.try-title { font: 700 var(--fs-md)/1.2 var(--font-ui); color: var(--ink); }
+.try-time { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font: 600 var(--fs-xs)/1.2 var(--font-ui); color: var(--ink-2); white-space: nowrap; }
+.try-body { padding: 14px 18px 4px; }
+.try-body > p, .try-body > ul { margin-bottom: .7rem; }
+.try-label { display: flex; align-items: center; gap: 8px; margin: 1rem 0 .3rem !important; font: 700 var(--fs-sm)/1.2 var(--font-ui); color: var(--ink); }
+.try-label:first-child { margin-top: .2rem !important; }
+.try-label .ic { width: 16px; height: 16px; color: var(--v); }
+.try-body ul { padding-left: 1.3em; }
+.try-body li { margin: .3em 0; }
+.try-close { margin: .9rem -18px 0 !important; padding: 10px 18px 12px; border-top: 1px dashed var(--rule-2); font: italic var(--fs-sm)/1.5 var(--font-body); color: var(--ink-2); }
+@media (max-width: 420px) { .try-time { margin-left: 0; } }
+
+.design { margin: 0 0 2rem; }
+.design > summary {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 52px; padding: 10px 18px; list-style: none; cursor: pointer;
+  border: 1.5px solid var(--v); border-radius: var(--r-lg); background: var(--surface); color: var(--v); font: 700 var(--fs-md)/1.2 var(--font-ui);
+}
+.design > summary::-webkit-details-marker { display: none; }
+.design > summary:hover { background: var(--v-tint); }
+.design > summary .ic { width: 20px; height: 20px; }
+.design-meta { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2); }
+.design .reveal-hide, .design[open] > summary .reveal-show { display: none; }
+.design[open] > summary .reveal-hide { display: inline; }
+.design[open] > summary { border-style: dashed; border-color: var(--v-mid); color: var(--ink-2); }
+.design-body { padding-top: .4rem; }
+.design-end { display: flex; justify-content: center; margin: 2rem 0 0; padding-top: 1rem; border-top: 1px dashed var(--rule-2); }
+.ph-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--rule); }
+.ph-actions p { margin: 0; flex: 1 1 260px; font-size: var(--fs-sm); color: var(--ink-2); }
+.designs-toggle[aria-pressed="true"] { background: var(--v-tint); border-color: var(--v); color: var(--v); }
+html:not(.js) .designs-toggle, html:not(.js) .design-close { display: none; }
+
 /* answers behind a button */
 .reveal { margin: .8rem 0 1.4rem; }
 .reveal > summary {

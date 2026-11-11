@@ -8,6 +8,8 @@
   function apply(id) {
     var r = roles[id] || roles.all;
     list.setAttribute('data-role', id);
+    // a role with no stages (System design) shows only its own track
+    if (r.stages.length) list.removeAttribute('data-nostages'); else list.setAttribute('data-nostages', '');
     BH.$$('.stage[data-stage]', list).forEach(function (st) {
       var on = r.stages.indexOf(+st.getAttribute('data-stage')) >= 0;
       st.classList.toggle('on-path', on && id !== 'all');

@@ -86,7 +86,7 @@ Write a data contract for an `order.placed` event (fields, types, meanings, deli
 
 #### Concept
 
-Personal data (PII) flows from the production database into the warehouse, lake and analytics systems, so privacy obligations follow it. **PII masking** removes or obscures personal data in the pipeline so analytics does not hold more than it needs. **Deletion propagation** ensures that when a user exercises their right to erasure (GDPR; see Part 40 — Security, 40.31, and Part 88 — Enterprise and Multi-Tenant SaaS, 88.7), the deletion reaches every copy of their data — including the warehouse and lake — not just the production database.
+Personal data (PII) flows from the production database into the warehouse, lake and analytics systems, so privacy obligations follow it. **PII masking** removes or obscures personal data in the pipeline so analytics does not hold more than it needs. **Deletion propagation** ensures that when a user exercises their right to erasure (GDPR; see Part 40 — Security, 40.31, and Part 90 — Enterprise and Multi-Tenant SaaS, 90.7), the deletion reaches every copy of their data — including the warehouse and lake — not just the production database.
 
 #### Why does it exist?
 
@@ -128,7 +128,7 @@ A regulator's audit sampled twenty erasure requests completed in the previous ye
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior treats PII as flowing through the whole pipeline, not sitting only in production, so privacy obligations follow it everywhere. They mask or drop PII as early in the pipeline as possible (data minimization), sending analytics only the pseudonymous ids and fields it actually needs, which shrinks both risk and the compliance scope of the warehouse. They design deletion propagation so a GDPR erasure fans out via the pipeline to every store (warehouse, lake, derived tables, with a backup policy), because deleting only from production leaves personal data lingering where regulators and users expect it gone. They coordinate this with the data team as part of the data contract (39.4), since privacy is a shared responsibility across the pipeline. This is the Part 40 and Part 88 privacy discipline extended into the data-engineering world.
+A senior treats PII as flowing through the whole pipeline, not sitting only in production, so privacy obligations follow it everywhere. They mask or drop PII as early in the pipeline as possible (data minimization), sending analytics only the pseudonymous ids and fields it actually needs, which shrinks both risk and the compliance scope of the warehouse. They design deletion propagation so a GDPR erasure fans out via the pipeline to every store (warehouse, lake, derived tables, with a backup policy), because deleting only from production leaves personal data lingering where regulators and users expect it gone. They coordinate this with the data team as part of the data contract (39.4), since privacy is a shared responsibility across the pipeline. This is the Part 40 and Part 90 privacy discipline extended into the data-engineering world.
 
 #### Common mistakes
 
@@ -202,9 +202,9 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY product_sales_30d;
 
 The techniques:
 
-- **Pre-aggregated tables** maintained incrementally (on each relevant write, or by a CDC consumer, 39.2): the dashboard reads a tiny summary instead of aggregating raw rows. This is the pattern used in the URL shortener's `link_daily_stats` (see Part 54 — System Design Case Studies, 54.1) and anywhere a count/sum is shown frequently.
+- **Pre-aggregated tables** maintained incrementally (on each relevant write, or by a CDC consumer, 39.2): the dashboard reads a tiny summary instead of aggregating raw rows. This is the pattern used in the URL shortener's `link_daily_stats` (see Part 55 — System Design Case Studies, 55.1) and anywhere a count/sum is shown frequently.
 - **Materialized views**: PostgreSQL stores a query's result and you `REFRESH` it on a schedule; good for aggregates that can be a bit stale and are expensive to compute. `REFRESH ... CONCURRENTLY` avoids blocking reads during refresh, but it requires a unique index on the view (here `CREATE UNIQUE INDEX ON product_sales_30d (product_id)`), and it still recomputes the whole query every time; PostgreSQL has no built-in incremental refresh.
-- **Read models** (the CQRS idea; see Part 61 — Real-World Architecture Patterns, 61.19 and 61.21): a denormalized table shaped exactly for a specific read, kept in sync from the write side, so the read is a simple fast lookup.
+- **Read models** (the CQRS idea; see Part 62 — Real-World Architecture Patterns, 62.19 and 62.21): a denormalized table shaped exactly for a specific read, kept in sync from the write side, so the read is a simple fast lookup.
 
 The common thread is precomputing and storing the answer so the read is cheap, trading some staleness and some write-time or refresh work for fast reads — the same read-optimization and caching philosophy as Part 27, applied with database structures.
 
@@ -261,7 +261,7 @@ A seller dashboard showed revenue 3–4% higher than the payout report every mon
 #### Edge cases & failure modes
 
 - **Refunds and cancellations.** An increment-only table never goes down; apply negative deltas for refunds, keyed by refund id for idempotency.
-- **Hot rows.** A seller with 50 orders per second turns `(seller_id, day)` into a hot row with lock contention; buffer increments in Redis or batch them per second (see Part 61 — Real-World Architecture Patterns, 61.23).
+- **Hot rows.** A seller with 50 orders per second turns `(seller_id, day)` into a hot row with lock contention; buffer increments in Redis or batch them per second (see Part 62 — Real-World Architecture Patterns, 62.23).
 - **Materialized view refresh cost.** `REFRESH MATERIALIZED VIEW CONCURRENTLY` on a 30-day join over 40 million rows can take minutes and heavy I/O; schedule it, and do not refresh more often than it takes to run.
 - **Dedupe table growth.** `seller_stats_applied` grows forever; partition it by month and drop partitions older than the replay window.
 - **Time-zone boundaries.** Sellers in different time zones see different "days"; store UTC buckets at hour grain if you must serve several zones.

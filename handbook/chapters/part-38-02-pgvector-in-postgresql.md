@@ -17,7 +17,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- Store embeddings alongside the product. The dimension (1536 here) must match the model.
 CREATE TABLE product_embeddings (
   product_id  uuid PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
-  tenant_id   uuid NOT NULL,                       -- for tenant isolation (Part 88)
+  tenant_id   uuid NOT NULL,                       -- for tenant isolation (Part 90)
   embedding   vector(1536) NOT NULL,
   content     text NOT NULL,                        -- the text that was embedded
   updated_at  timestamptz NOT NULL DEFAULT now()
@@ -145,7 +145,7 @@ Always check `Rows Removed by Filter` and the returned row count when you `EXPLA
 
 #### Metadata filtering
 
-A key pgvector advantage is filtering by relational columns alongside the vector search (`WHERE tenant_id = ... AND category = ...`). This is essential for **tenant isolation** in a multi-tenant RAG system (Part 88): every vector query must scope to the current tenant, or you risk retrieving another tenant's documents (38.4 and the incident story in 38.9 cover what happens without it). With pgvector, the tenant filter is just a `WHERE` clause in the same query; with a separate vector database, isolation is more work and more error-prone.
+A key pgvector advantage is filtering by relational columns alongside the vector search (`WHERE tenant_id = ... AND category = ...`). This is essential for **tenant isolation** in a multi-tenant RAG system (Part 90): every vector query must scope to the current tenant, or you risk retrieving another tenant's documents (38.4 and the incident story in 38.9 cover what happens without it). With pgvector, the tenant filter is just a `WHERE` clause in the same query; with a separate vector database, isolation is more work and more error-prone.
 
 #### TypeORM example
 
@@ -294,7 +294,7 @@ A team chose a hosted vector database "for scale" with 300,000 documents. Produc
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior starts with pgvector unless a concrete requirement rules it out, because the simplest architecture that meets the need wins (the anti-hype principle from throughout this book) and a second datastore is a real, permanent operational tax — another thing to scale, secure, back up and keep in sync with the source of truth (Part 39). They move to a dedicated vector database only when scale (hundreds of millions of vectors), specialized features, or vector search being the core product at huge scale genuinely demands it, and they account for the sync problem (the vectors must be kept consistent with the relational source via outbox or CDC, which pgvector gets for free by living in the same database). They treat "add a vector database" as an architectural decision requiring an ADR (Part 63), not a default reach.
+A senior starts with pgvector unless a concrete requirement rules it out, because the simplest architecture that meets the need wins (the anti-hype principle from throughout this book) and a second datastore is a real, permanent operational tax — another thing to scale, secure, back up and keep in sync with the source of truth (Part 39). They move to a dedicated vector database only when scale (hundreds of millions of vectors), specialized features, or vector search being the core product at huge scale genuinely demands it, and they account for the sync problem (the vectors must be kept consistent with the relational source via outbox or CDC, which pgvector gets for free by living in the same database). They treat "add a vector database" as an architectural decision requiring an ADR (Part 64), not a default reach.
 
 #### Common mistakes
 
@@ -309,4 +309,4 @@ A senior starts with pgvector unless a concrete requirement rules it out, becaus
 
 #### Practical exercise
 
-Write a one-page decision record (ADR, Part 63) for whether a product-catalog search at your scale should use pgvector or a dedicated vector database, covering scale, join needs, tenant isolation, sync, and operational cost, ending with a recommendation. Acceptance criteria: the recommendation follows from the stated factors, and the sync/consistency cost of the separate-database option is addressed.
+Write a one-page decision record (ADR, Part 64) for whether a product-catalog search at your scale should use pgvector or a dedicated vector database, covering scale, join needs, tenant isolation, sync, and operational cost, ending with a recommendation. Acceptance criteria: the recommendation follows from the stated factors, and the sync/consistency cost of the separate-database option is addressed.

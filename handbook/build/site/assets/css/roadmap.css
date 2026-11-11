@@ -9,14 +9,14 @@
 
 .role-switch { margin: 20px 0 0; padding: 0; border: 0; }
 .role-switch legend { padding: 0; margin-bottom: 8px; font-size: var(--fs-sm); font-weight: 700; color: var(--ink-2); }
-.segs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border: 1px solid var(--rule); border-radius: var(--r-lg); background: var(--sunk); }
-.seg { position: relative; }
+.segs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--rule); border-radius: var(--r-lg); background: var(--sunk); }
+.seg { position: relative; flex: 1 1 auto; }  /* items stretch so every row is filled, never ragged */
 .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
 .seg span { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 16px; border-radius: var(--r-md); font: 600 var(--fs-sm)/1 var(--font-ui); color: var(--ink-2); }
 .seg input:checked + span { background: var(--surface); color: var(--v); box-shadow: var(--sh-1), inset 0 0 0 1px var(--v-mid); }
 .seg input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 1px; }
 @media (pointer: coarse) { .seg span { min-height: var(--tap); } }
-@media (min-width: 520px) { .segs { display: inline-grid; grid-template-columns: repeat(4, auto); } }
+@media (min-width: 640px) { .segs { display: inline-flex; flex-wrap: nowrap; } }
 
 .stages { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
 .stage { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 14px; padding-bottom: 22px; }
@@ -42,6 +42,17 @@
 @media (pointer: coarse) { .st-parts a { min-height: var(--tap); } }
 .st-ready { margin: 8px 0 0; padding-top: 10px; border-top: 1px solid var(--rule); font-size: var(--fs-sm); line-height: 1.5; color: var(--ink-2); }
 .st-src { margin: 8px 0 0; font-size: var(--fs-xs); }
+
+.lv-to { margin: 0 4px; font-size: var(--fs-xs); color: var(--muted); }
+.lv-range { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; margin-top: 4px; }  /* the level range sits on its own line under the title */
+.stages[data-nostages] > .stage:not(.stage-extra) { display: none; }
+.stages[data-nostages] > .stage-extra { margin-top: 0; grid-column: 1 / -1; }
+.stages[data-nostages] > .stage-extra::before, .stages[data-nostages] > .stage-extra > .st-marker { display: none; }
+.stages[data-nostages] > .stage-extra { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+.st-track { counter-reset: step; }
+.stages[data-nostages] .st-track { columns: auto !important; }
+.stages[data-nostages] .st-track .sp-n { min-width: 2.4em; }
+.stages[data-nostages] .stage-extra .st-card { max-width: 760px; }
 
 /* role highlighting: stages on the chosen path get the accent; the rest step back but stay readable */
 .stage.on-path .st-card { border-color: var(--v); box-shadow: 0 0 0 1px var(--v), var(--sh-2); }

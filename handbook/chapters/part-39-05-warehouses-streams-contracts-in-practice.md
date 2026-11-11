@@ -234,7 +234,7 @@ curl -s -X PUT -H 'Content-Type: application/vnd.schemaregistry.v1+json' \
   http://schema-registry.internal:8081/config/orders.events.order-paid-value
 ```
 
-2. **In the producer's pull request.** A test fails the build before anything reaches the registry (see Part 83 — Architecture Governance, 83.8, and Part 25 — Backward Compatibility, 25.4):
+2. **In the producer's pull request.** A test fails the build before anything reaches the registry (see Part 85 — Architecture Governance, 85.8, and Part 25 — Backward Compatibility, 25.4):
 
 ```ts
 // order-paid.contract.spec.ts -- the event we emit must still satisfy the published contract

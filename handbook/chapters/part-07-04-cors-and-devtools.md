@@ -102,7 +102,7 @@ export function configureApp(app: INestApplication): INestApplication {
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'X-Request-Id'],
     exposedHeaders: ['X-Request-Id'],     // lets browser code read our request ID header (6.6)
-    credentials: false,                   // this API uses no cookies; see Part 75 before turning this on
+    credentials: false,                   // this API uses no cookies; see Part 77 before turning this on
     maxAge: 600,                          // browsers may cache a preflight answer for 10 minutes
   });
   app.useGlobalPipes(validationPipe);
@@ -160,7 +160,7 @@ At 09:05 on the morning after the admin site moved from `https://shop-admin.exam
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior treats CORS as configuration with an owner, not as an error to silence. The allow list is explicit, per environment, validated at start-up and covered by a test. They never ship `*` for an API that uses cookies, never ship `origin: true`, and never confuse CORS with access control: an attacker with `curl` ignores CORS entirely, so every endpoint still needs authentication and authorization. And they prefer architectures where the question disappears: serving the frontend and API from one origin (7.8) or behind one domain with a reverse proxy removes preflights and CORS configuration altogether. Part 11 (11.13) covers CORS in depth and Part 75 covers cookies, credentials and CSRF.
+A senior treats CORS as configuration with an owner, not as an error to silence. The allow list is explicit, per environment, validated at start-up and covered by a test. They never ship `*` for an API that uses cookies, never ship `origin: true`, and never confuse CORS with access control: an attacker with `curl` ignores CORS entirely, so every endpoint still needs authentication and authorization. And they prefer architectures where the question disappears: serving the frontend and API from one origin (7.8) or behind one domain with a reverse proxy removes preflights and CORS configuration altogether. Part 11 (11.13) covers CORS in depth and Part 77 covers cookies, credentials and CSRF.
 
 #### Common mistakes
 
@@ -221,7 +221,7 @@ Because the browser hides most of what it does. A failed `fetch`, a script that 
 | Elements | See the **current** DOM, not the HTML file; check styles | The Styles pane shows every matching rule, with losing declarations crossed out (7.3); the box diagram shows margin, border and padding; the selected element is available in the Console as `$0` |
 | Console | Read errors and logs; try code | Each error links to the file and line; red messages about CORS, failed module loads and uncaught exceptions appear here first |
 | Network | See every request and response | Filter by **Fetch/XHR** for API calls; tick **Preserve log** to keep requests across reloads and **Disable cache** while debugging; click a row for **Headers**, **Payload** (the request body), **Preview** (parsed JSON), **Response** (raw) and **Timing** |
-| Application | Inspect cookies, Local Storage, Session Storage, IndexedDB | Anything stored here is readable by any script on the page, which is why tokens in `localStorage` are an XSS risk (Part 75, 75.1) |
+| Application | Inspect cookies, Local Storage, Session Storage, IndexedDB | Anything stored here is readable by any script on the page, which is why tokens in `localStorage` are an XSS risk (Part 77, 77.1) |
 
 Three Network features you will use weekly. **Timing** splits a request into phases: queueing, connection setup, "Waiting for server response" (time to first byte, mostly your API) and content download; a 900 ms wait with a 2 ms download is a backend problem, not a frontend one. **Copy as cURL** (right-click a request, then Copy) gives you the exact request, headers and body included, to replay in a terminal or attach to a bug ticket. **Throttling** (a drop-down in the Network toolbar) simulates a slow phone network or going offline, which is how you see your "Saving..." state and your timeout (7.5) actually work. The **device toolbar** (the phone icon, or Cmd+Shift+M) resizes the page to phone widths for checking the media query from 7.3.
 
@@ -249,14 +249,14 @@ const products = await api('/products?limit=20');
 if (!products.length) setStatus('No products yet.');   // an object has no length: undefined, so !undefined is true
 ```
 
-The API changed shape in 6.5, from an array to a page object. An object has no `length`, so the "empty" branch runs without any error. The fix is `page.items`, and the lasting fix is a contract that would have caught the change: Part 74 (74.2 and 74.10) generates typed clients and runs contract tests so a shape change fails CI instead of a user's screen.
+The API changed shape in 6.5, from an array to a page object. An object has no `length`, so the "empty" branch runs without any error. The fix is `page.items`, and the lasting fix is a contract that would have caught the change: Part 76 (76.2 and 76.10) generates typed clients and runs contract tests so a shape change fails CI instead of a user's screen.
 
 The same walkthrough catches the other usual suspects:
 
 | What DevTools shows | Likely cause | Fix |
 |---|---|---|
 | Console: "blocked by CORS policy"; Network: CORS error | page origin missing from `CORS_ORIGINS` | add the exact origin (7.6) |
-| Network shows `app.js` from "(disk cache)", old code runs | browser cached an old script | Disable cache while debugging; versioned file names in production (Part 78, 78.3) |
+| Network shows `app.js` from "(disk cache)", old code runs | browser cached an old script | Disable cache while debugging; versioned file names in production (Part 80, 80.3) |
 | No request at all, Console says module failed to load | page opened from disk or served with the wrong MIME type | serve over HTTP (7.8) |
 
 #### Edge cases & failure modes
@@ -264,16 +264,16 @@ The same walkthrough catches the other usual suspects:
 - **Opening DevTools after the page loaded** misses the first requests; reload with the Network panel open.
 - **Red "Failed to load resource: ... status of 409" lines** appear in Chrome's Console for every `4xx` and `5xx` response, even ones your code handles correctly, and for a missing `favicon.ico`; they are network logs, not script errors.
 - **A CORS-blocked response hides its body** from the page and largely from DevTools; check the server log for what actually happened.
-- **Production code is minified**: line 1, column 48,213 tells you nothing without source maps (Part 70, 70.7, and Part 78, 78.6).
+- **Production code is minified**: line 1, column 48,213 tells you nothing without source maps (Part 72, 72.7, and Part 80, 80.6).
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior uses DevTools to decide in one minute which side of the wire is wrong. Status and Preview right, page wrong: frontend. Status or body wrong: API, and Copy as cURL turns it into a backend reproduction. They connect the two worlds with the request ID: the `requestId` in a problem body (or the `X-Request-Id` header, once exposed) is the key to the exact server log line from 6.6, and Part 78 (78.7) extends that to full traces from a click to a database write.
+A senior uses DevTools to decide in one minute which side of the wire is wrong. Status and Preview right, page wrong: frontend. Status or body wrong: API, and Copy as cURL turns it into a backend reproduction. They connect the two worlds with the request ID: the `requestId` in a problem body (or the `X-Request-Id` header, once exposed) is the key to the exact server log line from 6.6, and Part 80 (80.7) extends that to full traces from a click to a database write.
 
 #### Interview questions
 
 1. **A page shows stale data after a deploy. What do you check in DevTools?** Whether scripts and API responses came from cache (Size column, Disable cache), and the response headers (`Cache-Control`) of the API and the static files.
-2. **How do you tell whether slowness is in the frontend or the API?** Network Timing: a long "Waiting for server response" is server time; a fast response followed by a slow page is frontend work, which Part 69 (69.10) and Part 76 dig into.
+2. **How do you tell whether slowness is in the frontend or the API?** Network Timing: a long "Waiting for server response" is server time; a fast response followed by a slow page is frontend work, which Part 71 (71.10) and Part 78 dig into.
 3. **How do you turn a browser bug into a backend reproduction?** Copy the failing request as cURL, strip secrets, replay it, and use the request ID to find the server log line.
 
 #### Practical exercise

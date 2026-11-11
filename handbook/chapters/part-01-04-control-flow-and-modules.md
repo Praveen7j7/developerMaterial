@@ -107,7 +107,7 @@ function canTransition(from: Status, to: Status): boolean {
 canTransition('pending', 'shipped'); // false: must be paid first
 ```
 
-This data-driven approach (a lookup table of allowed transitions) is cleaner than a tangle of `if`s and is easy to extend. We return to state machines in Part 67.
+This data-driven approach (a lookup table of allowed transitions) is cleaner than a tangle of `if`s and is easy to extend. We return to state machines in Part 69.
 
 #### How a Senior Backend Engineer thinks about this
 

@@ -32,6 +32,11 @@
     if (el && actions[el.getAttribute('data-action')]) actions[el.getAttribute('data-action')](e, el);
   });
 
+  BH.reveal = function (el) {
+    var opened = false;
+    for (var d = el && el.closest ? el.closest('details') : null; d; d = d.parentElement.closest('details')) { if (!d.open) { d.open = true; opened = true; } }
+    return opened;
+  };
   BH.emit = function (name, detail) { document.dispatchEvent(new CustomEvent('bh:' + name, { detail: detail })); };
   BH.on = function (name, fn) { document.addEventListener('bh:' + name, function (e) { fn(e.detail); }); };
 

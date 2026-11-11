@@ -53,7 +53,7 @@ flowchart LR
 
 #### Production scenario
 
-A product listing endpoint takes 180 ms at the 95th percentile. Tracing shows 3 ms in application code and the rest in 60 sequential queries to PostgreSQL, each around 2.5 ms including the network round trip, one per product to load its price. Rewriting it as one query with a join or `WHERE id = ANY($1)` drops it to 12 ms. No code got "faster"; the endpoint simply stopped paying for 59 round trips. Part 55 — Capacity Estimation and Back-of-the-Envelope Math (55.1) has the full table of numbers to carry in your head, and Part 42 — Performance Engineering shows how to find these costs.
+A product listing endpoint takes 180 ms at the 95th percentile. Tracing shows 3 ms in application code and the rest in 60 sequential queries to PostgreSQL, each around 2.5 ms including the network round trip, one per product to load its price. Rewriting it as one query with a join or `WHERE id = ANY($1)` drops it to 12 ms. No code got "faster"; the endpoint simply stopped paying for 59 round trips. Part 56 — Capacity Estimation and Back-of-the-Envelope Math (56.1) has the full table of numbers to carry in your head, and Part 42 — Performance Engineering shows how to find these costs.
 
 #### Interview questions
 
@@ -137,13 +137,13 @@ console.log(toCents('1.15'));  // 115
 The tiny errors are harmless in a physics simulation. In money they are not, because money must add up exactly and must match someone else's ledger. So backends represent money one of two ways:
 
 1. **Integer minor units**: store 1999 meaning 19.99 dollars or rupees, in an integer or `bigint` column. All arithmetic is exact integer arithmetic. Part 1 — Programming Fundamentals in JavaScript and TypeScript introduces this habit in 1.1.1.
-2. **A decimal type**: PostgreSQL `numeric(12,2)`, Java `BigDecimal`, Python `decimal.Decimal`. These store base-10 digits exactly, at some cost in speed. Part 17 (17.4.2 "Money: numeric vs float") compares the two, and Part 62 — Backend Anti-Patterns and Why They Hurt (62.32) tells the story of getting it wrong.
+2. **A decimal type**: PostgreSQL `numeric(12,2)`, Java `BigDecimal`, Python `decimal.Decimal`. These store base-10 digits exactly, at some cost in speed. Part 17 (17.4.2 "Money: numeric vs float") compares the two, and Part 63 — Backend Anti-Patterns and Why They Hurt (63.32) tells the story of getting it wrong.
 
 #### Edge cases & failure modes
 
 - **Not every currency has two decimal places.** Japanese yen has none and some dinars have three. Store the currency alongside the amount and know each currency's minor unit.
 - **Division still needs a rounding rule.** Splitting 1000 cents three ways gives 333, 333 and 334; decide who gets the extra cent, and write it down.
-- **JSON has only one number type,** and many parsers read it as a double. Large amounts or IDs sent as JSON numbers can be silently rounded; send them as strings (Part 74 — Frontend–Backend Contracts, 74.7).
+- **JSON has only one number type,** and many parsers read it as a double. Large amounts or IDs sent as JSON numbers can be silently rounded; send them as strings (Part 76 — Frontend–Backend Contracts, 76.7).
 - **`NaN` and `Infinity` are floating-point values too.** `0 / 0` is `NaN` and `1 / 0` is `Infinity` in JavaScript, with no exception. Validate before you store.
 
 #### Interview questions

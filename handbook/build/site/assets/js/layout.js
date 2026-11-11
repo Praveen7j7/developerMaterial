@@ -114,7 +114,11 @@
 
   function measure() {
     var y = window.pageYOffset;
-    tops = heads.map(function (h) { return h.getBoundingClientRect().top + y; });
+    // a heading inside a folded design has no box; it counts as sitting at the fold's summary
+    tops = heads.map(function (h) {
+      var d = h.closest('details:not([open])');
+      return (d ? d.getBoundingClientRect().top : h.getBoundingClientRect().top) + y;
+    });
     partTops = parts.map(function (p) { return p.getBoundingClientRect().top + y; });
     dirty = false;
   }
@@ -141,6 +145,13 @@
     h2s.forEach(function (h) {
       var li = document.createElement('li'); li.className = 'r2';
       var a = document.createElement('a'); a.href = '#' + h.id; a.textContent = text(h); a.setAttribute('data-for', h.id);
+      var lv = h.getAttribute('data-try');  // design section with a Try-it-first card: show its level
+      if (lv) {
+        var b = document.createElement('span'); b.className = 'lv'; b.setAttribute('data-level', lv);
+        b.textContent = lv.charAt(0).toUpperCase(); b.title = lv.charAt(0).toUpperCase() + lv.slice(1) + ' level';
+        var sr = document.createElement('span'); sr.className = 'sr-only'; sr.textContent = ' (' + b.title + ')';
+        a.appendChild(b); a.appendChild(sr);
+      }
       li.appendChild(a); railList.appendChild(li);
     });
     if (railPart) { railPart.textContent = 'Part ' + part.getAttribute('data-part') + ': ' + part.getAttribute('data-title'); railPart.href = '#' + part.id; }
@@ -151,14 +162,13 @@
     BH.$$('.r3', railList).forEach(function (li) { li.parentNode.removeChild(li); });
     if (!h2) return;
     var a = BH.$('a[data-for="' + h2.id + '"]', railList); if (!a) return;
-    var after = a.parentNode, el = h2.nextElementSibling, n = 0;
-    while (el && el.tagName !== 'H2' && n < 30) {
-      if (el.tagName === 'H3' && el.id) {
-        var li = document.createElement('li'); li.className = 'r3';
-        var b = document.createElement('a'); b.href = '#' + el.id; b.textContent = text(el); b.setAttribute('data-for', el.id);
-        li.appendChild(b); after.parentNode.insertBefore(li, after.nextSibling); after = li; n++;
-      }
-      el = el.nextElementSibling;
+    // the h3s that follow this h2 in reading order (some sit inside a folded design)
+    var after = a.parentNode, i = heads.indexOf(h2) + 1, n = 0;
+    for (; i < heads.length && heads[i].tagName !== 'H2' && n < 30; i++) {
+      var el = heads[i];
+      var li = document.createElement('li'); li.className = 'r3';
+      var b = document.createElement('a'); b.href = '#' + el.id; b.textContent = text(el); b.setAttribute('data-for', el.id);
+      li.appendChild(b); after.parentNode.insertBefore(li, after.nextSibling); after = li; n++;
     }
   }
   function markRail(id) {
@@ -199,7 +209,8 @@
     if (h && !part.contains(h)) h = null;
     if (h !== curHead) {
       curHead = h;
-      var h2 = h ? (h.tagName === 'H2' ? h : (function (el) { while (el && el.tagName !== 'H2') el = el.previousElementSibling; return el; })(h)) : null;
+      var h2 = null;
+      if (h) for (var k = hi; k >= 0; k--) if (heads[k].tagName === 'H2') { h2 = heads[k]; break; }
       if (h2 !== curH2) { curH2 = h2; railSubs(h2); }
       markRail(h ? h.id : null);
       fitCrumb(h ? text(h) : part.getAttribute('data-title'));
@@ -215,10 +226,16 @@
   function pinHash() {
     var id = decodeURIComponent(location.hash.slice(1));
     pin = id ? document.getElementById(id) : null; pinUntil = Date.now() + 12000;
+    if (pin && BH.reveal(pin)) { dirty = true; holdPin(); }  // a heading inside a folded model design: open it, then go there
   }
   function unpin() { pin = null; }
   ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (ev) { window.addEventListener(ev, unpin, { passive: true }); });
-  window.addEventListener('hashchange', function () { pinHash(); });
+  window.addEventListener('hashchange', function () { pinHash(); holdPin(); });
+  // a link to the hash already in the address bar fires no hashchange; still open and scroll
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest ? e.target.closest('a[href^="#"]') : null;
+    if (a && a.getAttribute('href') === location.hash && a.getAttribute('href').length > 1) { pinHash(); holdPin(); }
+  });
   if (isVol) pinHash();
   function holdPin() {
     if (!pin || Date.now() > pinUntil) { pin = null; return; }
@@ -227,7 +244,7 @@
   }
   // diagrams render and answers open after load; re-measure when the page grows or shrinks
   if (window.ResizeObserver && BH.$('#main')) new ResizeObserver(function () { dirty = true; holdPin(); schedule(); }).observe(BH.$('#main'));
-  document.addEventListener('toggle', function () { dirty = true; }, true);
+  document.addEventListener('toggle', function () { dirty = true; schedule(); }, true);
   BH.headings = function () { if (dirty) measure(); return { list: heads, tops: tops }; };
   onScroll();
 })(window.BH);

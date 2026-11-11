@@ -1,253 +1,410 @@
-## 84.7 Worked example: PHP monolith on MySQL to NestJS services on PostgreSQL
+## 84.7 Worked example: strategy for scaling from 12 to 80 engineers
 
-This section brings the whole Part together in one eighteen-month migration: moving an order system from a PHP monolith on MySQL to NestJS services on PostgreSQL. It exercises every tool in this Part — run as a program, decomposed by data ownership, migrated with the right strategies, data moved with backfill + CDC + reconciliation, and the old system actually turned off. It also contains the incident story the outline asks for: the migration that silently lost 0.3% of refunds, and how reconciliation caught it.
+This section brings the whole Part together in one worked case: an e-commerce company growing from a single monolith with 12 engineers to 80 engineers over two years. It is the kind of situation where a principal engineer is asked for "a technical strategy", and it exercises every tool in this Part — the strategy kernel, the vision, the roadmap, debt as a portfolio, and the discipline to say no.
 
 #### The situation
 
-OrderCo runs its whole order system as a PHP monolith on a single large MySQL database. It is 400,000 lines of PHP, deploys are scary, and the team wants to move to NestJS services on PostgreSQL to enable independent deploys, better tooling, and the type safety the rest of the company has. The migration is expected to take eighteen months. A principal engineer leads it. Here is how it runs, compressed.
+GreenCart sells groceries online. Today: 12 engineers, one NestJS monolith on one PostgreSQL database, deploying together a few times a week. It works. The company just raised money and will hire to 80 engineers over two years to expand into new cities and new product lines. The CTO asks the principal engineer: "what is our technical strategy for this growth?"
 
-#### Run as a program (84.2)
+The naive answer is "microservices and Kubernetes", and it is wrong, because it is an action list with no diagnosis. Here is the real strategy.
 
-A single program owner (the principal) holds the whole thing. The inventory lists all 140 endpoints, 12 background jobs, 34 tables, and 43 external/internal callers. A dashboard shows completion (not volume) and the headline "legacy monolith: STILL RUNNING, scheduled deletion month 18". Milestones have dates. A weekly update goes to all stakeholders and the exec sponsor, with the countdown to deletion. This is what keeps the migration from stalling at 80%.
-
-#### Strategy: strangler + parallel run (84.3)
-
-The overall strategy is strangler: a routing facade (an Nginx/NestJS gateway) sits in front and routes each endpoint to either the PHP monolith or the new NestJS service, reversible per endpoint. For the money-critical parts — refund and payment calculations — a parallel run is layered on: the new service computes the result, the old monolith's result is served, and the two are diffed and logged until they match. For shared logic used by many internal callers, branch-by-abstraction.
-
-#### Decomposition by data ownership (84.4)
-
-The monolith's 34 tables are assigned to bounded contexts: orders, payments, inventory, notifications. The orders service is extracted first (the hard, pathfinding first service, three months) and becomes the sole owner of the order tables. Temporary shared-database bridges (the orders service reading the products and users tables directly) are created with end dates. Every other reader of the order tables is cut over to the orders service API. The data-ownership map governs this.
-
-#### Data migration: backfill + CDC + reconciliation (84.5)
-
-Order data moves from MySQL to PostgreSQL: a batched, idempotent, throttled backfill of the historical rows (several days), CDC via Debezium reading the MySQL binlog streaming ongoing changes to PostgreSQL during the backfill, and reconciliation (row counts, value checksums, field-level sampling) gating every cutover. This is where the incident happens.
-
-#### The incident: 0.3% of refunds silently lost
+#### The strategy kernel
 
 ```markdown
-# Incident retro (blameless): refund data divergence caught by reconciliation
+DIAGNOSIS:
+A monolith with 12 engineers works because 12 people can coordinate one
+deploy and one database. At 80 engineers, that same architecture means 80
+people serialised behind one deploy pipeline and one schema. Lead time,
+today ~1 week, would balloon toward a month, and the blast radius of each
+deploy would become terrifying. The crux is NOT that the monolith is bad;
+it is that SHARED, COORDINATED deploys and data do not scale with headcount.
+We also lack the platform (templates, pipelines, observability standards)
+that lets teams operate independently — today the 12 share tribal knowledge.
 
-## What happened
-During the refunds cutover prep, the reconciliation report showed row counts
-matching between MySQL and PostgreSQL, but the VALUE CHECKSUM over refund
-amounts was off — PostgreSQL's total was lower than MySQL's by an amount that
-worked out to ~0.3% of refunds being wrong or missing.
+GUIDING POLICY:
+Scale by reducing coordination, not by adopting fashionable architecture.
+Give teams ownership of bounded contexts with their own data and deploys,
+extracting services ONLY where coordination is the measured bottleneck.
+Build the platform that makes independent operation cheap BEFORE extracting
+widely. We will NOT do a big-bang rewrite, will NOT adopt microservices as
+a goal, and will NOT add Kubernetes/Kafka/mesh unless a measured need
+appears. The boring, staged path wins.
 
-## Why (root cause)
-The refund sync used application-level DUAL WRITES during an early phase of
-the migration (before CDC was in place for that table). About 0.3% of the
-time, the write to PostgreSQL failed (a transient timeout) after the MySQL
-write succeeded, and the error handler just logged and continued. Each
-failure was one refund that existed in MySQL but not PostgreSQL — a silent,
-gradual divergence (the classic dual-write problem, Part 30.9).
-
-## How it was caught
-The value-checksum reconciliation check. Row counts ALONE would have missed
-it in some cases, and even where counts differed, it was the checksum that
-quantified the money impact and flagged it as critical. This is exactly why
-we reconcile on value, not just count (54.5).
-
-## Why it did NOT become a customer incident
-Because reconciliation GATES cutover. We had not cut refunds over to
-PostgreSQL yet — MySQL was still the served source of truth. The divergence
-was caught in a report, affecting ZERO customers.
-
-## Fix
-1. Replaced the refund dual-writes with CDC (captures every committed change
-   from the binlog; cannot miss a committed write).
-2. Backfilled the missing 0.3% of refunds from MySQL into PostgreSQL.
-3. Re-ran reconciliation until the value checksum matched to the cent.
-4. Only then cut refunds over.
-
-## Lesson
-Dual writes silently diverge; reconciliation on VALUE (not just count) is what
-stands between a silent data-loss migration and a safe one. Had we cut over on
-test confidence or row-count-only reconciliation, 0.3% of refunds would have
-shipped wrong to production — a financial incident requiring mass corrections.
+COHERENT ACTIONS:
+1. Convert the monolith to an enforced modular monolith (clear module
+   boundaries, own-your-tables rule, lint-enforced). Enables everything else.
+2. Build the paved road: service template, CI/CD pipeline, observability
+   and on-call standards. Makes independent operation cheap and repeatable.
+3. Extract the 2-3 most coordination-bound contexts (payments, catalog,
+   fulfilment) onto their own data and deploys, using the paved road.
+These reinforce: #1 makes #3 safe, #2 makes #3 cheap and makes new teams
+productive on day one.
 ```
 
-This is the migration that "silently lost 0.3% of refunds" — except reconciliation caught it before cutover, so it lost nothing that reached a customer. The difference between a catastrophe and a non-event was a single reconciliation check on value rather than count, run as a gate before cutover. That is the entire lesson of 84.5 made concrete.
+#### The vision it serves
 
-#### Turning the monolith off (84.6)
+```markdown
+# Vision 2026-2028: 15 teams shipping independently
+In two years, GreenCart runs as ~15 stream-aligned teams, each owning a
+bounded context end to end — its own data, deploys, and on-call — able to
+ship multiple times a day without coordinating with another team, on a
+paved road that makes a new service a day-one operation, not a quarter-long
+setup.
 
-With all contexts extracted and data migrated, the final act: usage telemetry shows the remaining callers of the PHP monolith declining to 7, then to 2 orphans. Deprecation notices go out. Two brownouts flush out the laggards. The orphaned callers are escalated with the deletion date; one is claimed and migrated, one is turned off with a rollback ready and nobody screams. At month 18, on schedule, the PHP monolith is powered off and its code deleted. The migration is *done* — not 95% done, not "the monolith returns 410", but deleted. OrderCo now pays for one system, deploys independently per service, and has the type safety and tooling it wanted.
+## Business connection
+- Expansion speed: new cities/product lines need teams that can move
+  independently; coupled systems cap us at the speed of the slowest team.
+- Hiring ROI: we will spend ~$20M on 68 new engineers over 2 years. Coupled
+  architecture wastes that spend on coordination overhead; independent teams
+  convert headcount into output.
+- Reliability: blast radius per deploy shrinks from "the whole site" to "one
+  context", protecting revenue as traffic grows.
 
-#### Why this migration succeeded
+## Measures
+- Lead time: ~7 days -> under 1 day.
+- Teams able to deploy independently: 1 -> 15.
+- New-service setup time: ~1 quarter -> under 1 day (paved road).
+- Change failure rate held under 15% while deploy frequency rises 10x.
+```
 
-Trace it against the Part. It was run as a *program* with a single owner, a complete inventory, a completion-focused dashboard, and a relentless weekly cadence — so it never stalled. It used the right *strategy per component* — strangler for routing, parallel run for money math — so the blast radius always matched the stakes. It decomposed by *data ownership* with temporary, dated bridges — so it never became a distributed monolith. It moved data with *backfill + CDC + reconciliation* — so it never silently lost data, and the one divergence that occurred was caught in a report affecting zero customers. And it *actually turned the old system off* — telemetry, brownouts, orphan handling, a scheduled deletion date — so it delivered its full value instead of becoming the 80%-done-forever tax. Every one of those was a deliberate choice by the principal, and skipping any one of them is how the many migrations that stall or cause incidents go wrong.
+#### The roadmap (abbreviated)
+
+```markdown
+Year 1
+  Q1: Module boundaries enforced + CI split (action 1). Low risk, prereq.
+  Q2: Paved road v1 — service template + pipeline (action 2). Early win.
+  Q3: Extract payments (most coordination-bound). Front-loads extraction risk.
+  Q4: Observability + on-call standards baked into the paved road.
+Year 2
+  Q1: Extract catalog. Cheap now — paved road exists.
+  Q2: Extract fulfilment. New teams onboard onto the paved road directly.
+  Q3-Q4: Remaining contexts split as teams grow into them; platform hardening.
+
+Capacity: sized to effective headcount, ramping as hires land (12 -> ~40
+by end of Y1 -> ~80 by end of Y2). Platform team formed first, in Q1.
+
+Explicitly deferred: Kubernetes (revisit when deploy volume justifies the
+ops cost; today ECS-style is enough), Kafka (one consumer today; ASSESS),
+multi-region (no business driver yet), service mesh (no mesh-shaped
+problems). All on the radar, none adopted without a measured trigger.
+```
+
+#### The debt portfolio angle
+
+As GreenCart extracts services, it accumulates and pays debt deliberately. The "shared database" phase of extraction — where the new service still reads the old tables during transition — is *deliberate, prudent* debt, tracked with a payoff date (full data ownership by the end of each extraction quarter). The team resists the temptation to pay down cheap debt (the dual-ORM situation) and funds the high-interest debt (the tangled order module) as a named project before extracting fulfilment, because extracting a tangled module is far more expensive than extracting a clean one. The register from 84.4 governs this.
+
+#### Why this strategy is right
+
+Trace it against the Part. It starts with a *diagnosis* (shared coordinated deploys and data do not scale with headcount), not an action list. Its guiding policy *refuses* three fashionable things (big-bang rewrite, microservices-as-goal, premature K8s/Kafka/mesh) and concentrates force on reducing coordination. Its actions are *coherent* — boundaries enable extraction, the paved road makes extraction cheap and new teams productive. The roadmap respects *dependencies* (boundaries and paved road before wide extraction), *front-loads risk* (payments extraction in Y1 Q3, not Y2), schedules an *early win* (paved road v1), and is sized to *effective capacity* that ramps with hiring. New technology is held at *assess* with *falsifiable triggers*. And debt is managed as a *portfolio*, paying the high-interest items before they make extraction expensive.
+
+The naive "microservices and Kubernetes" answer would have produced a distributed monolith (services split along the org chart before boundaries were understood — exactly the Part 87 failure), a premature platform the 12-person team could not operate, and a year lost to a rewrite. The boring, staged, diagnosis-driven strategy converts 68 new hires into independent output. That difference — between an exciting answer and a correct one — is the entire value of knowing how to do technical strategy.
 
 #### Practical exercise
 
-Plan a real or hypothetical platform migration end to end using every tool in this Part. Produce: the program setup (owner, inventory, completion-focused dashboard, cadence), the strategy choice per major component (justified by blast radius), the data-ownership decomposition plan, the data-migration plan (backfill + sync + multi-dimensional reconciliation), and the deprecation-and-deletion plan (telemetry, brownouts, orphan handling, deletion date). Define done as the old system deleted.
+Take your own organisation's next big change (significant growth, a new market, a platform shift, a reliability push). Produce the full set of artifacts for it, each consistent with the others: a strategy kernel (diagnosis, guiding policy with refusals, coherent actions), a one-page measurable vision tied to business numbers, a dependency-respecting and capacity-honest roadmap with explicit deferrals, and a note on how you would manage the debt the change creates as a portfolio.
 
-**Acceptance criteria:** the plan measures completion (old system running: yes/no) not volume; assigns different migration strategies to components by blast radius with parallel run for anything correctness-critical; decomposes by data ownership with time-boxed bridges; reconciles data on value (not just count) as a cutover gate; and ends with a scheduled deletion of the old system, with a plan for the orphaned last callers. A reader can see that this migration is designed to finish and to never silently lose data.
+**Acceptance criteria:** the diagnosis names a cause, not a symptom; the policy refuses at least two tempting things; the actions reinforce one another; the roadmap violates no dependency and is sized to effective capacity; at least two technologies are explicitly deferred with falsifiable triggers; and the whole set is coherent — a reader can see how the vision, strategy, roadmap and debt plan all serve the same diagnosis.
 
-## 84.8 Migration verification, observability, and the human side
+## 84.8 Communicating, measuring, and sustaining a strategy
 
 #### Concept
 
-Two aspects of large migrations that determine success as much as the technical plan. **Migration verification and observability** is how you continuously prove the migration is working and catch problems early — comparison dashboards, diffing old versus new outputs, metrics that show the migration's health, and the reconciliation that gates each cutover (84.5). **The human side** is managing the people through a long migration — keeping morale up during the unglamorous grind, maintaining momentum when the migration competes with features, and handling the organisational fatigue that sets in during a multi-year effort. A migration that is technically sound but loses the people (burnout, lost momentum, fatigue) stalls as surely as one with a bad plan.
+A strategy that is written but not communicated, measured, or sustained is a document, not a direction. Three disciplines turn a strategy kernel into a living force in the organisation: **communicating it** so people actually internalise it (repetition until bored, embedding it in decisions), **measuring it** so you know whether it is working and can adjust (leading indicators, checkpoints, falsifiable signals), and **sustaining it** across the quarters and the inevitable pressures that erode it (defending it against thrash, revisiting it deliberately rather than abandoning it reactively). This is the difference between a strategy that changes what the organisation does and one that sits in a wiki nobody follows.
 
 #### Why does it exist?
 
-Imagine a migration running without verification — you cut over and *hope* the new system is correct, discovering problems only when customers complain. Or imagine a migration with no observability — you cannot tell whether it is healthy, how far along it is, or whether the new path is working under real traffic. Verification and observability exist because a migration touches live, important systems, and you must *know*, continuously and with evidence, that it is working — not hope, not assume, but prove via diffs, metrics, and reconciliation.
-
-The human side exists because large migrations are long, unglamorous grinds that compete with exciting feature work for people's energy and attention over months or years. The engineers doing the migration can burn out on the tedium; the organisation can lose patience and momentum; fatigue sets in as the migration drags. A migration that ignores the human side loses the very people it depends on, and a demoralised team or a fatigued organisation stalls a technically-sound migration. The human side exists because migrations are run by people over a long time, and sustaining those people is as essential as the technical plan.
+Imagine writing an excellent strategy kernel, presenting it once in an all-hands, and then returning to daily work. Three months later, nobody remembers it, teams are making decisions that contradict it, and there is no way to tell whether it is working. The strategy existed but had no effect, because a strategy communicated once is forgotten, a strategy never measured cannot be known to work or adjusted, and a strategy never defended erodes under the constant pressure of competing priorities. The disciplines exist because the hard part of strategy is not writing it — it is making it actually direct the organisation's behaviour over time, which requires relentless communication, measurement, and defence.
 
 #### Mental model
 
-For verification, imagine a parallel flight test of a new aircraft. You do not just build the new plane and put passengers on it; you fly it alongside proven conditions, instrument everything, and compare its behaviour to the expected, catching problems in telemetry before they endanger anyone. Migration verification is the parallel flight test: run the new system, instrument it, compare its outputs to the old (diffing), and prove it is correct via telemetry and reconciliation before you trust it with real traffic.
-
-For the human side, imagine a long expedition — a months-long trek. The route (technical plan) matters, but so does keeping the team's morale up through the tedious middle stretches, maintaining momentum when energy flags, and managing the fatigue of a long journey. An expedition leader who only plans the route and ignores the team's morale finds the team exhausted and demoralised halfway, and the expedition stalls. A long migration is an expedition, and leading the people through it is as essential as the route.
+Imagine a ship's captain who sets a heading but then never repeats it to the crew, never checks the compass, and never corrects when currents push the ship off course. The ship drifts wherever the currents take it, regardless of the heading the captain once announced. Communicating the strategy is repeating the heading until every crew member knows it; measuring it is checking the compass and the ship's actual position; sustaining it is correcting for the currents (competing priorities, pressures) that constantly push the ship off the heading. A strategy without these is a heading announced once and then abandoned to the currents — the ship goes wherever the pressures push it, not where the strategy intended.
 
 #### How it works
 
-**Verification and observability:**
+**Communicating the strategy:**
 
 ```text
-- Diffing old vs new: during parallel run (54.3), compare the two systems'
-  outputs on the same inputs. Any diff is investigated. Catches correctness
-  bugs (the 0.3% refunds, 54.7) before cutover, affecting zero customers.
-- Comparison dashboards: show the diff rate over time. Trending to zero = the
-  new system matches = confidence to cut over.
-- Migration-health metrics: progress (completion, not volume — 54.1), error
-  rates on the new path, latency comparison, CDC lag (54.5), reconciliation status.
-- Reconciliation as a cutover GATE (54.5): data cutover requires reconciliation
-  (multi-dimensional, value checksums) to pass. Proof, not hope.
-- Canary observability: as you ramp (54.6), watch the new path's metrics at each
-  step; a regression means roll back (kill switch) before going further.
+- Repeat it until you're bored of saying it (and then keep going). People need
+  to hear a direction many times before it sticks and shapes their decisions.
+- Embed it in decisions: when you decide something, reference the strategy
+  ("per our strategy to reduce coupling, we're extracting payments"). This
+  teaches people to use it as a decision tool (the test of good direction, Part 59).
+- Make it usable: the kernel (diagnosis, policy, actions) is short enough that
+  people can hold it and apply it to say no to off-strategy proposals (52.1).
+- Translate for audiences: engineers get the technical version, leadership gets
+  the business version (Part 86.2).
 ```
 
-The principle: you must be able to *prove*, continuously, that the migration is working — via diffs that trend to zero, metrics that show health, and reconciliation that gates cutover. A migration you cannot observe is a migration you cannot trust.
-
-**The human side:**
+**Measuring the strategy:**
 
 ```text
-- Morale through the grind: the migration's unglamorous middle is where morale
-  sags. Celebrate milestones (completion milestones, 54.2), rotate people through
-  the tedious parts, and make the progress visible (the dashboard) so people see
-  they're advancing.
-- Momentum vs features: the migration constantly competes with feature work. The
-  program owner (54.2) defends the migration's resourcing and keeps it visible
-  (the cadence) so it isn't quietly deprioritised.
-- Organisational fatigue: in a multi-year migration, patience wears thin ("are we
-  STILL doing this?"). Combat it by showing progress against completion, delivering
-  incremental value where possible, and holding the deletion date (54.1) as the
-  visible finish line.
-- Avoid the death march: a migration driven by overwork is unsustainable; pace it,
-  and protect the team (Part 86.5).
+- Leading indicators: metrics that show EARLY whether the strategy is working,
+  before the lagging outcome arrives (e.g. for a velocity strategy: lead-time
+  trending down, teams deploying independently rising — before the final goal).
+- Checkpoints: scheduled points to assess progress against the roadmap (52.3)
+  and the strategy's expected effects.
+- Falsifiable signals: define in advance what would show the strategy is WRONG
+  (per Part 64 — "if lead time hasn't improved in 2 quarters, the diagnosis was
+  wrong"), so you can adjust rather than persist in a failing direction.
+```
+
+**Sustaining the strategy:**
+
+```text
+- Defend it against thrash: competing priorities constantly pull resources off
+  the strategy; the principal protects the strategic work (Part 86.5).
+- Revisit deliberately, not reactively: update the strategy when the diagnosis
+  changes or the measurement shows it's wrong — not every time a shiny new thing
+  appears. Deliberate revision; not abandonment under pressure.
+- Keep the vision stable while the roadmap flexes (52.1): the destination holds;
+  the path adjusts as you learn.
 ```
 
 ```mermaid
 flowchart LR
-    V["Verification: diff old vs new, trending to zero"] --> CONF["Confidence to cut over"]
-    OBS["Observability: progress, error rates, CDC lag, reconciliation"] --> CONF
-    REC["Reconciliation GATES cutover (proof, not hope)"] --> CONF
-    H["Human side: morale, momentum, fatigue, no death march"] --> FINISH["Migration finishes"]
-    CONF --> FINISH
+    S["Strategy kernel"] --> C["Communicate: repeat, embed in decisions"]
+    C --> M["Measure: leading indicators, checkpoints, falsifiable signals"]
+    M --> R{"Working?"}
+    R -->|"yes"| SUS["Sustain: defend against thrash"]
+    R -->|"no (signal fired)"| ADJ["Adjust deliberately (diagnosis was wrong)"]
+    SUS --> M
+    ADJ --> S
 ```
 
 #### Artifact example
 
-A migration verification dashboard and a human-side health note — the artifacts that prove the migration works and keep the people with it.
+A strategy scorecard — the artifact that makes a strategy measured and sustained rather than forgotten.
 
 ```markdown
-# Migration verification dashboard: order system (parallel run phase)
+# Strategy scorecard: Engineering Velocity (reviewed monthly)
 
-## Output diffing (old vs new, same inputs)
-- Refund calculation: 0 diffs over last 7 days (was 0.3% — fixed, 54.7). READY.
-- Order totals: 0 diffs. READY.
-- Status transitions: 2 diffs/day — investigating (edge case in cancellations).
-  NOT YET ready to cut over status handling.
+## The kernel (repeated at the top every time — repetition is the point)
+Diagnosis: coupling (one monolith + one DB) serialises all deploys.
+Policy: reduce coupling via bounded-context ownership; extract only where blocked;
+  NOT a big-bang rewrite.
+Actions: (1) enforce boundaries, (2) extract 2 most-blocked contexts, (3) build
+  the paved road.
 
-## Data reconciliation (gates data cutover, 54.5)
-- Row counts match. Value checksums match to the cent. 100k sample: 0 field diffs.
-- CDC lag: 0.4s. DATA CUTOVER: CLEARED.
+## Leading indicators (early signals it's working)
+- Lead time for change: 30d -> 18d (trending down — ON TRACK).
+- Teams able to deploy independently: 1 -> 3 (rising — ON TRACK).
+- Cross-team blocking dependencies/feature: 3 -> 1.8 (falling — ON TRACK).
 
-## New-path health (canary at 10%)
-- Error rate: 0.02% (vs 0.02% old — equivalent). Latency: p99 better. HEALTHY.
+## Checkpoints (vs roadmap, 52.3)
+- [x] Boundaries enforced (Q1) [x] Paved road v1 (Q2) [>] Payments extracted (Q3)
 
-## Progress (completion, not volume, 54.1)
-- Legacy system: STILL RUNNING. Deletion: T-112 days. Callers remaining: 7.
+## Falsifiable signal (defined in advance — would show the strategy is WRONG)
+"If lead time hasn't improved by Q3, the diagnosis (coupling) was wrong and we
+reassess." Status: improving, so the diagnosis holds.
 
----
-# Human-side health note (for the program owner)
-- Team morale: dipping — we're in the unglamorous middle. ACTION: celebrated the
-  50% milestone publicly; rotating the two engineers off the tedious backfill
-  verification next sprint.
-- Momentum: a feature push threatened to pull 1 engineer off. Held the line
-  (reframed: the migration enables the features). 
-- Org fatigue: "are we still doing this?" surfaced in a review. ACTION: shared the
-  deletion countdown and the incidents the migration has already prevented.
-- Pace: sustainable, no death march. Watching for burnout on the 2 core engineers.
+## Sustaining
+- Thrash watch: a VP proposed pausing the extraction for a feature push. Held
+  the line — the extraction IS what enables faster features (reframed, Part 88).
+- Next revisit: Q3 checkpoint. Not revising before then absent a fired signal.
 ```
 
-The dashboard's power is that it *proves* the migration is working — output diffs trending to zero (per sub-system, so you cut over each only when its diffs are zero), reconciliation gating data cutover, canary health — rather than hoping. And the human-side note treats morale, momentum, fatigue, and pace as first-class risks to actively manage, because a migration that loses its people stalls regardless of how good the verification looks. Together they address the two things beyond the technical plan that determine whether a long migration finishes: continuous proof that it works, and sustained people to carry it.
+The scorecard's power is that it repeats the kernel every time (repetition is how a strategy sticks), tracks leading indicators (early signals, not just the final outcome), checks progress against the roadmap, states the falsifiable signal defined in advance (so a failing strategy is adjusted rather than persisted in), and records the sustaining work (defending against thrash, deliberate revisit timing). It turns the strategy from a one-time document into a monitored, defended, living direction — which is the difference between a strategy that works and one that is forgotten.
 
 #### Real-world scenario
 
-A principal engineer running a long migration treats verification and the human side as seriously as the technical plan. On verification: she runs output diffing throughout the parallel-run phase, cutting over each sub-system only when its diff rate reaches zero, and she gates every data cutover on multi-dimensional reconciliation — so she *proves* correctness rather than hoping, and the one real bug (a refund-calculation edge case) is caught in a diff affecting zero customers. On the human side: she notices morale dipping during the unglamorous middle, so she celebrates the completion milestones publicly and rotates engineers off the most tedious work; when a feature push threatens the migration's resourcing, she defends it by reframing it as what enables the features; and when organisational fatigue surfaces ("are we still doing this?"), she combats it by showing the deletion countdown and the incidents already prevented. The migration finishes on schedule, because it was both continuously proven correct and carried by a team whose morale and momentum she actively sustained. A peer running a comparable migration with a sound technical plan but no verification discipline (cutting over on hope) and no attention to the human side (letting morale and momentum erode) sees it stall — a correctness bug reaches production, and the demoralised, fatigued team loses momentum. The technical plans were comparable; the difference was verification and the human side, which determine whether a long migration actually finishes.
+A principal engineer writes a strong strategy and then does the unglamorous work of making it live. She references it in every relevant decision ("per our strategy..."), repeats it so often she worries she is boring people (and then keeps going, because she notices it is finally shaping their decisions). She tracks leading indicators monthly, so when lead time starts trending down she can show the strategy is working, and she has defined in advance the signal that would show it is wrong. When competing priorities threaten to pull resources off the strategic work, she defends it — reframing the strategic work as what enables the competing priority rather than opposing it. Two years later, the strategy has actually changed what the organisation built, because she communicated, measured, and sustained it relentlessly. A peer who wrote an equally good strategy and presented it once finds it forgotten within a quarter, contradicted by daily decisions, with no way to tell if it worked. The difference was not the quality of the strategy but the discipline of making it live — which is the part most people skip and the part that actually produces the effect.
 
-#### How a Senior Backend Engineer thinks about this
+#### How a Principal Engineer thinks about this
 
-They treat verification as non-negotiable: they prove the migration is working continuously — via output diffing that must trend to zero before cutover, migration-health metrics, and reconciliation that gates every data cutover — because they know that a migration touches live important systems and must be *proven* correct, not hoped correct, and that the cost of a correctness bug reaching production (data corruption, a breach of trust) is far higher than the cost of the verification. They observe the migration thoroughly (progress by completion, error rates, CDC lag) because a migration they cannot see is a migration they cannot trust or steer.
+They know that writing the strategy is the easy part and making it direct the organisation's behaviour is the hard part, so they invest relentlessly in communicating it (repeating it past the point of their own boredom, embedding it in decisions so people learn to use it as a tool), measuring it (leading indicators for early signal, falsifiable signals defined in advance so a wrong strategy is adjusted not persisted in), and sustaining it (defending the strategic work against the constant pull of competing priorities, revisiting deliberately rather than abandoning reactively).
 
-They also treat the human side as a first-class risk, because they understand that a long migration is a grind carried by people over months or years, and that a demoralised team, lost momentum, or organisational fatigue will stall a technically-sound migration as surely as a bad plan. So they actively manage morale (celebrate milestones, rotate the tedious work), defend momentum (protect resourcing against feature pulls, keep the cadence), combat fatigue (show progress and the finish line), and avoid the death march (sustainable pace, protect the team). The senior engineer knows that finishing a large migration — the whole challenge of this Part — requires three things together: a sound plan, continuous proof it is working, and sustained people to carry it to completion, and that neglecting either of the latter two is how good plans still fail.
+They treat the falsifiable signal as the mark of an engineering strategy rather than a belief (Part 64): by defining in advance what would show the strategy is wrong, they can adjust with evidence rather than either persisting stubbornly in a failing direction or abandoning a working one at the first pressure. They keep the vision stable while letting the roadmap flex, correcting for the currents without changing the destination. The principal understands that a strategy's effect is produced entirely by the discipline of making it live — communicated, measured, defended — and that the many good strategies that change nothing fail not in the thinking but in this sustaining work.
 
 #### Common mistakes
 
-- **Cutting over on hope** instead of proving correctness via diffing and reconciliation.
-- **No output diffing during parallel run,** so correctness bugs reach production instead of being caught in a diff.
-- **No migration observability,** so you cannot tell if it is healthy or how far along (by completion).
-- **Ignoring team morale through the grind,** so the engineers burn out on the tedium and the migration stalls.
-- **Not defending the migration's momentum,** letting it be quietly deprioritised for features.
-- **Running a death march,** an unsustainable pace that burns out the team before the finish.
+- **Communicating the strategy once** and assuming it stuck, so it is forgotten within a quarter.
+- **Not embedding it in decisions,** so people never learn to use it as a tool.
+- **Measuring only the lagging outcome,** with no leading indicators to show early whether it is working.
+- **No falsifiable signal,** so a failing strategy is persisted in (belief, not engineering) or a working one abandoned under pressure.
+- **Not defending the strategy against thrash,** so competing priorities erode the strategic work.
 
 #### Interview questions
 
-1. **How do you prove a migration is working, rather than hoping?**
-   *Expected answer:* output diffing during parallel run (compare old vs new on the same inputs; cut over each sub-system only when its diff rate reaches zero), migration-health observability (progress by completion, error rates, latency comparison, CDC lag), and reconciliation that gates every data cutover (multi-dimensional, value checksums). A migration you cannot observe or verify is one you cannot trust. *Why it matters:* verification catches correctness bugs before they reach customers.
+1. **How do you make a strategy actually direct the organisation's behaviour, not just sit in a wiki?**
+   *Expected answer:* communicate it relentlessly (repeat past your own boredom, embed it in decisions so people use it as a tool), measure it (leading indicators for early signal, checkpoints, falsifiable signals defined in advance), and sustain it (defend the strategic work against thrash, revisit deliberately not reactively). The hard part of strategy is making it live, not writing it. *Why it matters:* most good strategies change nothing because this work is skipped.
 
-2. **Why is the human side as important as the technical plan in a large migration?**
-   *Expected answer:* a long migration is an unglamorous grind carried by people over months or years, competing with exciting feature work; if morale erodes (burnout on tedium), momentum is lost (deprioritised for features), or organisational fatigue sets in ("are we still doing this?"), the migration stalls regardless of how sound the technical plan is. You must actively manage morale, momentum, fatigue, and pace. *Why it matters:* tests whether they see migrations as human efforts, not just technical ones.
+2. **Why define a falsifiable signal for a strategy in advance?**
+   *Expected answer:* so you can adjust with evidence rather than either stubbornly persisting in a failing direction or abandoning a working one at the first pressure; defining in advance what would show the strategy is wrong (e.g. "if lead time hasn't improved in 2 quarters, the diagnosis was wrong") turns the strategy from a belief into engineering (Part 64). *Why it matters:* tests whether they treat strategy as falsifiable.
 
-3. **How do you sustain momentum and morale through the unglamorous middle of a multi-year migration?**
-   *Expected answer:* celebrate completion milestones publicly, rotate people off the most tedious work, make progress visible (the completion dashboard), defend the migration's resourcing against feature pulls (reframe it as enabling features), combat organisational fatigue by showing the deletion countdown and the value already delivered (incidents prevented), and keep a sustainable pace (no death march). *Why it matters:* tests the human-leadership side of long migrations.
+3. **A VP wants to pause your strategic work (service extraction) for a feature push. How do you respond?**
+   *Expected answer:* defend the strategic work by reframing, not opposing — the extraction is what enables faster feature delivery (per the strategy's diagnosis that coupling slows features), so pausing it slows the very thing the VP wants; make the tradeoff explicit (Part 88.5) and hold the line unless the measurement shows the strategy is wrong. Sustaining a strategy means defending it against thrash. *Why it matters:* tests whether they can sustain a strategy under pressure.
 
 #### Practical exercise
 
-For a migration you are planning or running, design its verification and observability: how you will diff old versus new outputs during parallel run, the migration-health metrics you will track, and how reconciliation will gate each cutover. Then write a human-side plan: how you will sustain morale through the grind, defend momentum against feature competition, combat organisational fatigue, and keep a sustainable pace.
+Take the strategy kernel you built earlier in this Part and make it measurable and sustainable. Define its leading indicators (early signals it is working, not just the final outcome), its checkpoints (against the roadmap), and its falsifiable signal (what, defined in advance, would show the strategy is wrong). Then write how you will communicate it (where you will repeat it, how you will embed it in decisions) and how you will sustain it (what thrash you anticipate and how you will defend against it).
 
-**Acceptance criteria:** your verification proves correctness (output diffing that must trend to zero before cutover, reconciliation gating data cutover) rather than relying on hope; your observability covers progress by completion, new-path health, and sync lag; and your human-side plan actively manages morale (milestone celebration, rotating tedious work), momentum (defending resourcing), fatigue (showing progress and the finish line), and pace (no death march) — demonstrating that you treat finishing a migration as requiring a sound plan, continuous proof, and sustained people together.
+**Acceptance criteria:** your strategy has leading indicators that show early whether it is working (not only the lagging outcome); it has a falsifiable signal defined in advance, so a failing strategy would be adjusted with evidence; you have a concrete plan to communicate it repeatedly and embed it in decisions; and you anticipate the thrash that will threaten it and how you will defend the strategic work — demonstrating that you can make a strategy live rather than letting it be forgotten.
 
-## 84.9 A quick-reference for large migrations
+## 84.9 Strategy anti-patterns and the strategy review
 
-A compact reference distilling the Part into the checks that matter most when you plan or run a large migration.
+#### Concept
 
-#### The migration checklist
+Two final tools. The **strategy anti-patterns** are the recurring ways technical strategy goes wrong, gathered into one catalogue so you can recognise and avoid them. And the **strategy review** is the regular forum where a strategy is examined — is the diagnosis still right, are the actions working, has the landscape changed — so that strategy is a living, periodically-revisited thing rather than a document written once and left to rot. Together they are how a principal keeps strategy honest and current over time.
+
+#### Why does it exist?
+
+Imagine a strategy written once, never reviewed, while the world changes around it. The diagnosis that was right eighteen months ago may be stale (the problem has shifted), the actions may be complete or failing, and the landscape (team size, technology, business direction) may have moved — but because nobody reviews it, the organisation keeps following a strategy that no longer fits. The strategy review exists to prevent this: to periodically ask whether the strategy is still right and adjust it deliberately, keeping it a living direction rather than a stale document.
+
+The anti-patterns catalogue exists because technical strategy fails in predictable, recognisable ways — the roadmap-called-strategy, the goal-list, the diagnosis-free action list, the strategy that refuses nothing — and naming them lets a principal catch these failures in their own strategy and others' before they do damage. Both exist to keep strategy honest: the review keeps it current, and the anti-patterns catalogue keeps it from being the common non-strategies that masquerade as strategy.
+
+#### Mental model
+
+Imagine a ship's navigation that is set once at departure and never revisited, even as storms, currents, and new information arrive. The ship follows the original heading into dangers the captain could have avoided by re-checking the chart. The strategy review is re-checking the chart periodically — is the destination still right, has the landscape changed, is the current heading still the best way there — and adjusting. The anti-patterns are the common navigation mistakes (following a heading with no destination, a destination with no route, a route that ignores the storms) that a good navigator recognises and avoids. Strategy, like navigation, must be both initially sound (avoiding the anti-patterns) and periodically re-checked (the review).
+
+#### How it works
+
+**The strategy anti-patterns** (gathered from across the Part):
 
 ```text
-[ ] Am I measuring COMPLETION (is the old system still running?), not volume?
-[ ] Is there a scheduled DELETION DATE for the old system, worked backward from?
-[ ] Is it run as a PROGRAM — single owner, full inventory, dashboard, cadence?
-[ ] Is the STRATEGY matched to blast radius per component? (Parallel run for
-    correctness-critical; strangler for live systems; big bang only low-risk.)
-[ ] For a monolith split: decomposed by DATA OWNERSHIP, with the shared-database
-    phase time-boxed? (Else a distributed monolith.)
-[ ] For data: backfill (idempotent, keyset) + CDC + RECONCILIATION on VALUE
-    (not just row count), gating cutover?
-[ ] Is there a KILL SWITCH and rollback point for every step? Blast radius controlled?
-[ ] Am I PROVING it works (output diffing, reconciliation), not hoping?
-[ ] Is the old system actually being TURNED OFF — telemetry, deprecation,
-    brownouts, orphan handling — and DELETED (not just "returns 410")?
-[ ] Am I managing the HUMAN side — morale, momentum, fatigue, sustainable pace?
+- The roadmap-called-strategy: a sequence of activities with the reasoning
+  removed; collapses under reprioritisation (52.1).
+- The goal-list: "be scalable, reliable, modern" — adjudicates nothing, refuses
+  nothing (52.1/52.2).
+- The diagnosis-free action list: jumps to actions without naming the real
+  problem, so it treats symptoms (52.2).
+- The symptom-as-diagnosis: "too many incidents" (symptom) instead of the cause
+  (52.2).
+- The refuse-nothing strategy: says yes to everything, so no real choices (52.2).
+- The incoherent actions: a committee-compromise list where off-policy items
+  dilute the on-policy ones — where good strategies usually die (52.2).
+- The undeliverable roadmap: sized to nominal not effective capacity (52.3).
+- The unquantified-debt plea: arguing for debt work with feelings not numbers (52.4).
+- The single-number tech adoption: adopting on one exciting metric, ignoring fit
+  and exit cost (52.5).
+- The write-once strategy: never reviewed, so it goes stale (this section).
+```
+
+**The strategy review:**
+
+```text
+- Cadence: review the strategy regularly (e.g. quarterly), at a checkpoint.
+- Questions to ask:
+  * Is the DIAGNOSIS still right? Has the problem shifted?
+  * Are the ACTIONS working? (The leading indicators, 52.8.) Did any fire a
+    falsifiable signal that the strategy is wrong?
+  * Has the LANDSCAPE changed? (Team size, technology, business direction, a new
+    constraint or opportunity?)
+  * Should we ADJUST — the actions, the roadmap, or (rarely) the diagnosis?
+- Deliberate adjustment, not reactive thrash: adjust when the review shows cause,
+  not every time a shiny new thing appears (52.1 — vision stable, roadmap flexes).
+- Keep it honest: the review is a place to admit an action isn't working and
+  change it, not to defend the original strategy regardless.
+```
+
+```mermaid
+flowchart LR
+    S["Strategy"] --> AV["Avoid the anti-patterns (sound strategy)"]
+    AV --> REV["Strategy review (quarterly)"]
+    REV --> Q{"Diagnosis still right? Actions working? Landscape changed?"}
+    Q -->|"still fits"| CONT["Continue (don't thrash)"]
+    Q -->|"shifted / not working / changed"| ADJ["Adjust deliberately"]
+    ADJ --> S
+    CONT --> REV
+```
+
+#### Artifact example
+
+A strategy review record — the artifact that keeps a strategy living and honest.
+
+```markdown
+# Strategy review: Engineering Velocity (Q3 review)
+
+## Is the diagnosis still right?
+Original: coupling (one monolith + one DB) serialises deploys. STILL RIGHT — the
+coupling remains the binding constraint; no change.
+
+## Are the actions working? (leading indicators, 52.8)
+- Boundaries enforced: DONE, holding. Lead time 30d -> 15d (working).
+- Paved road v1: DONE, adopted. (Working.)
+- Payments extraction: IN PROGRESS, on track.
+- Falsifiable signal check: "if lead time hadn't improved by Q3" — it HAS
+  (30d->15d), so the diagnosis holds. No signal fired.
+
+## Has the landscape changed?
+- Team grew faster than planned (12 -> 50, ahead of schedule). ADJUSTMENT: pull
+  the next extraction (catalog) forward a quarter — more capacity available.
+- New: a compliance requirement for EU data residency emerged. NOT in the current
+  strategy. DECISION: add a residency work-stream (small) to the roadmap; it
+  doesn't change the diagnosis but adds a constraint.
+
+## Adjustments (deliberate, not thrash)
+- Pull catalog extraction forward (more capacity).
+- Add EU residency work-stream (new constraint).
+- NOT changing: the diagnosis, the guiding policy, the vision. The strategy is
+  working; we adjust the roadmap, not the direction.
+
+## Anti-pattern self-check
+- Still a real strategy (diagnosis + policy + coherent actions)? YES.
+- Still refusing things (no big-bang rewrite, no premature K8s)? YES, held the
+  line on a K8s proposal this quarter.
+```
+
+The review record's power is that it periodically re-examines the strategy honestly — is the diagnosis still right (yes), are the actions working (yes, per leading indicators and the falsifiable-signal check), has the landscape changed (yes — faster growth and a new residency requirement) — and adjusts deliberately (pull an extraction forward, add a residency work-stream) without thrashing the core direction. The anti-pattern self-check keeps the strategy from decaying into a non-strategy. This turns strategy from a write-once document into a living, periodically-revisited direction that stays current and honest.
+
+#### How a Principal Engineer thinks about this
+
+They keep the anti-patterns catalogue in mind as a checklist against their own and others' strategies, because they know technical strategy fails in predictable, recognisable ways — and catching the roadmap-called-strategy, the goal-list, the diagnosis-free action list, the refuse-nothing strategy, or the incoherent actions early prevents the organisation from following a non-strategy that will collapse. They treat strategy as a living thing that must be periodically reviewed, because they know a write-once strategy goes stale as the diagnosis shifts, actions complete or fail, and the landscape changes.
+
+They run the strategy review honestly — genuinely asking whether the diagnosis still holds, whether the actions are working (via leading indicators and falsifiable signals, 84.8), and whether the landscape has changed — and they adjust deliberately rather than defending the original strategy regardless or thrashing it at every new idea. They keep the vision stable while letting the roadmap flex, adjusting the path when the review shows cause while holding the direction steady. The principal understands that good strategy requires both initial soundness (avoiding the anti-patterns) and ongoing honesty (the review that keeps it current), and that the many strategies that fail do so either by being a non-strategy from the start or by going stale from never being revisited.
+
+#### Common mistakes
+
+- **Not recognising the anti-patterns** in your own strategy (roadmap-as-strategy, goal-list, diagnosis-free, refuses-nothing).
+- **Writing a strategy once and never reviewing it,** so it goes stale as the landscape changes.
+- **Defending the original strategy in reviews** regardless of whether it's working, instead of honestly adjusting.
+- **Thrashing the strategy** at every new idea, instead of adjusting deliberately when the review shows cause.
+- **Changing the vision when only the roadmap needs to flex,** destabilising the direction.
+
+#### Interview questions
+
+1. **What are the common ways technical strategy fails, and how do you recognise them?**
+   *Expected answer:* the roadmap-called-strategy (activities with reasoning removed), the goal-list (adjudicates nothing), the diagnosis-free action list (treats symptoms), the symptom-as-diagnosis, the refuse-nothing strategy (no real choices), the incoherent-actions committee compromise (where strategies usually die), the undeliverable roadmap (nominal not effective capacity), and the write-once strategy (never reviewed, goes stale). Recognise them by checking for a real diagnosis, a policy that refuses things, and coherent actions. *Why it matters:* catching these early prevents following a non-strategy.
+
+2. **How and why do you review a strategy over time?**
+   *Expected answer:* review it on a cadence (e.g. quarterly), asking whether the diagnosis is still right, whether the actions are working (leading indicators, falsifiable signals), and whether the landscape has changed (team, technology, business, new constraints) — then adjust deliberately (the roadmap/actions, rarely the diagnosis) when the review shows cause, keeping the vision stable. Because a write-once strategy goes stale as the world changes around it. *Why it matters:* tests whether they treat strategy as living, not a one-time document.
+
+3. **In a strategy review, the diagnosis still holds but the landscape changed (faster growth, a new compliance requirement). What do you do?**
+   *Expected answer:* adjust the roadmap deliberately — pull work forward given the extra capacity, add a work-stream for the new constraint — without changing the still-valid diagnosis, guiding policy, or vision; flex the path, hold the direction. And self-check that it's still a real strategy (diagnosis + policy + coherent actions, still refusing things). *Why it matters:* tests deliberate adjustment versus thrash or rigidity.
+
+#### Practical exercise
+
+Audit a strategy (yours or your org's) against the anti-patterns catalogue: is it a real strategy (diagnosis + policy + coherent actions) or one of the non-strategies (roadmap, goal-list, diagnosis-free, refuses-nothing, incoherent)? Then conduct a strategy review: is the diagnosis still right, are the actions working (what would the leading indicators show), has the landscape changed, and what would you adjust deliberately — distinguishing a roadmap flex from a direction change.
+
+**Acceptance criteria:** your audit identifies whether the strategy is real or a recognised non-strategy, naming any anti-pattern present; your review honestly asks whether the diagnosis still holds and the actions are working (not just defending the original), checks whether the landscape has changed, and proposes deliberate adjustments (flexing the roadmap/actions while keeping the vision stable, unless the diagnosis itself has genuinely shifted) rather than either rigidity or thrash.
+
+## 84.10 A quick-reference for technical strategy
+
+A compact reference distilling the Part into the checks that matter most when you set or assess technical direction.
+
+#### The strategy checklist
+
+```text
+[ ] Do I know which I'm writing — vision, strategy, roadmap, or plan? (Don't conflate.)
+[ ] Does my STRATEGY have a real DIAGNOSIS (a cause, not a symptom)?
+[ ] Does the GUIDING POLICY refuse things? (A strategy that says yes to everything
+    has made no choices.)
+[ ] Are the ACTIONS coherent — each reinforcing another? (Where strategies die.)
+[ ] Is the VISION measurable and tied to business numbers? (Not a slogan.)
+[ ] Is the ROADMAP sequenced by dependency + risk, with an early win, sized to
+    EFFECTIVE capacity? Are deferrals explicit?
+[ ] Is tech debt managed as a PORTFOLIO — classified, measured in real units,
+    funded by interest rate (and cheap debt deliberately carried)?
+[ ] Is new tech evaluated on FIT and EXIT COST (not one exciting number), adopted
+    in stages?
+[ ] Is the strategy COMMUNICATED repeatedly, MEASURED (leading indicators,
+    falsifiable signals), and REVIEWED on a cadence?
 ```
 
 #### The enduring principle
 
-The whole Part reduces to one hard truth: **a migration delivers its value only at 100%, when the old system is off — so finishing, not starting, is the goal.** Large migrations fail by stalling at 80% done forever, as the easy work completes and the unglamorous, political last 20% gets deferred. Everything in this Part serves finishing: measure completion not volume, schedule the deletion date, run it as a program, match the strategy to blast radius, decompose by data ownership, prove correctness with reconciliation, control risk with kill switches, actually turn the old system off, and sustain the people through the grind. When you run a migration, hold the deletion of the old system as the definition of done, and relentlessly drive the last 20% that everyone wants to skip — because that is where migrations go to die, and finishing them is where a principal earns their keep.
+The whole Part reduces to one idea: **strategy is choice — a diagnosis of the real problem, a policy that commits to an approach and refuses others, and coherent actions that reinforce each other — made measurable, communicated relentlessly, and kept honest through review.** Most things called strategy are non-strategies (roadmaps with the reasoning removed, goal-lists that choose nothing), and most real strategies fail not in the thinking but in the sustaining — never measured, never defended, left to go stale. When you set direction, ask: what is the honest diagnosis, what will we refuse, do the actions reinforce each other, how will we know it's working, and how will I keep it alive? And bias toward the boring choice, saying no to technology that doesn't earn its cost, because the simplest thing that meets the requirement wins.
 
-Return to this reference when planning or running a large migration; the reasoning behind each line is in the sections above.
+Return to this reference when setting or assessing technical direction; the reasoning behind each line is in the sections above.
 
 ## Senior Checklist — Part 84
 
@@ -261,27 +418,27 @@ Return to this reference when planning or running a large migration; the reasoni
 - [ ] I can choose between alternatives
 - [ ] I can explain the tradeoffs
 - [ ] I can answer senior-level interview questions
-- [ ] I understand why migrations stall at 80% and I measure completion (old system off), not volume
-- [ ] I run a large migration as a program: single owner, full inventory, dashboard, cadence
-- [ ] I choose the migration strategy per component by blast radius and reversibility, and mix strategies
-- [ ] I use parallel run for correctness-critical migrations rather than trusting test confidence
-- [ ] I decompose monoliths by data ownership and never leave a permanent shared-database phase
-- [ ] I migrate data with backfill + CDC + multi-dimensional reconciliation, and reconcile on value, not just count
-- [ ] I keep a kill switch and rollback point for every migration step
-- [ ] I control blast radius with gradual ramps and per-tenant/per-region rollout
-- [ ] I use telemetry, deprecation notices and brownouts to actually turn the old system off
-- [ ] I define done as the old system deleted, and I schedule its deletion date early
+- [ ] I can tell the difference between a vision, a strategy, a roadmap and a plan, and I never confuse them
+- [ ] I can write a strategy kernel with a real diagnosis, a guiding policy that refuses things, and coherent actions
+- [ ] My diagnoses name causes, not symptoms, and I am willing to name the awkward ones
+- [ ] I write visions that are measurable and tied to business numbers
+- [ ] I sequence roadmaps by dependency and risk, with an early win, sized to effective capacity
+- [ ] I make deferrals explicit so they stop getting re-asked
+- [ ] I manage technical debt as a portfolio: classify, quantify in real units, and fund by interest rate
+- [ ] I deliberately carry cheap debt rather than fixing everything
+- [ ] I evaluate new technology on fit and exit cost, not on a single exciting number
+- [ ] I can say no to technology with a reasoned, falsifiable, recorded decision
 
 ## Part 84 — Key Takeaways
 
-- Large migrations fail by stalling at 80% done forever, not by exploding; the easy 80% completes fast and the hard, political, unglamorous last 20% gets deferred, leaving two systems running permanently — full cost, no benefit.
-- A migration delivers its value only at 100%, when the old system is off; measure completion (is the old system still running) not volume, and schedule the deletion date early to force the last 20%.
-- Run a large migration as a program: a single accountable owner, a complete inventory, dated milestones, a live dashboard, and a relentless communication cadence — the technical plan is rarely what fails.
-- Choose the migration strategy per component by blast radius and reversibility — big bang only for low-risk reversible cases, strangler for live systems, parallel run for correctness-critical ones, branch-by-abstraction for shared components — and mix them in one migration.
-- Monolith decomposition is a data problem, not a code problem; split data ownership so each service owns its tables, and never let the temporary shared-database phase become permanent, or you build a distributed monolith that is worse than the original.
-- Migrate data at scale with a batched idempotent backfill plus CDC for ongoing changes plus reconciliation to prove correctness; reconcile on value (checksums), not just row counts, especially for money.
-- Dual writes silently diverge; prefer CDC, and use reconciliation as the backstop that catches divergence before cutover, affecting zero customers instead of becoming a data-loss incident.
-- Keep a kill switch and a rollback point for every step, control blast radius with gradual ramps and per-tenant/per-region rollout, and never take a step you cannot undo.
-- Actually turn the old system off: instrument usage telemetry from the start to find the real callers, use deprecation notices and escalating brownouts to evict them, and handle orphaned last callers with escalation and a rollback-ready shutdown.
-- Define done as the old system deleted and the code gone, never as "mostly migrated" or "returns 410", because a system still running is still the 80%-done-forever tax in disguise.
-- Resist the big-bang temptation that platform migrations (database engine, cloud, framework) create; their company-wide blast radius demands gradual, reversible strategies, not a confidence-based cutover.
+- Strategy, vision, roadmap and plan are four different things; conflating them produces documents that do none of their jobs, and most "strategies" are really roadmaps or goal-lists with the reasoning removed.
+- A real strategy has three parts: a diagnosis that names the cause, a guiding policy that chooses an approach and refuses alternatives, and coherent actions that reinforce one another.
+- The diagnosis is the hardest and most valuable part; skip it and your actions treat symptoms, and a strategy that refuses nothing has made no choices.
+- A vision must be measurable and tied to business numbers, or it is a slogan that loses its funding to anything that can show a return.
+- Roadmaps are sequenced by dependency and risk: respect prerequisites, front-load the plan-killers, schedule an early visible win, and size to effective, not nominal, capacity.
+- Make deferrals explicit with reasons, because an unstated no gets re-asked forever and an explicit one reduces thrash.
+- Manage technical debt as a portfolio: classify it, measure its cost in incidents, lead-time and toil hours, and fund paydown by interest rate rather than by guilt.
+- Deliberately carry cheap debt; paying down low-interest debt wastes capacity that high-interest compounding debt needs.
+- Evaluate new technology on weighted criteria dominated by fit and exit cost, run POCs that try to kill the candidate, compute three-year TCO including the forgotten costs, and adopt in stages.
+- At scale, build only what differentiates you, buy or adopt open source for the rest, and treat contract terms — caps, exit clauses, data export — as architecture.
+- Saying no to technology is one of a principal's highest-leverage habits; make every no reasoned, falsifiable and recorded, so it sticks and the boring, correct choice wins.

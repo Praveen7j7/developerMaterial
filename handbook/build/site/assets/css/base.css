@@ -53,6 +53,12 @@ kbd {
 }
 .icon-btn:hover { background: var(--sunk); color: var(--ink); }
 
+/* design level badge: [data-level] supplies the colour */
+.lv {
+  display: inline-flex; align-items: center; padding: .15em .6em; border-radius: var(--r-pill); white-space: nowrap;
+  font: 700 var(--fs-xs)/1.35 var(--font-ui); background: var(--v-tint); color: var(--v); border: 1px solid var(--v-mid);
+}
+.lv-small { padding: 0 .5em; font-size: 11px; vertical-align: .1em; }
 .badge {
   display: inline-block; padding: .05em .5em; border-radius: var(--r-pill);
   font: 600 var(--fs-xs)/1.5 var(--font-ui); background: var(--v-tint); color: var(--v); border: 1px solid var(--v-mid);

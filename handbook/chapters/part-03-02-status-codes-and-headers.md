@@ -275,7 +275,7 @@ Inspect the headers of a real API response in your browser's network tab. Identi
 
 #### Worked answer to the exercise
 
-Open DevTools (F12 or Cmd+Option+I), go to the **Network** tab, reload the page, click an API request (filter by "Fetch/XHR"), and look at **Response Headers**. On a typical shop's product API you might find `content-type: application/json; charset=utf-8`, `cache-control: public, max-age=60` (anyone may cache this for 60 seconds) and no `set-cookie`. On a login response you would find a `set-cookie` with `HttpOnly; Secure; SameSite=Lax`. (Part 69.10 is a full tour of these panels.)
+Open DevTools (F12 or Cmd+Option+I), go to the **Network** tab, reload the page, click an API request (filter by "Fetch/XHR"), and look at **Response Headers**. On a typical shop's product API you might find `content-type: application/json; charset=utf-8`, `cache-control: public, max-age=60` (anyone may cache this for 60 seconds) and no `set-cookie`. On a login response you would find a `set-cookie` with `HttpOnly; Secure; SameSite=Lax`. (Part 71.10 is a full tour of these panels.)
 
 The caching justification: a response with your account data must say `Cache-Control: no-store`. Otherwise a shared cache (a company proxy, a CDN) could store it and hand **your** address and orders to the next person who requests the same URL. Public product data can be cached; private data never.
 

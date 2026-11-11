@@ -22,6 +22,11 @@ document.addEventListener('click', function (e) {
 var el = e.target.closest ? e.target.closest('[data-action]') : null;
 if (el && actions[el.getAttribute('data-action')]) actions[el.getAttribute('data-action')](e, el);
 });
+BH.reveal = function (el) {
+var opened = false;
+for (var d = el && el.closest ? el.closest('details') : null; d; d = d.parentElement.closest('details')) { if (!d.open) { d.open = true; opened = true; } }
+return opened;
+};
 BH.emit = function (name, detail) { document.dispatchEvent(new CustomEvent('bh:' + name, { detail: detail })); };
 BH.on = function (name, fn) { document.addEventListener('bh:' + name, function (e) { fn(e.detail); }); };
 var live = document.createElement('div');
@@ -167,7 +172,10 @@ var curPart = null, curHead, curH2 = null;  // curHead starts undefined so the f
 var topbarH = function () { var t = BH.$('.topbar'); return t ? t.getBoundingClientRect().height : 56; };
 function measure() {
 var y = window.pageYOffset;
-tops = heads.map(function (h) { return h.getBoundingClientRect().top + y; });
+tops = heads.map(function (h) {
+var d = h.closest('details:not([open])');
+return (d ? d.getBoundingClientRect().top : h.getBoundingClientRect().top) + y;
+});
 partTops = parts.map(function (p) { return p.getBoundingClientRect().top + y; });
 dirty = false;
 }
@@ -191,6 +199,13 @@ railList.innerHTML = '';
 h2s.forEach(function (h) {
 var li = document.createElement('li'); li.className = 'r2';
 var a = document.createElement('a'); a.href = '#' + h.id; a.textContent = text(h); a.setAttribute('data-for', h.id);
+var lv = h.getAttribute('data-try');  // design section with a Try-it-first card: show its level
+if (lv) {
+var b = document.createElement('span'); b.className = 'lv'; b.setAttribute('data-level', lv);
+b.textContent = lv.charAt(0).toUpperCase(); b.title = lv.charAt(0).toUpperCase() + lv.slice(1) + ' level';
+var sr = document.createElement('span'); sr.className = 'sr-only'; sr.textContent = ' (' + b.title + ')';
+a.appendChild(b); a.appendChild(sr);
+}
 li.appendChild(a); railList.appendChild(li);
 });
 if (railPart) { railPart.textContent = 'Part ' + part.getAttribute('data-part') + ': ' + part.getAttribute('data-title'); railPart.href = '#' + part.id; }
@@ -200,14 +215,12 @@ if (!railList) return;
 BH.$$('.r3', railList).forEach(function (li) { li.parentNode.removeChild(li); });
 if (!h2) return;
 var a = BH.$('a[data-for="' + h2.id + '"]', railList); if (!a) return;
-var after = a.parentNode, el = h2.nextElementSibling, n = 0;
-while (el && el.tagName !== 'H2' && n < 30) {
-if (el.tagName === 'H3' && el.id) {
+var after = a.parentNode, i = heads.indexOf(h2) + 1, n = 0;
+for (; i < heads.length && heads[i].tagName !== 'H2' && n < 30; i++) {
+var el = heads[i];
 var li = document.createElement('li'); li.className = 'r3';
 var b = document.createElement('a'); b.href = '#' + el.id; b.textContent = text(el); b.setAttribute('data-for', el.id);
 li.appendChild(b); after.parentNode.insertBefore(li, after.nextSibling); after = li; n++;
-}
-el = el.nextElementSibling;
 }
 }
 function markRail(id) {
@@ -247,7 +260,8 @@ var hi = floor(tops, line); var h = hi >= 0 ? heads[hi] : null;
 if (h && !part.contains(h)) h = null;
 if (h !== curHead) {
 curHead = h;
-var h2 = h ? (h.tagName === 'H2' ? h : (function (el) { while (el && el.tagName !== 'H2') el = el.previousElementSibling; return el; })(h)) : null;
+var h2 = null;
+if (h) for (var k = hi; k >= 0; k--) if (heads[k].tagName === 'H2') { h2 = heads[k]; break; }
 if (h2 !== curH2) { curH2 = h2; railSubs(h2); }
 markRail(h ? h.id : null);
 fitCrumb(h ? text(h) : part.getAttribute('data-title'));
@@ -261,10 +275,15 @@ var pin = null, pinUntil = 0;
 function pinHash() {
 var id = decodeURIComponent(location.hash.slice(1));
 pin = id ? document.getElementById(id) : null; pinUntil = Date.now() + 12000;
+if (pin && BH.reveal(pin)) { dirty = true; holdPin(); }  // a heading inside a folded model design: open it, then go there
 }
 function unpin() { pin = null; }
 ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (ev) { window.addEventListener(ev, unpin, { passive: true }); });
-window.addEventListener('hashchange', function () { pinHash(); });
+window.addEventListener('hashchange', function () { pinHash(); holdPin(); });
+document.addEventListener('click', function (e) {
+var a = e.target.closest ? e.target.closest('a[href^="#"]') : null;
+if (a && a.getAttribute('href') === location.hash && a.getAttribute('href').length > 1) { pinHash(); holdPin(); }
+});
 if (isVol) pinHash();
 function holdPin() {
 if (!pin || Date.now() > pinUntil) { pin = null; return; }
@@ -272,7 +291,7 @@ var off = pin.getBoundingClientRect().top - topbarH() - 16;
 if (Math.abs(off) > 4) window.scrollTo({ top: window.pageYOffset + off, behavior: 'instant' });
 }
 if (window.ResizeObserver && BH.$('#main')) new ResizeObserver(function () { dirty = true; holdPin(); schedule(); }).observe(BH.$('#main'));
-document.addEventListener('toggle', function () { dirty = true; }, true);
+document.addEventListener('toggle', function () { dirty = true; schedule(); }, true);
 BH.headings = function () { if (dirty) measure(); return { list: heads, tops: tops }; };
 onScroll();
 })(window.BH);
@@ -386,6 +405,7 @@ var roles = JSON.parse(dataEl.textContent);
 function apply(id) {
 var r = roles[id] || roles.all;
 list.setAttribute('data-role', id);
+if (r.stages.length) list.removeAttribute('data-nostages'); else list.setAttribute('data-nostages', '');
 BH.$$('.stage[data-stage]', list).forEach(function (st) {
 var on = r.stages.indexOf(+st.getAttribute('data-stage')) >= 0;
 st.classList.toggle('on-path', on && id !== 'all');
@@ -419,8 +439,9 @@ function jump(dir) {
 if (!BH.headings || BH.page !== 'vol') return;
 var h = BH.headings(), bar = BH.$('.topbar');
 var y = window.pageYOffset + (bar ? bar.offsetHeight : 56) + 30, i;
-if (dir > 0) { for (i = 0; i < h.tops.length; i++) if (h.tops[i] > y + 4) break; }
-else { for (i = h.tops.length - 1; i >= 0; i--) if (h.tops[i] < y - 40) break; }
+var open = function (j) { return !h.list[j].closest('details:not([open])'); };  // folded headings are skipped
+if (dir > 0) { for (i = 0; i < h.tops.length; i++) if (h.tops[i] > y + 4 && open(i)) break; }
+else { for (i = h.tops.length - 1; i >= 0; i--) if (h.tops[i] < y - 40 && open(i)) break; }
 var el = h.list[i];
 if (!el) return;
 el.scrollIntoView({ behavior: BH.reduced ? 'auto' : 'smooth', block: 'start' });

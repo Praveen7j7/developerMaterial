@@ -75,7 +75,7 @@ flowchart LR
 2. **Backfill** with idempotent, versioned writes so the backfill and live changes can overlap safely.
 3. **Reconcile** counts per day and versions per id.
 4. **Shadow reads**: serve from the old store, query the new one too, log differences.
-5. **Cut reads**, then writes, behind flags that can flip back in seconds (see Part 84 — Large-Scale Migrations and Legacy Modernization).
+5. **Cut reads**, then writes, behind flags that can flip back in seconds (see Part 86 — Large-Scale Migrations and Legacy Modernization).
 6. Keep the old store warm for a rollback window before retiring it.
 
 #### Failure scenario
@@ -262,7 +262,7 @@ In the DynamoDB version, at 21:40 on launch day support tickets arrived: "my tri
 | Multi-region active-active | Weak | Moderate | Strong (global tables) | Strong | Weak | Weak |
 | Ops burden for a 6-person team | Moderate | Moderate | Low | High | Low | Moderate |
 
-**Choice for most teams: PostgreSQL**, with a Redis cache in front of A1 for the first page. Trip history joins with payments and support, and new questions arrive every quarter. **Choose DynamoDB** when the company is AWS-first, needs active-active writes across regions, has stable access patterns, and already exports data to a warehouse for analytics. Write the decision as an ADR (see Part 63 — Architecture Decision Framework) listing A1-A5, so the next access pattern is evaluated against the same table.
+**Choice for most teams: PostgreSQL**, with a Redis cache in front of A1 for the first page. Trip history joins with payments and support, and new questions arrive every quarter. **Choose DynamoDB** when the company is AWS-first, needs active-active writes across regions, has stable access patterns, and already exports data to a warehouse for analytics. Write the decision as an ADR (see Part 64 — Architecture Decision Framework) listing A1-A5, so the next access pattern is evaluated against the same table.
 
 #### Interview questions
 

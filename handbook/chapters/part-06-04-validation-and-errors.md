@@ -333,7 +333,7 @@ Without the id check the request reaches PostgreSQL, which rejects `'not-a-uuid'
 
 Right now our API's errors come in several shapes. A validation failure returns NestJS's default `{ "statusCode": 400, "message": [...], "error": "Bad Request" }`. A missing product returns `{ "statusCode": 404, "message": "Product ... not found" }`. A database error, such as a duplicate value in a unique column, returns a bare `500` with `"Internal server error"`. In this step we give every error **one shape**, with a stable machine-readable `code`, a list of `issues` for field problems, and a `requestId` that links the response to the server's log line.
 
-The shape follows the **problem details** standard for HTTP APIs (RFC 9457, the successor of RFC 7807) that the rest of this book uses (Part 15.9, and Part 74.6 for how a frontend consumes it):
+The shape follows the **problem details** standard for HTTP APIs (RFC 9457, the successor of RFC 7807) that the rest of this book uses (Part 15.9, and Part 76.6 for how a frontend consumes it):
 
 ```json
 {

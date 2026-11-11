@@ -203,7 +203,7 @@ describe('OrdersService.cancel', () => {
 There are times to close the chat panel and turn completion off:
 
 - **When learning a new fundamental.** Your first week of SQL joins, your first transaction code, your first time with NestJS dependency injection. Write it by hand until it is boring.
-- **When practising for interviews.** Most coding interviews still expect you to reason without an assistant (Part 68 — The Interview Playbook).
+- **When practising for interviews.** Most coding interviews still expect you to reason without an assistant (Part 70 — The Interview Playbook).
 - **When you notice you are accepting suggestions without reading them.** That is autopilot; switch off for an hour and reset.
 - **When debugging something subtle.** A concurrency bug or a performance cliff needs your full attention on evidence, not a stream of guesses.
 

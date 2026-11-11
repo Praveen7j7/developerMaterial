@@ -348,7 +348,7 @@ Rules that keep your understanding yours:
 - **Keep the hard thinking.** Let the assistant draft boilerplate and test skeletons; do the design, failure analysis and trade-offs yourself, because those skills only grow with use.
 - **Do not paste secrets or customer data** into a tool your company has not approved for it.
 
-Part 53 — AI-Assisted Engineering covers working with AI assistants in production engineering in depth, and Part 64 — The Knowledge Map and Learning Roadmap lays out what to learn in which order across this book.
+Part 53 — AI-Assisted Engineering covers working with AI assistants in production engineering in depth, and Part 65 — The Knowledge Map and Learning Roadmap lays out what to learn in which order across this book.
 
 #### How a Senior Backend Engineer thinks about this
 

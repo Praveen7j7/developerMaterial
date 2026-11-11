@@ -11,8 +11,9 @@
     if (!BH.headings || BH.page !== 'vol') return;
     var h = BH.headings(), bar = BH.$('.topbar');
     var y = window.pageYOffset + (bar ? bar.offsetHeight : 56) + 30, i;
-    if (dir > 0) { for (i = 0; i < h.tops.length; i++) if (h.tops[i] > y + 4) break; }
-    else { for (i = h.tops.length - 1; i >= 0; i--) if (h.tops[i] < y - 40) break; }
+    var open = function (j) { return !h.list[j].closest('details:not([open])'); };  // folded headings are skipped
+    if (dir > 0) { for (i = 0; i < h.tops.length; i++) if (h.tops[i] > y + 4 && open(i)) break; }
+    else { for (i = h.tops.length - 1; i >= 0; i--) if (h.tops[i] < y - 40 && open(i)) break; }
     var el = h.list[i];
     if (!el) return;
     el.scrollIntoView({ behavior: BH.reduced ? 'auto' : 'smooth', block: 'start' });

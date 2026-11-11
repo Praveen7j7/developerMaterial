@@ -70,14 +70,14 @@ flowchart LR
 3. **Import paths are URLs.** Write `import { api } from './api.js'` with the `./` and the `.js` extension. Bare names like `import x from 'lodash'` fail without a bundler or an import map, because the browser has no `node_modules` lookup.
 4. **The server must send JavaScript's MIME type** (`text/javascript`). A server that returns an HTML 404 page for a mistyped path produces "Failed to load module script: Expected a JavaScript module script but the server responded with a MIME type of text/html".
 
-Each module is one HTTP request. Two or three files are nothing; three hundred are why bundlers exist (Part 70, 70.1 and 70.3).
+Each module is one HTTP request. Two or three files are nothing; three hundred are why bundlers exist (Part 72, 72.1 and 72.3).
 
 #### Edge cases & failure modes
 
-- **Stale files after an edit**: the browser cached the old `app.js`; tick Disable cache in DevTools while developing, and use versioned file names in production (Part 78, 78.3).
+- **Stale files after an edit**: the browser cached the old `app.js`; tick Disable cache in DevTools while developing, and use versioned file names in production (Part 80, 80.3).
 - **ServeStatic without `serveRoot`** puts a catch-all next to the API, and an unknown API path can return `index.html` with status `200`.
 - **Releasing the frontend with the API** couples their deploys: a CSS fix needs an API release. Fine for an internal tool, a real cost for a busy product.
-- **Security headers** such as Content Security Policy now apply to the page too; Part 40 (40.33) and Part 78 (78.9) cover what to send.
+- **Security headers** such as Content Security Policy now apply to the page too; Part 40 (40.33) and Part 80 (80.9) cover what to send.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -88,7 +88,7 @@ A senior picks the topology first and lets CORS follow from it. For a small inte
 | File from disk | `null` | breaks module scripts | a static mock-up | nothing that calls an API works properly |
 | Static server on its own port | `http://localhost:5500` | yes | frontend development, this Part's CORS lesson | allow list per environment |
 | NestJS `ServeStaticModule` | same as the API | no | internal tools, one deployable | coupled releases, static caching headers |
-| CDN or static host, API on a subdomain | `https://admin.shop.example` | yes | public products, independent deploys | CORS and cookie settings (Part 75, Part 78, 78.1) |
+| CDN or static host, API on a subdomain | `https://admin.shop.example` | yes | public products, independent deploys | CORS and cookie settings (Part 77, Part 80, 80.1) |
 | One domain, reverse proxy routes `/api` and `/` | same | no | a common production default | proxy configuration and path prefixes |
 
 #### Interview questions
@@ -113,7 +113,7 @@ Copy the four files into `products-api/public/`, set `<meta name="api-base" cont
 
 Here is the whole screen in one place: a single page that lists products with "Load more", creates a product from a form, shows validation errors next to the right fields, and deletes a product after confirmation, talking to the unmodified Part 6 API plus the CORS setup from 7.6. It is plain HTML, CSS and JavaScript with no build step.
 
-**Why plain JavaScript and not TypeScript?** Browsers run JavaScript, not TypeScript. TypeScript would need `tsc` (or a bundler) to compile `app.ts` to `app.js` before every reload, which is one more moving part between your edit and what the browser runs, and for 150 lines the safety it buys is small. If you want type checking without a build, put `// @ts-check` at the top of a `.js` file: editors that use the TypeScript language service (VS Code, for example) then check it as you type. Part 70 sets up TypeScript for the browser properly, with Vite.
+**Why plain JavaScript and not TypeScript?** Browsers run JavaScript, not TypeScript. TypeScript would need `tsc` (or a bundler) to compile `app.ts` to `app.js` before every reload, which is one more moving part between your edit and what the browser runs, and for 150 lines the safety it buys is small. If you want type checking without a build, put `// @ts-check` at the top of a `.js` file: editors that use the TypeScript language service (VS Code, for example) then check it as you type. Part 72 sets up TypeScript for the browser properly, with Vite.
 
 ```mermaid
 flowchart LR
@@ -271,19 +271,19 @@ The decision that matters is not "which framework" but "what does this screen ne
 |---|---|---|
 | How many screens? | one or a few | many, sharing components and layout |
 | How much UI state? | a list, a form, a status line | many pieces of state that depend on each other |
-| Build step | none: the browser runs your files | required (Part 70) |
-| Escaping user data | your job, every time (`textContent`) | done by default in JSX (Part 71, Part 75, 75.7) |
-| Data fetching and caching | a hand-written `api()` | libraries such as TanStack Query (Part 72) |
+| Build step | none: the browser runs your files | required (Part 72) |
+| Escaping user data | your job, every time (`textContent`) | done by default in JSX (Part 73, Part 77, 77.7) |
+| Data fetching and caching | a hand-written `api()` | libraries such as TanStack Query (Part 74) |
 | Who maintains it | backend engineers, occasionally | a team that works on it every week |
 | Verdict for this Products screen | the right size | worth it once the tool grows |
 
 **Where to go next.** Volume 7 picks up exactly where this Part stops:
 
-- **Part 69 — How the Browser Builds a Page**: from bytes to pixels, with deeper forms (69.2), CSS (69.4), script loading (69.6), the main thread (69.7), storage (69.8), accessibility (69.9) and DevTools (69.10).
-- **Part 70 — Frontend Tooling and TypeScript in the Browser**: the build step, Vite and TypeScript, sharing contracts with NestJS.
-- **Part 71 — React Fundamentals for Backend Engineers** and **Part 72 — Client State, Data Fetching and Caching**: this screen as components, forms (71.7), double-submit protection (71.8), cancellation (72.10) and loading, empty and error states (72.11).
-- **Part 73 — Next.js and Rendering Strategies**, **Part 74 — Frontend–Backend Contracts** (generated clients and error contracts, 74.6) and **Part 75 — Auth and Security in the Browser**.
-- **Parts 76 to 79**: performance, testing (Playwright, 77.7; axe, 77.10), shipping frontends, and a full-stack worked project; then **Part 80 — Frontend and Full-Stack Interview Preparation**.
+- **Part 71 — How the Browser Builds a Page**: from bytes to pixels, with deeper forms (71.2), CSS (71.4), script loading (71.6), the main thread (71.7), storage (71.8), accessibility (71.9) and DevTools (71.10).
+- **Part 72 — Frontend Tooling and TypeScript in the Browser**: the build step, Vite and TypeScript, sharing contracts with NestJS.
+- **Part 73 — React Fundamentals for Backend Engineers** and **Part 74 — Client State, Data Fetching and Caching**: this screen as components, forms (73.7), double-submit protection (73.8), cancellation (74.10) and loading, empty and error states (74.11).
+- **Part 75 — Next.js and Rendering Strategies**, **Part 76 — Frontend–Backend Contracts** (generated clients and error contracts, 76.6) and **Part 77 — Auth and Security in the Browser**.
+- **Parts 78–81**: performance, testing (Playwright, 79.7; axe, 79.10), shipping frontends, and a full-stack worked project; then **Part 82 — Frontend and Full-Stack Interview Preparation**.
 
 #### Interview questions
 
@@ -335,7 +335,7 @@ restoreCurrency();
 // in the submit handler, call restoreCurrency() right after form.reset()
 ```
 
-`showModal()` moves focus into the dialog, makes the rest of the page inert and closes on Escape; when the dialog closes, the browser returns focus to the element that opened it, the Delete button. Resetting `returnValue` matters: without it, cancelling with Escape after an earlier "delete" answer would still read `"delete"` and delete the wrong product. In the Application panel (7.7) you can watch `products.currency` change under Local Storage. A currency preference is harmless to store there; a token is not (Part 75, 75.1).
+`showModal()` moves focus into the dialog, makes the rest of the page inert and closes on Escape; when the dialog closes, the browser returns focus to the element that opened it, the Delete button. Resetting `returnValue` matters: without it, cancelling with Escape after an earlier "delete" answer would still read `"delete"` and delete the wrong product. In the Application panel (7.7) you can watch `products.currency` change under Local Storage. A currency preference is harmless to store there; a token is not (Part 77, 77.1).
 
 ## Senior Checklist — Part 7
 

@@ -191,6 +191,7 @@
 .rail-list { list-style: none; margin: 0 0 16px; padding: 0; border-left: 2px solid var(--rule); }
 .rail-list a { display: block; margin-left: -2px; padding: 5px 0 5px 12px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; line-height: 1.35; }
 .rail-list .r3 a { padding-left: 24px; font-size: var(--fs-xs); }
+.rail-list .lv { margin-left: 6px; padding: 0 .45em; font-size: 10px; line-height: 1.5; vertical-align: .08em; }
 .rail-list a:hover { color: var(--ink); }
 .rail-list a[aria-current] { color: var(--ink); border-left-color: var(--v); font-weight: 600; }
 .rail-foot { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 12px; border-top: 1px solid var(--rule); }

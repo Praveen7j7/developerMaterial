@@ -4,7 +4,7 @@ Part 37 gave you the foundations: calling an LLM safely, structured output, cost
 
 The retrieval half centers on **RAG** (Retrieval-Augmented Generation) built on **pgvector**, the PostgreSQL extension for vector search. We stay in PostgreSQL deliberately, because the rest of this book's stack is PostgreSQL and because, for most teams, pgvector is the right first choice over a separate vector database (we give the decision table for when it is not). The running example is a product-catalog search and an order-support assistant for an e-commerce site, continued from Part 37.
 
-As in Part 37, the patterns are provider-neutral and the SQL and NestJS are real. This Part leans on earlier material: caching (Part 27), full-text search (Part 34), the outbox and CDC for index sync (Part 30, Part 39), and tenant isolation (Part 88).
+As in Part 37, the patterns are provider-neutral and the SQL and NestJS are real. This Part leans on earlier material: caching (Part 27), full-text search (Part 34), the outbox and CDC for index sync (Part 30, Part 39), and tenant isolation (Part 90).
 
 ## 38.1 Embeddings and vector search
 

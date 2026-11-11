@@ -20,6 +20,7 @@ function partHeader(p, v, id) {
     ['layers', plural(p.sections.length, 'section')],
     p.diagrams ? ['git-branch', plural(p.diagrams, 'diagram')] : null,
     p.code ? ['code-xml', plural(p.code, 'code example')] : null,
+    Object.keys(p.tries).length ? ['pencil-line', plural(Object.keys(p.tries).length, 'design to try first', 'designs to try first')] : null,
   ].filter(Boolean).map(([ic, t]) => `<li>${icon(ic)}<span>${t}</span></li>`).join('');
   return `<header class="part-head">
 <div class="ph-top"><span class="ph-num" aria-hidden="true"><small>Part</small>${p.num}</span>
@@ -28,6 +29,7 @@ function partHeader(p, v, id) {
 <ul class="ph-meta">${meta}</ul>
 ${learn ? `<div class="ph-learn"><h2 class="ph-learn-h">What you will learn</h2><ol class="learn-list${p.sections.length > 8 ? ' is-long' : ''}">${learn}</ol>` +
     (p.sections.length > 8 ? `<button type="button" class="learn-more" aria-expanded="false">${icon('chevron-down')}<span class="lm-more">Show all ${p.sections.length} sections</span><span class="lm-less">Show fewer</span></button>` : '') + '</div>' : ''}
+${Object.keys(p.tries).length ? `<div class="ph-actions"><p>Each design opens with a short brief to try on paper; the model design stays folded until you open it.</p><button type="button" class="btn btn-small designs-toggle" data-part="${p.num}" aria-pressed="false">${icon('book-open')}<span>Open all model designs</span></button></div>` : ''}
 </header>`;
 }
 
@@ -88,7 +90,7 @@ function volumePage(v, book) {
     main += `<section class="part" id="part-${p.num}" data-part="${p.num}" data-title="${escapeHtml(plainMd(p.title))}"><div class="prose">${body}</div>${partEnd(p)}</section>\n`;
   }
   const m = oldAnchorMap(v);
-  main += `<script>(function(){var m=${JSON.stringify(m)};function go(){var h=decodeURIComponent(location.hash.slice(1));if(h&&!document.getElementById(h)&&m[h]){history.replaceState(null,'','#'+m[h]);var e=document.getElementById(m[h]);if(e)e.scrollIntoView();}}go();window.addEventListener('hashchange',go);})();</script>`;
+  main += `<script>(function(){var m=${JSON.stringify(m)};function go(){var h=decodeURIComponent(location.hash.slice(1));if(h&&!document.getElementById(h)&&m[h]){history.replaceState(null,'','#'+m[h]);var e=document.getElementById(m[h]);if(e){for(var d=e.closest('details');d;d=d.parentElement.closest('details'))d.open=true;e.scrollIntoView();}}}go();window.addEventListener('hashchange',go);})();</script>`;
   return shell({
     page: 'vol', vol: v, book, main, rail: rail(),
     title: `Volume ${v.n} — ${v.title} | ${SITE_TITLE}`,

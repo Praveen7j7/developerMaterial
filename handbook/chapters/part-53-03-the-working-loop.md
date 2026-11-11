@@ -380,7 +380,7 @@ The tools are weakest exactly where the stakes are highest: decisions that depen
 
 | Weak area | Why the tool struggles | What you do |
 |---|---|---|
-| Novel architecture | Defaults to common patterns from training; does not know your constraints, team, budget or history | Use it to list options and tradeoffs; decide with an RFC (Part 81 — Writing as an Architect) |
+| Novel architecture | Defaults to common patterns from training; does not know your constraints, team, budget or history | Use it to list options and tradeoffs; decide with an RFC (Part 83 — Writing as an Architect) |
 | Subtle concurrency | Bugs appear only with specific interleavings; code looks fine line by line | Reason about it yourself; concurrency tests (Part 41, 41.9) |
 | Security boundaries | Authorization depends on your domain; the "average" code it learned from often has none | Explicit review with a checklist (53.4) |
 | Exact library versions | Training cut-off and mixed versions in training data | Pin versions; check the changelog and installed types |

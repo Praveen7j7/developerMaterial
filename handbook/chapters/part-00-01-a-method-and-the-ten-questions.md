@@ -68,7 +68,7 @@ Same afternoon. Completely different quality of answer. That is the whole argume
 
 #### Production scenario
 
-A 30-engineer company running PostgreSQL, Redis, RabbitMQ and a NestJS monolith requires every new-technology proposal to answer the ten questions on one page (Part 81 — Writing as an Architect: RFCs, Design Docs and Decision Records covers the document). Of six proposals in two years, four die at question 9 ("PostgreSQL already does this well enough at our size"). The two adopted arrive with a runbook, because questions 6 and 8 forced someone to write down failure and operations before the first incident.
+A 30-engineer company running PostgreSQL, Redis, RabbitMQ and a NestJS monolith requires every new-technology proposal to answer the ten questions on one page (Part 83 — Writing as an Architect: RFCs, Design Docs and Decision Records covers the document). Of six proposals in two years, four die at question 9 ("PostgreSQL already does this well enough at our size"). The two adopted arrive with a runbook, because questions 6 and 8 forced someone to write down failure and operations before the first incident.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -131,7 +131,7 @@ flowchart TB
 
 ### 0.2.2 Where to find the answers
 
-Each question has a usual hiding place. Questions 1 and 2 live in the project's "why" page, its announcement post and its "concepts" or "architecture" page, which is rarely the first page of the docs. Question 3 lives in the architecture page and in talks by the authors; draw it as boxes and arrows, because every later question is answered by pointing at a box. Questions 4 to 8 live in the "limits", "production checklist", "operations" and "known issues" pages, and in other teams' postmortems. Question 9 lives in comparisons written by people who chose something else (Part 63 — Architecture Decision Framework has worked decision tables). Question 10 lives only on your own laptop. Throughout, apply the senior mantra: *Can it time out? Can it fail? Can it become slow? Can it duplicate? Can it return a wrong response? Can it partially succeed?*
+Each question has a usual hiding place. Questions 1 and 2 live in the project's "why" page, its announcement post and its "concepts" or "architecture" page, which is rarely the first page of the docs. Question 3 lives in the architecture page and in talks by the authors; draw it as boxes and arrows, because every later question is answered by pointing at a box. Questions 4 to 8 live in the "limits", "production checklist", "operations" and "known issues" pages, and in other teams' postmortems. Question 9 lives in comparisons written by people who chose something else (Part 64 — Architecture Decision Framework has worked decision tables). Question 10 lives only on your own laptop. Throughout, apply the senior mantra: *Can it time out? Can it fail? Can it become slow? Can it duplicate? Can it return a wrong response? Can it partially succeed?*
 
 ### 0.2.3 An incident: the cart store nobody questioned
 

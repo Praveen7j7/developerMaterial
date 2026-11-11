@@ -4,7 +4,7 @@ REST (Part 15) is the default API style in this book, and for good reason: it is
 
 The running scenario ties them together: an order service that exposes **REST publicly** (simple, cacheable, universal), **GraphQL for the mobile app** (one round trip for a screen's worth of nested data), and **gRPC internally** between services (fast, typed, efficient). That is a realistic architecture, and the point of the Part is the judgment to choose each, not dogma that one is best.
 
-This Part builds on Part 15 — API Design (REST first), the REST-versus-GraphQL and REST-versus-gRPC decision trees in Part 63 — Architecture Decision Framework (63.3 and 63.4), Part 25 — Backward Compatibility, and the microservices material in Part 12 — Software Architecture. Part 63 tells you *which* style to pick in one page; this Part teaches you how each one actually works, how to build it in NestJS, and how it fails in production. NestJS supports all three styles with real modules (`@nestjs/graphql` with `@nestjs/apollo`, and `@nestjs/microservices` with the gRPC transport), which we use throughout.
+This Part builds on Part 15 — API Design (REST first), the REST-versus-GraphQL and REST-versus-gRPC decision trees in Part 64 — Architecture Decision Framework (64.3 and 64.4), Part 25 — Backward Compatibility, and the microservices material in Part 12 — Software Architecture. Part 64 tells you *which* style to pick in one page; this Part teaches you how each one actually works, how to build it in NestJS, and how it fails in production. NestJS supports all three styles with real modules (`@nestjs/graphql` with `@nestjs/apollo`, and `@nestjs/microservices` with the gRPC transport), which we use throughout.
 
 ## 16.1 GraphQL
 

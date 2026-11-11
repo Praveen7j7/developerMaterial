@@ -77,6 +77,32 @@ box.hidden = !on; ul.hidden = on;
 if (on) { i = 0; flipped = false; show(); BH.$('.flash-card', box).focus(); }
 });
 });
+document.addEventListener('click', function (e) {
+var b = e.target.closest ? e.target.closest('.design-close') : null;
+if (!b) return;
+var d = b.closest('details.design'), sum = d.querySelector('summary');
+d.open = false;
+sum.scrollIntoView({ block: 'center', behavior: 'instant' });
+sum.focus();
+});
+var KEY = 'bh-designs-open';
+function openParts() { try { return JSON.parse(sessionStorage.getItem(KEY) || '[]'); } catch (e) { return []; } }
+function saveParts(list) { try { sessionStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { /* works without it */ } }
+function setDesigns(btn, on) {
+var part = btn.closest('section.part');
+BH.$$('details.design', part).forEach(function (d) { d.open = on; });
+btn.setAttribute('aria-pressed', String(on));
+BH.$('span', btn).textContent = on ? 'Fold all model designs' : 'Open all model designs';
+}
+BH.$$('.designs-toggle').forEach(function (btn) {
+if (openParts().indexOf(btn.getAttribute('data-part')) >= 0) setDesigns(btn, true);
+btn.addEventListener('click', function () {
+var on = btn.getAttribute('aria-pressed') !== 'true', n = btn.getAttribute('data-part');
+setDesigns(btn, on);
+var list = openParts().filter(function (x) { return x !== n; }); if (on) list.push(n); saveParts(list);
+BH.say(on ? 'All model designs in this Part are open' : 'All model designs in this Part are folded');
+});
+});
 var closed = [];
 window.addEventListener('beforeprint', function () {
 closed = BH.$$('details:not([open])'); closed.forEach(function (d) { d.open = true; });
@@ -104,7 +130,7 @@ noteBkgColor: mid, noteTextColor: ink, noteBorderColor: v,
 actorBkg: tint, actorBorder: v, actorTextColor: ink, actorLineColor: muted, signalColor: ink, signalTextColor: ink,
 labelBoxBkgColor: tint, labelBoxBorderColor: v, labelTextColor: ink, loopTextColor: ink,
 activationBkgColor: mid, activationBorderColor: v, sequenceNumberColor: cssVar('--on-v'),
-altBackground: sunk, classText: ink, stateBkg: tint, stateLabelColor: ink, compositeBackground: paper,
+altBackground: sunk, attributeBackgroundColorOdd: surface, attributeBackgroundColorEven: sunk, rowOdd: surface, rowEven: sunk, classText: ink, stateBkg: tint, stateLabelColor: ink, compositeBackground: paper,
 git0: v, gitBranchLabel0: ink, pie1: v, pieStrokeColor: surface, pieOuterStrokeColor: rule, pieTitleTextColor: ink, pieSectionTextColor: ink, pieLegendTextColor: ink
 };
 }

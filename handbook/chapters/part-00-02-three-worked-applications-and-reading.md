@@ -121,7 +121,7 @@ flowchart LR
 | 9 | When not | Mostly static content is better as server-rendered HTML; one small widget may not justify a framework; many apps should adopt a React-based server-rendering framework such as Next.js instead. |
 | 10 | 30-minute proof | `npm create vite@latest order-lab -- --template react-ts`; log in three nested components, click a counter in the parent and watch which children re-render. Then add an effect with no dependency array that fetches and sets state, and watch the Network tab fill. |
 
-React row 6, "an effect that fetches in a loop", is a backend problem too: it arrives at your API as thousands of identical requests per minute from one user. Part 7 — Your First Frontend introduces the browser side from scratch; Part 71 — React Fundamentals for Backend Engineers goes deep, including 71.4 "Effects: `useEffect` done right" and 71.8 "Double-submit protection and idempotency from the form".
+React row 6, "an effect that fetches in a loop", is a backend problem too: it arrives at your API as thousands of identical requests per minute from one user. Part 7 — Your First Frontend introduces the browser side from scratch; Part 73 — React Fundamentals for Backend Engineers goes deep, including 73.4 "Effects: `useEffect` done right" and 73.8 "Double-submit protection and idempotency from the form".
 
 ### 0.3.4 What transferred
 

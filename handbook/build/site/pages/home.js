@@ -8,6 +8,12 @@ const { cover } = require('../covers');
 const { shell } = require('../components');
 
 function target(book, t) {
+  if (t && typeof t === 'object') {  // a heading inside a Part, found by its text at build time
+    const p = book.parts[t.part];
+    const h = p && p.headings.find(x => x.level <= 3 && t.heading.test(x.text));
+    if (!h) throw new Error(`home: no heading matching ${t.heading} in Part ${t.part}`);
+    return { href: `${p.vol.file}#${h.id}`, vol: p.vol.n, title: `${h.text} (Part ${p.num})` };
+  }
   if (typeof t === 'string' && t.startsWith('vol:')) {
     const v = book.volumes.find(x => x.n === Number(t.slice(4)));
     return { href: v.file, vol: v.n, title: `Volume ${v.n}: ${v.title}` };

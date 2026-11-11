@@ -80,7 +80,7 @@ Set up (or describe) a CI/CD flow for Terraform: a pull request runs `terraform 
 
 #### Concept
 
-**Policy as code** enforces rules about infrastructure automatically, as code, in the pipeline — "no public S3 buckets", "all databases must have backups enabled", "no untagged resources", "no instance types above a cost threshold". Tools like **OPA/Conftest** and Sentinel evaluate the Terraform plan against these policies and block the apply if a rule is violated. It is automated governance (Part 83) for infrastructure, catching security and cost problems before they are applied.
+**Policy as code** enforces rules about infrastructure automatically, as code, in the pipeline — "no public S3 buckets", "all databases must have backups enabled", "no untagged resources", "no instance types above a cost threshold". Tools like **OPA/Conftest** and Sentinel evaluate the Terraform plan against these policies and block the apply if a rule is violated. It is automated governance (Part 85) for infrastructure, catching security and cost problems before they are applied.
 
 #### Why does it exist?
 
@@ -102,11 +102,11 @@ Policy as code in the pipeline:
   -> the apply is blocked until the change complies.
 ```
 
-Policies codify security rules (no public data stores, encryption required, no overly-broad permissions), cost rules (no oversized instances, required cost tags), and standards (naming, tagging) — the governance standards of Part 83, enforced automatically. Because they run on the plan in CI, they catch violations before anything is applied, turning "we have a policy that databases need backups" (which someone can forget) into "a change that disables backups cannot be merged" (which is enforced). Section 52.11 has the Rego for these rules, run with Conftest against `terraform show -json` output, and their unit tests.
+Policies codify security rules (no public data stores, encryption required, no overly-broad permissions), cost rules (no oversized instances, required cost tags), and standards (naming, tagging) — the governance standards of Part 85, enforced automatically. Because they run on the plan in CI, they catch violations before anything is applied, turning "we have a policy that databases need backups" (which someone can forget) into "a change that disables backups cannot be merged" (which is enforced). Section 52.11 has the Rego for these rules, run with Conftest against `terraform show -json` output, and their unit tests.
 
 #### Failure scenario
 
-A cost policy capped instance types at `*.2xlarge` and below. A team needed a `db.r6g.4xlarge` for a month-end batch, the policy blocked it, and the team "fixed" the pipeline by adding `|| true` after the Conftest step. Six weeks later, a public S3 bucket with customer invoices went through the same pipeline unchallenged and was found by a security scanner, not by a customer, luckily. The lesson: a policy with no exception path gets disabled, and a disabled policy protects nothing. Real policy-as-code needs a documented waiver (an annotation or tag with an owner and expiry, reviewed by the policy owners; see Part 83 — Architecture Governance, 83.6) and a pipeline in which the policy step cannot be edited by the teams it governs.
+A cost policy capped instance types at `*.2xlarge` and below. A team needed a `db.r6g.4xlarge` for a month-end batch, the policy blocked it, and the team "fixed" the pipeline by adding `|| true` after the Conftest step. Six weeks later, a public S3 bucket with customer invoices went through the same pipeline unchallenged and was found by a security scanner, not by a customer, luckily. The lesson: a policy with no exception path gets disabled, and a disabled policy protects nothing. Real policy-as-code needs a documented waiver (an annotation or tag with an owner and expiry, reviewed by the policy owners; see Part 85 — Architecture Governance, 85.6) and a pipeline in which the policy step cannot be edited by the teams it governs.
 
 #### Edge cases & failure modes
 
@@ -117,7 +117,7 @@ A cost policy capped instance types at `*.2xlarge` and below. A team needed a `d
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior encodes the important infrastructure rules — security (no public data stores, encryption, least-privilege permissions; see Part 40 — Security, 40.10, and Part 46 — Cloud Architecture, 46.11), cost (instance-size limits, required tags), and standards (Part 83) — as policy-as-code that runs on every plan in CI, so violations are blocked automatically rather than relying on human reviewers to remember them. They see this as the automated-governance paved road (Part 83): the rules are consistent, un-forgettable and catch problems before they are applied, which is the only way governance scales across many services and engineers. They keep policies focused on real risks (a public production bucket, a database with no backups, a wildly oversized instance) rather than nitpicking, because over-strict policy becomes a nuisance people route around. Policy as code is, to them, the enforcement layer that makes IaC genuinely safe at scale.
+A senior encodes the important infrastructure rules — security (no public data stores, encryption, least-privilege permissions; see Part 40 — Security, 40.10, and Part 46 — Cloud Architecture, 46.11), cost (instance-size limits, required tags), and standards (Part 85) — as policy-as-code that runs on every plan in CI, so violations are blocked automatically rather than relying on human reviewers to remember them. They see this as the automated-governance paved road (Part 85): the rules are consistent, un-forgettable and catch problems before they are applied, which is the only way governance scales across many services and engineers. They keep policies focused on real risks (a public production bucket, a database with no backups, a wildly oversized instance) rather than nitpicking, because over-strict policy becomes a nuisance people route around. Policy as code is, to them, the enforcement layer that makes IaC genuinely safe at scale.
 
 #### Common mistakes
 
@@ -130,7 +130,7 @@ A senior encodes the important infrastructure rules — security (no public data
 
 1. **What is policy as code and why use it?** Encoding infrastructure rules (security, cost, standards) as code that automatically evaluates each Terraform plan in CI and blocks violations; it makes governance automatic, consistent and un-forgettable, catching problems before apply.
 2. **Give examples of policies worth enforcing.** No public data stores, backups/encryption required, least-privilege permissions, instance-size/cost limits, required tags, naming standards.
-3. **How does policy as code relate to governance (Part 83)?** It is the automated-enforcement form of architecture standards — the paved road enforced in the pipeline rather than relying on human memory.
+3. **How does policy as code relate to governance (Part 85)?** It is the automated-enforcement form of architecture standards — the paved road enforced in the pipeline rather than relying on human memory.
 
 #### Practical exercise
 

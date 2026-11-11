@@ -38,6 +38,33 @@ function countFences(md) {
   return { diagrams, code };
 }
 
+// "Try it first" cards: a blockquote that opens a ## section with
+// "> **Try it first** · Level: <level> · About <N> minutes". Returns { h2 id: { level, minutes } }.
+const TRY_RE = /^> \*\*Try it first\*\*\s*·\s*Level:\s*(Beginner|Intermediate|Advanced|Staff)\s*·\s*About\s+(\d+)\s+minutes/;
+function findTries(p) {
+  const out = {}; let inFence = false, lastH2 = null, sawOther = false, h2Count = new Map();
+  const h2s = p.headings.filter(h => h.level === 2);
+  for (const line of p.md.split('\n')) {
+    if (/^\s*```/.test(line)) { inFence = !inFence; sawOther = true; continue; }
+    if (inFence) continue;
+    if (/^#{1,2}\s/.test(line)) {
+      const m = /^##\s+(.+?)\s*#*\s*$/.exec(line);
+      lastH2 = m ? m[1].trim() : null; sawOther = false;
+      if (lastH2) h2Count.set(lastH2, (h2Count.get(lastH2) || 0) + 1);
+      continue;
+    }
+    if (!line.trim()) continue;
+    const t = TRY_RE.exec(line);
+    if (t && lastH2 && !sawOther) {
+      const nth = h2Count.get(lastH2);
+      const h = h2s.filter(x => x.text === lastH2)[nth - 1];
+      if (h) out[h.id] = { level: t[1], minutes: +t[2] };
+    }
+    sawOther = true;
+  }
+  return out;
+}
+
 function loadBook() {
   const files = fs.readdirSync(PATHS.CHAPTERS).filter(f => /^part-\d{2}-\d{2}-.*\.md$/.test(f)).sort();
   if (!files.length) throw new Error('No chapter files found in ' + PATHS.CHAPTERS);
@@ -59,19 +86,23 @@ function loadBook() {
     Object.assign(p, countFences(p.md));
     // "What you will learn": the numbered H2 sections (closing checklist and takeaways left out)
     p.sections = p.headings.filter(h => h.level === 2 && /^\d+\.\d+/.test(h.text));
+    p.tries = findTries(p);
+    p.qa = /^###\s+Q\d+\b/m.test(p.md);  // a question bank: "### Q1." answers collapse
   }
 
   const volumes = VOLUMES.map(v => {
     const nums = v.parts.filter(n => parts[n]);
     for (const n of nums) { parts[n].vol = v; parts[n].href = `${volFile(v)}#part-${n}`; }
     const ps = nums.map(n => parts[n]);
-    return {
+    const vol = {
       ...v, file: volFile(v), partNums: nums, parts: ps,
       words: ps.reduce((a, p) => a + p.words, 0),
       minutes: ps.reduce((a, p) => a + p.minutes, 0),
       diagrams: ps.reduce((a, p) => a + p.diagrams, 0),
       code: ps.reduce((a, p) => a + p.code, 0),
     };
+    for (const p of ps) p.vol = vol;  // each Part points at its full volume (with .file)
+    return vol;
   }).filter(v => v.parts.length);
 
   // reading order across the whole book, for Previous / Next

@@ -206,4 +206,4 @@ A senior picks the lightest option that removes the current pain. Start with a s
 
 #### Practical exercise
 
-For an organisation with 3 teams today and a plan for 10 in two years, write a short ADR (see Part 81 — Writing as an Architect) choosing a GraphQL topology now and the measurable trigger for moving to federation. Acceptance criteria: the trigger is a metric (for example, median schema-change lead time above 3 days or more than 4 teams editing the schema monthly), and the ADR lists what must be true before migrating (static composition in CI, operation checks, an owning platform team).
+For an organisation with 3 teams today and a plan for 10 in two years, write a short ADR (see Part 83 — Writing as an Architect) choosing a GraphQL topology now and the measurable trigger for moving to federation. Acceptance criteria: the trigger is a metric (for example, median schema-change lead time above 3 days or more than 4 teams editing the schema monthly), and the ADR lists what must be true before migrating (static composition in CI, operation checks, an owning platform team).

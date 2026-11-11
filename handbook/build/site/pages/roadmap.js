@@ -1,3 +1,4 @@
+const { findRoadmapPart } = require('../roadmap');
 /* The roadmap page: the five stages of Part 64 as a path (vertical on phones, a rising
  * staircase on wide screens), each with its goal, time and Parts in reading order,
  * plus a role switch that highlights the stages (and extra track) for one kind of engineer.
@@ -7,13 +8,33 @@ const { escapeHtml, plainMd, inlineMd } = require('../util');
 const { icon } = require('../icons');
 const { shell } = require('../components');
 
+const LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Staff'];
+// "Beginner to Advanced" from the levels of a Part's Try-it-first designs ('' if it has none)
+function levelBadge(p) {
+  const ls = [...new Set(Object.values(p.tries || {}).map(t => t.level))].sort((a, b) => LEVELS.indexOf(a) - LEVELS.indexOf(b));
+  if (!ls.length) return '';
+  const lo = ls[0], hi = ls[ls.length - 1];
+  return `<span class="lv-range"><span class="sr-only">Levels: </span><span class="lv lv-small" data-level="${lo.toLowerCase()}">${lo}</span>` + (hi !== lo ? `<span class="lv-to">to</span><span class="lv lv-small" data-level="${hi.toLowerCase()}">${hi}</span>` : '') + '</span>';
+}
+
 function partItem(p, reread) {
   return `<li data-part="${p.num}" data-vol="${p.vol.n}"><a href="${p.href}"><span class="sp-n">${p.num}</span><span class="sp-t">${escapeHtml(plainMd(p.title))}${reread ? ' <span class="badge">re-read</span>' : ''}</span></a></li>`;
 }
 
+function trackItem(p) {
+  return `<li data-part="${p.num}" data-vol="${p.vol.n}"><a href="${p.href}"><span class="sp-n">${p.num}</span><span class="sp-t">${escapeHtml(plainMd(p.title))}${levelBadge(p)}</span></a></li>`;
+}
+
 function roadmapPage(book, stages) {
-  const p64 = book.parts[64];
-  const stageAnchor = s => (p64.headings.find(h => h.level === 3 && h.text === s.anchor) || {}).id || 'part-64';
+  // an extra track may point at a heading (found by its text) for more detail
+  const extraLink = x => {
+    if (!x.link) return '';
+    const p = book.parts[x.link.part], h = p && p.headings.find(y => x.link.heading.test(y.text));
+    if (!h) throw new Error(`roadmap: no heading matching ${x.link.heading} in Part ${x.link.part}`);
+    return `<p class="st-src"><a href="${p.vol.file}#${h.id}">${escapeHtml(x.link.label)}</a></p>`;
+  };
+  const p64 = findRoadmapPart(book.parts);
+  const stageAnchor = s => (p64.headings.find(h => h.level === 3 && h.text === s.anchor) || {}).id || `part-${p64.num}`;
   const items = stages.map(s => {
     // "re-read": Part 64 asks for it again after an earlier stage already listed it
     const list = s.parts.map(n => partItem(book.parts[n], s.reread.includes(n) && stages.some(o => o.n < s.n && o.parts.includes(n)))).join('');
@@ -25,21 +46,21 @@ function roadmapPage(book, stages) {
 <p class="st-goal">${inlineMd(s.goal)}</p>
 <details class="st-more" open><summary>${icon('chevron-down')}<span>${s.parts.length} Parts, in order</span></summary><ol class="st-parts">${list}</ol></details>
 ${s.ready ? `<p class="st-ready"><strong>Ready for the next stage when:</strong> ${inlineMd(s.ready)}</p>` : ''}
-<p class="st-src"><a href="${p64.vol.file}#${stageAnchor(s)}">Full stage in Part 64 (build alongside, skills, exit test)</a></p>
+<p class="st-src"><a href="${p64.vol.file}#${stageAnchor(s)}">Full stage in Part ${p64.num} (build alongside, skills, exit test)</a></p>
 </div></li>`;
   }).join('');
 
   const extras = ROLE_PATHS.filter(r => r.extra).map(r => `<li class="stage stage-extra" data-extra="${r.id}" hidden>
 <div class="st-marker" aria-hidden="true"><span class="st-num">${icon('layers')}</span></div>
 <div class="st-card"><h2 class="st-name">${escapeHtml(r.extra.title)}</h2><p class="st-goal">${escapeHtml(r.extra.note)}</p>
-<ol class="st-parts">${r.extra.parts.filter(n => book.parts[n]).map(n => partItem(book.parts[n], false)).join('')}</ol></div></li>`).join('');
+<ol class="st-parts st-track">${r.extra.parts.filter(n => book.parts[n]).map(n => trackItem(book.parts[n])).join('')}</ol>${extraLink(r.extra)}</div></li>`).join('');
 
   const roles = ROLE_PATHS.map((r, i) => `<label class="seg"><input type="radio" name="role" value="${r.id}"${i === 0 ? ' checked' : ''}><span>${escapeHtml(r.label)}</span></label>`).join('');
-  const roleData = Object.fromEntries(ROLE_PATHS.map(r => [r.id, { stages: r.stages, extra: r.extra ? r.id : null }]));
+  const roleData = Object.fromEntries(ROLE_PATHS.map(r => [r.id, { stages: r.stages, extra: r.extra ? r.id : null, label: r.label }]));
 
   const main = `<div class="roadmap">
 <header class="rm-head">
-<p class="rm-from"><a href="${p64.href}">From Part 64: ${escapeHtml(plainMd(p64.title))}</a></p>
+<p class="rm-from"><a href="${p64.href}">From Part ${p64.num}: ${escapeHtml(plainMd(p64.title))}</a></p>
 <h1 class="rm-h1">The learning roadmap</h1>
 <p class="rm-lead">Five stages from beginner to staff engineer. Each stage has a goal, a reading order and a realistic time for someone who studies alongside a full-time job. Choose a path to see which stages it covers.</p>
 <fieldset class="role-switch"><legend>Highlight a path</legend><div class="segs">${roles}</div></fieldset>

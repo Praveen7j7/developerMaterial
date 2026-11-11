@@ -23,7 +23,7 @@
       actorBkg: tint, actorBorder: v, actorTextColor: ink, actorLineColor: muted, signalColor: ink, signalTextColor: ink,
       labelBoxBkgColor: tint, labelBoxBorderColor: v, labelTextColor: ink, loopTextColor: ink,
       activationBkgColor: mid, activationBorderColor: v, sequenceNumberColor: cssVar('--on-v'),
-      altBackground: sunk, classText: ink, stateBkg: tint, stateLabelColor: ink, compositeBackground: paper,
+      altBackground: sunk, attributeBackgroundColorOdd: surface, attributeBackgroundColorEven: sunk, rowOdd: surface, rowEven: sunk, classText: ink, stateBkg: tint, stateLabelColor: ink, compositeBackground: paper,
       git0: v, gitBranchLabel0: ink, pie1: v, pieStrokeColor: surface, pieOuterStrokeColor: rule, pieTitleTextColor: ink, pieSectionTextColor: ink, pieLegendTextColor: ink
     };
   }

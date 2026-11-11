@@ -25,11 +25,16 @@ function field(block, label) {
   return m ? m[1].trim().replace(/\*\*/g, '').replace(/`/g, '') : '';
 }
 
+// The roadmap lives in the Part titled "The Knowledge Map and Learning Roadmap"; found by title so renumbering cannot break it.
+function findRoadmapPart(parts) {
+  return Object.values(parts).find(p => /knowledge map and learning roadmap/i.test(p.title));
+}
+
 function parseRoadmap(part64, knownParts) {
-  if (!part64) throw new Error('roadmap: Part 64 not found');
+  if (!part64) throw new Error('roadmap: the Knowledge Map and Learning Roadmap Part was not found');
   const md = part64.md;
   const stages = [];
-  const re = /^###\s+64\.2\.(\d)\s+Stage\s+(\d)\s+[—-]\s+(.+)$/gm;
+  const re = new RegExp(`^###\\s+${part64.num}\\.2\\.(\\d)\\s+Stage\\s+(\\d)\\s+[—-]\\s+(.+)$`, 'gm');
   const heads = [...md.matchAll(re)];
   heads.forEach((h, i) => {
     const start = h.index + h[0].length;
@@ -53,4 +58,4 @@ function parseRoadmap(part64, knownParts) {
   return stages;
 }
 
-module.exports = { parseRoadmap, partsIn };
+module.exports = { parseRoadmap, partsIn, findRoadmapPart };

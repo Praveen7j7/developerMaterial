@@ -179,7 +179,7 @@ The order service exposes **REST publicly** for third-party integrations and sim
 
 #### Failure scenario
 
-A team rebuilt its public partner API in GraphQL "so partners only fetch what they need". Six months later, CDN hit rate had dropped from 85% to almost zero, origin traffic had tripled, and partner support tickets were dominated by "how do I write this query" and "why did I get HTTP 200 with an error". Two large partners with Java batch jobs refused to migrate and kept calling the old REST endpoints, so the team now ran both. The GraphQL layer stayed, but only for the team's own mobile app; the public API went back to REST with sparse fieldsets (`?fields=id,status`). The lesson matches 63.3 in Part 63: GraphQL helps clients you control and ship together with the server; it hurts consumers you do not control.
+A team rebuilt its public partner API in GraphQL "so partners only fetch what they need". Six months later, CDN hit rate had dropped from 85% to almost zero, origin traffic had tripled, and partner support tickets were dominated by "how do I write this query" and "why did I get HTTP 200 with an error". Two large partners with Java batch jobs refused to migrate and kept calling the old REST endpoints, so the team now ran both. The GraphQL layer stayed, but only for the team's own mobile app; the public API went back to REST with sparse fieldsets (`?fields=id,status`). The lesson matches 64.3 in Part 64: GraphQL helps clients you control and ship together with the server; it hurts consumers you do not control.
 
 #### Edge cases & failure modes
 
@@ -211,4 +211,4 @@ A senior chooses the API style per boundary, not per company. For the public edg
 
 #### Practical exercise
 
-For the order system, write a one-page decision (an ADR, Part 63) specifying which API style serves the public/third-party edge, the mobile app, and the internal inventory/pricing/shipping calls, with justifications tied to each style's strengths and the concrete needs (caching, nested data, performance, typing, browser support). Acceptance criteria: each choice follows from stated requirements, and the decision explicitly rejects the styles not chosen for each boundary with reasons.
+For the order system, write a one-page decision (an ADR, Part 64) specifying which API style serves the public/third-party edge, the mobile app, and the internal inventory/pricing/shipping calls, with justifications tied to each style's strengths and the concrete needs (caching, nested data, performance, typing, browser support). Acceptance criteria: each choice follows from stated requirements, and the decision explicitly rejects the styles not chosen for each boundary with reasons.

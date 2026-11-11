@@ -4,7 +4,7 @@
 
 #### Concept
 
-Reviewing AI-written code is ordinary code review (Part 57 — The Senior Engineering Mindset, 57.9) with the dials turned in specific directions. AI code tends to be **clean-looking, consistently formatted and well-named**, which lowers a reviewer's guard. Its defects cluster in places that look fine on the page: missing authorization, unhandled failure paths, concurrency, dependency choices and database operations at scale. The checklist below aims attention there.
+Reviewing AI-written code is ordinary code review (Part 58 — The Senior Engineering Mindset, 58.9) with the dials turned in specific directions. AI code tends to be **clean-looking, consistently formatted and well-named**, which lowers a reviewer's guard. Its defects cluster in places that look fine on the page: missing authorization, unhandled failure paths, concurrency, dependency choices and database operations at scale. The checklist below aims attention there.
 
 #### Why does it exist?
 
@@ -341,7 +341,7 @@ flowchart TB
 | Debugging a production incident | Low | High | **Pair** | Tool proposes hypotheses; evidence decides |
 | Authentication, authorization, crypto | Low | Very high | **Keep human** (tool may review) | Use proven libraries; human design and review |
 | Concurrency and money movement logic | Low | Very high | **Keep human** (pair at most) | Design by hand; concurrency tests |
-| Architecture and service boundaries | Low | Very high | **Keep human** | Tool lists options; RFC decides (Part 81) |
+| Architecture and service boundaries | Low | Very high | **Keep human** | Tool lists options; RFC decides (Part 83) |
 | Choosing a new dependency or vendor | Low | High | **Keep human** | Tool can research; policy decides (53.9) |
 | Running anything against production | Low | Very high | **Keep human** | No agent writes to production (53.6) |
 

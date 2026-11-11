@@ -165,7 +165,7 @@ A router decided between small and large models by asking the small model "is th
 - **Caches are per model**: routing the same prefix to two models writes two caches; frequent switching wastes the cache benefit.
 - **Batch results arrive in any order** and some expire or error; key by `custom_id`, re-queue failures, never match by position.
 - **Budget reset at midnight UTC** confuses users in other time zones; show "resets in N hours".
-- **Shared accounts**: a per-user budget is useless if a tenant has 5,000 users; add a tenant budget too (Part 88).
+- **Shared accounts**: a per-user budget is useless if a tenant has 5,000 users; add a tenant budget too (Part 90).
 - **Pricing changes**: keep model prices in configuration, not in code, and recompute dashboards when they change.
 
 #### How a Senior Backend Engineer thinks about this

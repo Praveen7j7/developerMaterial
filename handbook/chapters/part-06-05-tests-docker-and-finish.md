@@ -161,7 +161,7 @@ Without the test, `GET /products/<missing>` would have returned `200` with an em
 #### Edge cases & failure modes
 
 - **Tests against the development database** delete your data with `TRUNCATE`; always use a separate test database.
-- **Different wiring in tests and production**: tests that skip `configureApp` pass with errors that look different in production; share one function (Part 74.10 makes the same point for contract tests).
+- **Different wiring in tests and production**: tests that skip `configureApp` pass with errors that look different in production; share one function (Part 76.10 makes the same point for contract tests).
 - **Tests that depend on each other's data** fail randomly when run in another order; reset state in `beforeEach`.
 - **Mocking too much**: a unit test with every method mocked tests the mocks; keep e2e tests for the real wiring (Part 41.5 discusses what to mock).
 - **Slow e2e tests** from creating the app per test; create it once in `beforeAll`.
@@ -380,7 +380,7 @@ TypeOrmModule.forRoot({
 }),
 ```
 
-Running migrations at start-up is fine for one instance. With several instances starting at once, teams run migrations as a separate step before the new version starts (Part 24, and Part 77.11 shows it in a test stack).
+Running migrations at start-up is fine for one instance. With several instances starting at once, teams run migrations as a separate step before the new version starts (Part 24, and Part 79.11 shows it in a test stack).
 
 **The Dockerfile.** A **multi-stage build** (Part 44.6) compiles TypeScript in a first stage that has all the build tools, then copies only the compiled code and production dependencies into a small final image:
 

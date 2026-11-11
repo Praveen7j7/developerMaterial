@@ -7,7 +7,8 @@
  *   - FAILS if any visible text is cut off with an ellipsis (text-overflow: ellipsis that overflows)
  *   - FAILS on any console error or page error
  *   - saves a screenshot of each view
- * Also shoots the sidebar/rail collapsed states at 1366x768 and 1920x1080.
+ * Also shoots the sidebar/rail collapsed states at 1366x768 and 1920x1080, and a system design page
+ * (vol-6 at 55.1: Try-it-first card with the model design folded, then opened) at four sizes.
  *
  * Usage: node shot-matrix.js [outDir] [--only=home,roadmap,vol0,vol4] [--sizes=390x844,1366x768] [--light]
  */
@@ -31,6 +32,8 @@ const PAGES = [
   { id: 'roadmap', url: 'roadmap.html' },
   { id: 'vol0', url: 'vol-0-from-scratch.html#part-0' },
   { id: 'vol4', url: 'vol-4-distributed-systems.html#275-the-classic-cache-problems', toDiagram: true },
+  { id: 'design', url: 'vol-6-mastery.html#551-url-shortener', only: ['280x653', '320x568', '390x844', '768x1024', '1366x768', '1920x1080'] },
+  { id: 'designopen', url: 'vol-6-mastery.html#551-url-shortener', open: true, only: ['390x844', '768x1024', '1366x768', '1920x1080'] },
 ].filter(p => !opt('only') || opt('only').split(',').includes(p.id));
 const touch = w => w <= 1024;
 
@@ -130,12 +133,32 @@ async function settle(page, toDiagram) {
   for (const pg of PAGES) {
     for (const theme of THEMES) {
       for (const mobile of [true, false]) {
-        const sizes = SIZES.filter(([w]) => (w <= 1024) === mobile);
+        const sizes = SIZES.filter(([w, h]) => (w <= 1024) === mobile && (!pg.only || pg.only.includes(`${w}x${h}`)));
         if (!sizes.length) continue;
         const { page, errors } = await open(pg, theme, mobile, sizes[0][0], sizes[0][1]);
         for (const [w, h] of sizes) {
           await page.setViewport({ width: w, height: h, deviceScaleFactor: 1, isMobile: mobile, hasTouch: mobile });
           if (pg.toDiagram || pg.url.includes('#')) await page.evaluate(() => { const e = document.getElementById(location.hash.slice(1)); if (e) e.scrollIntoView(); });
+          if (pg.open) {
+            await page.mouse.wheel({ deltaY: 1 });  // a reader's own scroll ends the deep-link hold, as in real use
+            // open the model design under the target heading and show where it starts (the folded state is the 'design' page)
+            const ok = await page.evaluate(() => {
+              const h = document.getElementById(location.hash.slice(1));
+              const d = [...document.querySelectorAll('details.design')].find(x => h.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING);
+              if (!d) return false;
+              if (!d.open) d.querySelector('summary').click();
+              const fig = d.querySelector('.diagram') || d;
+              window.scrollTo({ top: fig.getBoundingClientRect().top + scrollY - 90, behavior: 'instant' });
+              return d.open;
+            });
+            if (!ok) fail(`${pg.id}-${w}x${h}-${theme}`, 'the model design did not open');
+            // a diagram inside an opened design must render at a real size
+            await page.waitForFunction(() => { const s = document.querySelector('details.design[open] .diagram svg'); return s && s.getBoundingClientRect().width > 50; }, { timeout: 15000 })
+              .catch(() => fail(`${pg.id}-${w}x${h}-${theme}`, 'diagram inside the opened design did not render at a real size'));
+          } else if (pg.id === 'design') {
+            const st = await page.evaluate(() => { const c = document.querySelector('.try'); const d = document.querySelector('details.design'); return { card: !!c && c.getBoundingClientRect().height > 100, folded: !!d && !d.open }; });
+            if (!st.card || !st.folded) fail(`${pg.id}-${w}x${h}-${theme}`, `card visible ${st.card}, design folded ${st.folded}`);
+          }
           await check(page, errors, `${pg.id}-${w}x${h}-${theme}`, w, h, pg.toDiagram);
         }
         await page.close();

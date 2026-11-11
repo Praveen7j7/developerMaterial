@@ -37,7 +37,7 @@ What it costs:
 - **A platform team.** Below roughly 10 services or 5 engineers, the people cost of running Kubernetes well usually exceeds the benefit. Managed control planes (EKS, GKE, AKS) remove the hardest 40%; they do not remove the rest.
 - **Failure modes you did not have before.** Evictions, CrashLoopBackOff from a typo, DNS `ndots` surprises, PDBs blocking upgrades, HPA flapping, cross-zone data-transfer bills.
 
-The decision table a senior engineer uses before recommending Kubernetes (the cloud-side detail is in Part 63, which covers AWS deployment options):
+The decision table a senior engineer uses before recommending Kubernetes (the cloud-side detail is in Part 64, which covers AWS deployment options):
 
 | Option | You manage | Good fit | Poor fit | Rough cost of operation |
 |---|---|---|---|---|

@@ -109,7 +109,7 @@ Measure delivery outcomes, not activity. The DORA metrics from Part 47 (47.12) a
 | Time to first review | Stays short | Grows: review is the new bottleneck |
 | Rework rate (code changed again within 2 to 3 weeks) | Stable | Rises: code merged but not right |
 | Escaped defects per release | Stable or falls | Rises |
-| Developer experience survey (Part 85, 85.5) | People feel more effective *and* confident in the code | "Faster" but "less sure what the code does" |
+| Developer experience survey (Part 87, 87.5) | People feel more effective *and* confident in the code | "Faster" but "less sure what the code does" |
 
 Two pieces of published evidence are worth knowing, as reasons for humility rather than as fixed numbers. The 2024 DORA research found that higher AI adoption was associated with estimated *decreases* in delivery performance on average (a small one in throughput, a larger one in stability), even as individuals reported feeling more productive; the report's suggested reason is larger batches. A small 2025 randomised study by METR, of 16 experienced open-source developers working in their own repositories, found they were slower with AI tools on average, while believing they had been faster. Neither result means the tools do not help. Both mean that **how productive people feel is not evidence**, and that teams must measure.
 
@@ -120,7 +120,7 @@ Two pieces of published evidence are worth knowing, as reasons for humility rath
 - Rotate reviewers, and cap the number of reviews per person per day where volume is high.
 - Spend human review on the risky parts; let deterministic checks and bots handle the rest.
 
-**Code nobody understands** is the long-term side. A sign of it: during an incident, nobody on the team can explain why a function does what it does, and the commit message says "implement feature". Defences are old ones: the author must be able to explain every line before merge, design decisions go into PR descriptions and ADRs (Part 81), and complex modules have a named owner.
+**Code nobody understands** is the long-term side. A sign of it: during an incident, nobody on the team can explain why a function does what it does, and the commit message says "implement feature". Defences are old ones: the author must be able to explain every line before merge, design decisions go into PR descriptions and ADRs (Part 83), and complex modules have a named owner.
 
 #### Failure scenario
 
@@ -154,7 +154,7 @@ Ownership in practice:
 - Commit messages and PR descriptions explain *intent and decisions*, which the code cannot show.
 - Some teams label AI-assisted PRs or add a commit trailer. That can help with later analysis, but it is never a way to shift blame; the merger owns it either way.
 
-Onboarding juniors (building on Part 87, 87.3):
+Onboarding juniors (building on Part 89, 89.3):
 
 | Phase | AI use | Why |
 |---|---|---|
@@ -186,7 +186,7 @@ Write a one-page onboarding plan for a new junior on your team covering AI use i
 
 #### Concept
 
-At organisation scale, AI tools are a data flow, a vendor relationship and a change in how software is produced. A principal engineer's job is to make the safe path clear: **which tools are approved, what data may go into them, where code and prompts may travel, who owns what is produced, and how usage is audited.** The policy is written as an RFC (Part 81 — Writing as an Architect: RFCs, Design Docs and Decision Records) and reviewed with security, legal and engineering leads.
+At organisation scale, AI tools are a data flow, a vendor relationship and a change in how software is produced. A principal engineer's job is to make the safe path clear: **which tools are approved, what data may go into them, where code and prompts may travel, who owns what is produced, and how usage is audited.** The policy is written as an RFC (Part 83 — Writing as an Architect: RFCs, Design Docs and Decision Records) and reviewed with security, legal and engineering leads.
 
 #### Why does it exist?
 
@@ -229,7 +229,7 @@ Draft a two-page AI usage policy for a 50-engineer company that processes paymen
 
 #### Concept
 
-Choosing AI tools is a vendor decision like choosing a database host or an observability platform (Part 82 — Technical Strategy, Vision and Roadmaps, 82.5, on evaluating new technology). It needs criteria, a time-boxed trial with real work, a cost model and a way to measure whether it helped.
+Choosing AI tools is a vendor decision like choosing a database host or an observability platform (Part 84 — Technical Strategy, Vision and Roadmaps, 84.5, on evaluating new technology). It needs criteria, a time-boxed trial with real work, a cost model and a way to measure whether it helped.
 
 #### How it works
 
@@ -263,7 +263,7 @@ The point of the arithmetic is that licence cost is rarely the deciding factor. 
 #### Interview questions
 
 1. **How would you evaluate an AI coding tool for your organisation?** Criteria across data terms, controls, capability on our own code, agent safety, integration, cost and exit; a time-boxed pilot with real tickets; measured against a baseline.
-2. **How do you show leadership whether AI tools are worth it?** A baseline and a comparison group on delivery and stability metrics plus developer experience, presented as a business case (Part 86 — Influence, Communication and the Business Case, 86.3), not acceptance-rate charts.
+2. **How do you show leadership whether AI tools are worth it?** A baseline and a comparison group on delivery and stability metrics plus developer experience, presented as a business case (Part 88 — Influence, Communication and the Business Case, 88.3), not acceptance-rate charts.
 
 #### Practical exercise
 
@@ -273,7 +273,7 @@ Design a one-quarter pilot for an AI coding tool across two comparable teams. Ac
 
 #### Concept
 
-A principal keeps the organisation's AI risks in one **risk register**: each risk with likelihood, impact, controls and an owner. Rollout follows a **paved road** (Part 83 — Architecture Governance, Standards and Paved Roads, 83.2): the safe configuration is pre-built and is the easiest option, so teams adopt it because it is convenient, not because they are forced to.
+A principal keeps the organisation's AI risks in one **risk register**: each risk with likelihood, impact, controls and an owner. Rollout follows a **paved road** (Part 85 — Architecture Governance, Standards and Paved Roads, 85.2): the safe configuration is pre-built and is the easiest option, so teams adopt it because it is convenient, not because they are forced to.
 
 #### How it works
 
@@ -292,7 +292,7 @@ A starting risk register:
 | Vendor lock-in or price change | Medium | Medium | Portable instruction files, exit criteria, annual review | Principal engineer |
 | Runaway usage cost | Medium | Low to medium | Spend limits, per-team dashboards, alerts | Engineering finance |
 
-Rollout as a paved road, usually owned by a platform team (Part 85 — Org Design, Conway's Law and Platform Engineering, 85.4):
+Rollout as a paved road, usually owned by a platform team (Part 87 — Org Design, Conway's Law and Platform Engineering, 87.4):
 
 ```mermaid
 flowchart LR
@@ -311,7 +311,7 @@ What the paved road contains, concretely:
 - An allowlist of vetted MCP servers, with an internal process to request new ones.
 - A short training: the loop (53.3), the review checklist (53.4), the decision matrix (53.5) and the incident story (53.7).
 
-Teams may leave the road, with a reason written down, in the same way Part 83 describes waivers for other standards.
+Teams may leave the road, with a reason written down, in the same way Part 85 describes waivers for other standards.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -328,7 +328,7 @@ Write the risk register and paved-road contents for your organisation. Acceptanc
 
 ## 53.10 Interview questions by level
 
-These collect the most likely questions, grouped so you can practise at your level and the one above. Part 59 — Senior Backend Interview Preparation and Part 89 — Staff and Principal Interview Preparation cover the wider interview loop.
+These collect the most likely questions, grouped so you can practise at your level and the one above. Part 60 — Senior Backend Interview Preparation and Part 91 — Staff and Principal Interview Preparation cover the wider interview loop.
 
 **Beginner and junior**
 

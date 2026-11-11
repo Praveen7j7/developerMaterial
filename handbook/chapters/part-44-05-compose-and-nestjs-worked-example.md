@@ -244,7 +244,7 @@ With `sequelize-cli`, the migration service becomes:
 
 #### Production scenario
 
-Compose is a development and single-host tool. Some teams run small internal services with `docker compose` on one VM plus `restart: unless-stopped`, and that is fine for a service with no availability requirement. For anything customer-facing with more than one replica, use ECS, Kubernetes or a managed platform (see Part 45 and the cloud deployment discussion in Part 63). The value Compose keeps delivering in production teams is the *parity*: the same images, migration command and environment variable names on a laptop, in CI, and in the cluster.
+Compose is a development and single-host tool. Some teams run small internal services with `docker compose` on one VM plus `restart: unless-stopped`, and that is fine for a service with no availability requirement. For anything customer-facing with more than one replica, use ECS, Kubernetes or a managed platform (see Part 45 and the cloud deployment discussion in Part 64). The value Compose keeps delivering in production teams is the *parity*: the same images, migration command and environment variable names on a laptop, in CI, and in the cluster.
 
 #### Failure scenario
 
