@@ -92,7 +92,7 @@ export class ShippingService {
 }
 ```
 
-The business rules did not change at all. They moved into a class so NestJS can share one instance of `ShippingService` across the whole application. We explain that machinery in Part 6 and, in depth, in Part 12 (dependency injection).
+The business rules did not change at all. They moved into a class so NestJS can share one instance of `ShippingService` across the whole application. We explain that machinery in Part 6 and, in depth, in Part 13 (dependency injection).
 
 #### Edge cases & failure modes
 
@@ -121,6 +121,55 @@ A senior aims for functions that are small, named for what they produce, and fre
 
 Write a pure function `orderSummary` that takes `subtotalCents`, `taxCents`, `shippingCents` and `discountCents` and returns an object `{ subtotalCents, taxCents, shippingCents, discountCents, grandTotalCents }`. Acceptance criteria: the grand total never goes below zero (clamp it), and the function has no side effects.
 
+#### Worked answer to the exercise
+
+```ts
+interface OrderSummary {
+  readonly subtotalCents: number;
+  readonly taxCents: number;
+  readonly shippingCents: number;
+  readonly discountCents: number;
+  readonly grandTotalCents: number;
+}
+
+function orderSummary(
+  subtotalCents: number,
+  taxCents: number,
+  shippingCents: number,
+  discountCents: number,
+): OrderSummary {
+  // Clamp: a discount bigger than the order never produces a negative total.
+  const grandTotalCents = Math.max(0, subtotalCents + taxCents + shippingCents - discountCents);
+  return { subtotalCents, taxCents, shippingCents, discountCents, grandTotalCents };
+}
+
+console.log(orderSummary(3499, 280, 599, 500));
+console.log(orderSummary(1000, 80, 0, 5000).grandTotalCents); // 0, not -3920
+
+// Purity check: same input gives the same output, and nothing outside changed.
+const first = orderSummary(3499, 280, 599, 500);
+const second = orderSummary(3499, 280, 599, 500);
+console.log(JSON.stringify(first) === JSON.stringify(second)); // true
+```
+
+```text
+{
+  subtotalCents: 3499,
+  taxCents: 280,
+  shippingCents: 599,
+  discountCents: 500,
+  grandTotalCents: 3878
+}
+0
+true
+```
+
+Why it is right: `Math.max(0, x)` returns `x` when it is positive and `0` when it is negative, which is exactly "clamp at zero". The function is pure: it reads only its four parameters, it does not touch any variable outside itself, it does not log, write to a database or call the network, and it builds a brand-new object every time. Same input, same output, always. The `readonly` fields stop a caller from quietly changing the summary afterwards. The shorthand `{ subtotalCents, taxCents, ... }` means `{ subtotalCents: subtotalCents, ... }`.
+
+The trap most learners fall into is adding "just one" side effect: a `console.log` inside the function, or updating a running total in an outer variable, or accepting an order object and writing `order.grandTotalCents = ...` onto it. Each of those makes the function harder to test and surprises its callers (1.4.1). A subtler trap: clamping hides bad input. A negative `subtotalCents` is a bug somewhere upstream, and clamping turns it into a silent zero. A stricter version would throw when any input is negative or not an integer, and clamp only the legitimate case of a discount larger than the order.
+
+Check it yourself: run it, then write the two cases as a unit test (Part 41 — Testing Backend Systems with Jest and NestJS, 41.3): `expect(orderSummary(1000, 80, 0, 5000).grandTotalCents).toBe(0)`. Because the function is pure, the test needs no database, no mocks and no setup.
+
 ### 1.4.2 Scope, closures and the call stack
 
 #### Concept
@@ -129,7 +178,7 @@ Write a pure function `orderSummary` that takes `subtotalCents`, `taxCents`, `sh
 
 #### Why does it exist?
 
-Scope exists so that two functions can both use a variable named `i` without colliding — each has its own. Closures exist so a function can carry some private state with it, which is how you build things like a counter, a rate limiter, or a configured client. Understanding the call stack is how you read a stack trace, which is the single most useful debugging skill (Part 35).
+Scope exists so that two functions can both use a variable named `i` without colliding — each has its own. Closures exist so a function can carry some private state with it, which is how you build things like a counter, a rate limiter, or a configured client. Understanding the call stack is how you read a stack trace, which is the single most useful debugging skill (Part 10.15).
 
 #### Mental model
 
@@ -189,8 +238,8 @@ function makePaymentClient(baseUrl: string, apiKey: string) {
 #### Edge cases & failure modes
 
 - **The classic loop-closure bug.** With `var i` in a `for` loop, all closures share the one `i` and see its final value. With `let i`, each iteration gets a fresh `i`. This is the single most common closure bug and the reason `let` exists.
-- **Stack overflow.** A function that calls itself with no stopping condition fills the call stack until Node crashes with `Maximum call stack size exceeded`. Every recursive function needs a base case (Part 8).
-- **Memory leaks via closures.** A closure keeps its captured variables alive. If a long-lived closure captures a huge object, that object cannot be garbage-collected (Part 9). This is a real source of slow memory growth in long-running servers.
+- **Stack overflow.** A function that calls itself with no stopping condition fills the call stack until Node crashes with `Maximum call stack size exceeded`. Every recursive function needs a base case (Part 9).
+- **Memory leaks via closures.** A closure keeps its captured variables alive. If a long-lived closure captures a huge object, that object cannot be garbage-collected (Part 10). This is a real source of slow memory growth in long-running servers.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -212,6 +261,55 @@ Closures are not an exotic trick; they are everywhere in backend code — every 
 #### Practical exercise
 
 Write `makeRateLimiter(maxPerMinute)` that returns a function `allow()` which returns `true` the first `maxPerMinute` times it is called within a rolling minute and `false` afterward, using a closure to hold the timestamps privately. Acceptance criteria: two separate limiters created by two calls to `makeRateLimiter` do not share state.
+
+#### Worked answer to the exercise
+
+```ts
+const WINDOW_MS = 60_000;
+
+// `now` is injectable so a test can control time; it defaults to the real clock.
+function makeRateLimiter(maxPerMinute: number, now: () => number = Date.now): () => boolean {
+  const timestamps: number[] = []; // private: only allow() below can reach it
+
+  return function allow(): boolean {
+    const t = now();
+    // Forget calls that have slid out of the rolling one-minute window.
+    while (timestamps.length > 0 && timestamps[0] <= t - WINDOW_MS) {
+      timestamps.shift();
+    }
+    if (timestamps.length >= maxPerMinute) return false;
+    timestamps.push(t);
+    return true;
+  };
+}
+
+// A fake clock we move by hand, so the demo runs instantly.
+let fakeTime = 0;
+const clock = (): number => fakeTime;
+
+const limiterA = makeRateLimiter(3, clock);
+const limiterB = makeRateLimiter(3, clock);
+
+console.log('A:', [limiterA(), limiterA(), limiterA(), limiterA()]); // 4th call refused
+console.log('B:', [limiterB()]);                                      // B has its own budget
+fakeTime = 30_000;
+console.log('A at 30 s:', limiterA()); // still inside the window
+fakeTime = 60_001;
+console.log('A at 60 s:', limiterA()); // the early calls slid out
+```
+
+```text
+A: [ true, true, true, false ]
+B: [ true ]
+A at 30 s: false
+A at 60 s: true
+```
+
+Why it is right: `timestamps` is declared inside `makeRateLimiter`, so every call to `makeRateLimiter` creates a new, separate array, and the returned `allow` function is the only code that can see it. That is the closure doing its job, and it is why limiter B still has its full budget after A ran out. "Rolling minute" means "the last 60 seconds counted from now", so on every call we first drop timestamps older than 60 seconds, then decide. The array never holds more than `maxPerMinute` entries, because we only record calls we allowed.
+
+The trap most learners fall into is declaring `const timestamps: number[] = []` at the top of the file, outside `makeRateLimiter`. Everything still works with one limiter, and the moment you create a second one, both share one array: exactly the failure the acceptance criteria test for. The second trap is building a fixed window instead ("reset the counter at the start of each minute"), which lets a client send `maxPerMinute` calls at 10:00:59 and another `maxPerMinute` at 10:01:00.
+
+Passing `now` as a parameter is what makes this testable without waiting a real minute (41.11 covers testing time). Check it yourself: run the file and compare. Note that this limiter lives in one process's memory; with three API instances behind a load balancer, each has its own count, which is why production rate limits usually live in Redis (27.11; 9.17 builds the algorithms properly).
 
 ### 1.4.3 Typing functions well
 
@@ -278,3 +376,47 @@ A senior types callbacks and higher-order functions precisely, because a wrong c
 #### Practical exercise
 
 Define a type `Validator = (value: unknown) => boolean` and write a higher-order function `validateAll(value, validators)` that returns `true` only if every validator passes. Acceptance criteria: it short-circuits (stops) at the first failing validator.
+
+#### Worked answer to the exercise
+
+```ts
+type Validator = (value: unknown) => boolean;
+
+function validateAll(value: unknown, validators: readonly Validator[]): boolean {
+  // every() stops at the first validator that returns false.
+  return validators.every((validator) => validator(value));
+}
+
+// Wrap a validator so we can see whether it actually ran.
+const traced =
+  (name: string, check: Validator): Validator =>
+  (value) => {
+    console.log(`  ran ${name}`);
+    return check(value);
+  };
+
+const isString = traced('isString', (v) => typeof v === 'string');
+const isEmailShaped = traced('isEmailShaped', (v) => typeof v === 'string' && /^[^@\s]+@[^@\s]+$/.test(v));
+const isShortEnough = traced('isShortEnough', (v) => typeof v === 'string' && v.length <= 254);
+const rules = [isString, isEmailShaped, isShortEnough];
+
+console.log('alice@example.com ->', validateAll('alice@example.com', rules));
+console.log('42 ->', validateAll(42, rules));
+```
+
+```text
+  ran isString
+  ran isEmailShaped
+  ran isShortEnough
+alice@example.com -> true
+  ran isString
+42 -> false
+```
+
+Why it is right: `Array.prototype.every` calls the callback for each element in order and stops the moment one returns `false`, so the short-circuit comes for free. The trace proves it: for `42`, only `isString` ran. `traced` is itself a higher-order function, one that takes a validator and returns a new validator, which is the same idea as `validateAll` turned around.
+
+The trap most learners fall into is `validators.map((v) => v(value)).every(Boolean)`, or a `reduce` that ANDs the results. Both give the right `true`/`false`, but `map` runs every validator first, so there is no short-circuit. That matters for more than speed: later validators often assume earlier ones passed. A length check written as `(v) => (v as string).length <= 254` would crash with `Cannot read properties of null` when given `null`, if it ran after a failed `isString`.
+
+One edge case to decide on purpose: `validateAll(x, [])` returns `true`, because "every one of zero validators passed" is true. That is usually what you want; if an empty list means a configuration mistake in your system, throw instead.
+
+Check it yourself: run the file and confirm that the `42` case prints only one `ran` line. Then swap `every` for the `map` version and watch all three run.

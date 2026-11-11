@@ -44,7 +44,7 @@ flowchart LR
 
 1. You push your branch to the remote.
 2. You open a pull request: "please merge `feat/add-coupons` into `main`", with a description of what and why.
-3. Automated checks run (tests, linting — Part 46 on CI/CD).
+3. Automated checks run (tests, linting — Part 47 on CI/CD).
 4. Teammates review the code, leave comments, maybe request changes.
 5. You address feedback with more commits and push again (the PR updates automatically).
 6. Once approved and checks pass, the PR is merged into `main` and the branch is deleted.
@@ -87,7 +87,7 @@ git switch main && git pull                   # bring the merged change into you
 
 #### Edge cases & failure modes
 
-- **Pushing to the wrong branch** or force-pushing over others' work (`git push --force`) can destroy commits; avoid force-push on shared branches (Part 47 covers the safe `--force-with-lease`).
+- **Pushing to the wrong branch** or force-pushing over others' work (`git push --force`) can destroy commits; avoid force-push on shared branches (Part 48 covers the safe `--force-with-lease`).
 - **A stale local `main`**: forgetting to `git pull` before branching means you build on old code and hit conflicts; always start from up-to-date `main`.
 - **A huge PR** (thousands of lines) is nearly impossible to review well; reviewers rubber-stamp it and bugs slip through. Keep PRs small.
 - **Merging your own PR without review** skips the quality gate that catches mistakes; follow the team's review requirement.
@@ -95,7 +95,7 @@ git switch main && git pull                   # bring the merged change into you
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior keeps pull requests small and focused, because a PR a reviewer can actually read in ten minutes gets a real review, while a 2,000-line PR gets a rubber stamp. They write PR descriptions that explain intent and how to verify, treating the reviewer's time as valuable. They always branch from up-to-date `main` and pull frequently to keep divergence small. They never force-push shared branches. They see code review not as a gate to get past but as the main mechanism by which a team shares knowledge and catches defects early, and they both give and receive review thoughtfully (Part 47 — Git from Intermediate to Senior, 47.13, covers the pull request workflow and review).
+A senior keeps pull requests small and focused, because a PR a reviewer can actually read in ten minutes gets a real review, while a 2,000-line PR gets a rubber stamp. They write PR descriptions that explain intent and how to verify, treating the reviewer's time as valuable. They always branch from up-to-date `main` and pull frequently to keep divergence small. They never force-push shared branches. They see code review not as a gate to get past but as the main mechanism by which a team shares knowledge and catches defects early, and they both give and receive review thoughtfully (Part 48 — Git from Intermediate to Senior, 48.13, covers the pull request workflow and review).
 
 #### Common mistakes
 
@@ -115,6 +115,59 @@ A senior keeps pull requests small and focused, because a PR a reviewer can actu
 #### Practical exercise
 
 Clone a repository (or use one you created), create a branch, make a commit, push it with `git push -u origin <branch>`, and open a pull request with a description covering what, why, how to test, and risk. Acceptance criteria: the PR has a meaningful description and links to the branch; you can explain what `origin` and the `-u` flag did.
+
+#### Worked answer to the exercise
+
+Using a practice repository on GitHub (GitLab prints the same Git lines with its own "merge request" link):
+
+```bash
+git clone git@github.com:shop-example/practice-api.git
+cd practice-api
+git switch -c feat/health-endpoint
+# ... add src/health.ts ...
+git add src/health.ts
+git commit -m "Add GET /health endpoint for load balancer checks"
+git push -u origin feat/health-endpoint
+```
+
+```text
+Enumerating objects: 6, done.
+Counting objects: 100% (6/6), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (4/4), 431 bytes | 431.00 KiB/s, done.
+Total 4 (delta 1), reused 0 (delta 0), pack-reused 0
+remote: Resolving deltas: 100% (1/1), completed with 1 local object.
+remote:
+remote: Create a pull request for 'feat/health-endpoint' on GitHub by visiting:
+remote:      https://github.com/shop-example/practice-api/pull/new/feat/health-endpoint
+remote:
+To github.com:shop-example/practice-api.git
+ * [new branch]      feat/health-endpoint -> feat/health-endpoint
+branch 'feat/health-endpoint' set up to track 'origin/feat/health-endpoint'.
+```
+
+Open the link Git printed, check that the base branch is `main` and that the "Files changed" tab shows only your change, then fill in the description:
+
+```text
+Title: Add GET /health endpoint for load balancer checks
+
+What: GET /health returns {"status":"ok"} with 200.
+Why: The load balancer needs a cheap endpoint to decide whether this
+instance should receive traffic.
+How to test: npm run start:dev, then curl http://localhost:3000/health
+Risk: Low. New read-only route; no existing route changes.
+```
+
+The explanation the exercise asks for. **`origin`** is the short name `git clone` gave the remote it cloned from; `git remote -v` shows the URL behind it. **`-u`** (long form `--set-upstream`) links your local branch to `origin/feat/health-endpoint`, which is what the last output line confirms. From now on, plain `git push` and `git pull` know where to go, and `git status` reports how far ahead or behind you are:
+
+```text
+$ git branch -vv
+* feat/health-endpoint 3e1a9f0 [origin/feat/health-endpoint] Add GET /health endpoint for load balancer checks
+  main                 5779562 [origin/main] Add entry point that logs a greeting
+```
+
+**The trap.** Pushing the first time without `-u` and then typing `git push`, which fails with `fatal: The current branch feat/health-endpoint has no upstream branch.` Git prints the `git push --set-upstream origin feat/health-endpoint` command to fix it. The second trap is a pull request against the wrong base branch; if "Files changed" shows commits you did not write, stop and fix the base before asking for review.
 
 ## 5.4 Merging and resolving conflicts
 
@@ -178,7 +231,7 @@ git merge --abort                     # OR: give up and go back to before the me
 
 #### Rebase: the other way (brief)
 
-Besides `merge`, Git has `rebase`, which replays your branch's commits on top of the latest `main`, producing a straighter history. It is powerful and common, but it rewrites commits, so it has its own rules and risks. Part 47 covers rebase, when to use it versus merge, and the "golden rule of rebase" (never rebase commits others have based work on). As a beginner, understand merge first; reach for rebase once you are comfortable.
+Besides `merge`, Git has `rebase`, which replays your branch's commits on top of the latest `main`, producing a straighter history. It is powerful and common, but it rewrites commits, so it has its own rules and risks. Part 48 covers rebase, when to use it versus merge, and the "golden rule of rebase" (never rebase commits others have based work on). As a beginner, understand merge first; reach for rebase once you are comfortable.
 
 #### Practical example — resolving a real conflict
 
@@ -208,7 +261,7 @@ git add src/shipping.ts
 git commit                            # completes the merge
 ```
 
-Crucially, you also re-run the tests (Part 40 — Testing Backend Systems) after resolving, because a conflict resolution can be syntactically valid but logically wrong — you might keep both lines, or the wrong one, and only tests catch that.
+Crucially, you also re-run the tests (Part 41 — Testing Backend Systems) after resolving, because a conflict resolution can be syntactically valid but logically wrong — you might keep both lines, or the wrong one, and only tests catch that.
 
 #### Edge cases & failure modes
 
@@ -241,6 +294,77 @@ A senior sees a conflict as routine, not alarming — it is Git doing its job. T
 
 Create a repository, make a branch, and on both `main` and the branch edit the same line of the same file differently. Merge the branch into `main`, resolve the resulting conflict by choosing the correct final line and removing the markers, and complete the merge. Then deliberately leave a marker in a second conflict and observe how tests or a linter catch it. Acceptance criteria: you resolve the first conflict cleanly, complete the merge, and can explain why leaving a marker is dangerous.
 
+#### Worked answer to the exercise
+
+Set up one file and change the same line on two branches:
+
+```bash
+mkdir conflict-practice && cd conflict-practice && git init
+mkdir src
+printf "export const timeoutMs = 30000;\nexport const retries = 3;\n" > src/config.ts
+git add . && git commit -m "Add config with timeout and retries"
+
+git switch -c feat/longer-timeout
+# edit src/config.ts: timeoutMs = 60000
+git commit -am "Raise timeout to 60 seconds for slow payment provider"
+
+git switch main
+# edit src/config.ts: timeoutMs = 45000
+git commit -am "Raise timeout to 45 seconds"
+git merge feat/longer-timeout
+```
+
+```text
+Auto-merging src/config.ts
+CONFLICT (content): Merge conflict in src/config.ts
+Automatic merge failed; fix conflicts and then commit the result.
+```
+
+`git status` lists `both modified:   src/config.ts` under "Unmerged paths", and the file reads:
+
+```text
+<<<<<<< HEAD
+export const timeoutMs = 45000;
+=======
+export const timeoutMs = 60000;
+>>>>>>> feat/longer-timeout
+export const retries = 3;
+```
+
+The branch's commit message gives the reason (the payment provider is slow), so 60 seconds wins. Edit the file to exactly `export const timeoutMs = 60000;` plus the untouched `retries` line, with no markers left, then:
+
+```text
+$ git add src/config.ts
+$ git commit --no-edit
+[main f5c91f4] Merge branch 'feat/longer-timeout'
+$ git log --oneline --graph
+*   f5c91f4 Merge branch 'feat/longer-timeout'
+|\
+| * 4cfe671 Raise timeout to 60 seconds for slow payment provider
+* | c25193e Raise timeout to 45 seconds
+|/
+* 752cb70 Add config with timeout and retries
+```
+
+Now the second conflict, done badly on purpose: change `retries` to 5 on a branch and to 2 on `main`, merge, and `git add` the file **without** editing it. Git does not stop you:
+
+```text
+$ git diff --cached --check
+src/config.ts:2: leftover conflict marker
+src/config.ts:4: leftover conflict marker
+src/config.ts:6: leftover conflict marker
+$ git commit --no-edit
+[main ea2409f] Merge branch 'feat/retries'
+$ npx tsc --noEmit
+src/config.ts(2,1): error TS1185: Merge conflict marker encountered.
+src/config.ts(4,1): error TS1185: Merge conflict marker encountered.
+src/config.ts(6,1): error TS1185: Merge conflict marker encountered.
+```
+
+**Why leaving a marker is dangerous.** For Git, `git add` means "resolved", whatever the file contains. It happily records the markers in a commit, and if that commit is pushed, everyone who pulls gets a file that does not compile. The TypeScript compiler catches it here, and so would the test run in CI (Part 47), but only if something runs. To fix it, edit the file to the correct value and make a new commit; before committing, `git merge --abort` would have thrown the whole merge away instead.
+
+**How to verify every time.** Run `git diff --check` (or `git diff --cached --check` after `git add`) before you commit a merge, and run the tests after it.
+
 ## 5.5 The development workflow, end to end
 
 ### 5.5.1 Putting it together
@@ -257,14 +381,14 @@ The everyday professional Git workflow is a short, repeatable loop that ties tog
 3. edit, git add, git commit            make small focused commits with clear messages
 4. git push -u origin feat/...          push your branch
 5. open a pull request                   describe what, why, how to test, risk
-6. automated checks run                   tests and lint (CI, Part 46)
+6. automated checks run                   tests and lint (CI, Part 47)
 7. address review feedback               more commits, git push; PR updates
 8. merge into main                        once approved and green
 9. git switch main && git pull           pull the merged change locally
 10. git branch -d feat/...               delete the finished branch
 ```
 
-This loop runs once per feature or fix, often several times a day. Everything else in Git (rebasing, cherry-picking, bisecting, reflog recovery) is a refinement or a rescue tool layered on top of this core loop, and Part 47 covers those.
+This loop runs once per feature or fix, often several times a day. Everything else in Git (rebasing, cherry-picking, bisecting, reflog recovery) is a refinement or a rescue tool layered on top of this core loop, and Part 48 covers those.
 
 #### A quick command reference
 
@@ -286,7 +410,7 @@ git branch                       git switch <name>                git branch -d 
 # History and inspection
 git log --oneline                git show <commit>                git diff main..feat/x
 
-# Undoing (basics; Part 47 goes deeper)
+# Undoing (basics; Part 48 goes deeper)
 git restore <file>               # discard unstaged changes to a file
 git restore --staged <file>      # unstage a file (keep the edits)
 git revert <commit>              # make a new commit that undoes an old one (safe on shared history)
@@ -294,11 +418,11 @@ git revert <commit>              # make a new commit that undoes an old one (saf
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior has internalized this loop so thoroughly that it costs no thought, which frees their attention for the actual work. They know the small set of "undo" commands for the common mistakes (discard a change, unstage a file, revert a commit) and know that for anything scarier, `git reflog` (Part 47) can recover almost anything, so they are never afraid of Git. They favor the safe tools on shared history — `git revert` rather than rewriting published commits — because the history others depend on is not theirs to rewrite. Above all they keep the loop small and frequent: short branches, small commits, small PRs, frequent merges, which keeps the whole team moving smoothly.
+A senior has internalized this loop so thoroughly that it costs no thought, which frees their attention for the actual work. They know the small set of "undo" commands for the common mistakes (discard a change, unstage a file, revert a commit) and know that for anything scarier, `git reflog` (Part 48) can recover almost anything, so they are never afraid of Git. They favor the safe tools on shared history — `git revert` rather than rewriting published commits — because the history others depend on is not theirs to rewrite. Above all they keep the loop small and frequent: short branches, small commits, small PRs, frequent merges, which keeps the whole team moving smoothly.
 
 #### Common mistakes
 
-- Treating Git as scary and avoiding it, leading to lost work and bad habits; the reflog makes almost everything recoverable (Part 47).
+- Treating Git as scary and avoiding it, leading to lost work and bad habits; the reflog makes almost everything recoverable (Part 48).
 - Rewriting shared history; use `git revert` on anything others have.
 - Skipping `git pull` before branching, building on stale code.
 
@@ -311,3 +435,66 @@ A senior has internalized this loop so thoroughly that it costs no thought, whic
 #### Practical exercise
 
 Run the full loop end to end on a practice repository: from up-to-date `main`, branch, make two focused commits, push, open a PR with a complete description, then (simulating approval) merge it, pull `main`, and delete the branch. Along the way, practice `git restore` to discard a change and `git restore --staged` to unstage one. Acceptance criteria: you complete the full loop without looking up commands, and can explain each step's purpose.
+
+#### Worked answer to the exercise
+
+The loop, with the two `restore` practices folded in where they naturally happen:
+
+```bash
+git switch main && git pull                      # 1. start from the latest main
+git switch -c feat/health-check                  # 2. branch
+# edit src/app.service.ts
+git add src/app.service.ts
+git commit -m "Add health status to AppService"  # 3. first focused commit
+echo "console.log('debug');" >> src/app.controller.ts
+```
+
+That debug line was a mistake. Discard it with `restore` before it goes anywhere:
+
+```text
+$ git status --short
+ M src/app.controller.ts
+$ git restore src/app.controller.ts
+$ git status --short
+$
+```
+
+Now make the real controller change, and stage too much by accident:
+
+```text
+$ git add .
+$ git status --short
+M  src/app.controller.ts
+A  notes.txt
+$ git restore --staged notes.txt
+$ git status --short
+M  src/app.controller.ts
+?? notes.txt
+```
+
+`notes.txt` is unstaged but still on disk (`??` means untracked). Commit the controller and share the branch:
+
+```bash
+git commit -m "Expose GET /health in AppController"   # 3. second focused commit
+git push -u origin feat/health-check                  # 4. push
+# 5. open the PR: what, why, how to test, risk (5.3)
+# 6. CI runs; 7. answer review with more commits and git push
+# 8. simulate approval: click "Merge pull request" (a merge commit)
+git switch main && git pull                            # 9. bring the merged result down
+git branch -d feat/health-check                        # 10. delete the finished branch
+```
+
+```text
+Updating 5779562..8b2d4f1
+Fast-forward
+ src/app.controller.ts | 5 +++++
+ src/app.service.ts    | 4 ++++
+ 2 files changed, 9 insertions(+)
+Deleted branch feat/health-check (was 3e1a9f0).
+```
+
+**Checks that prove the loop worked.** `git log --oneline --graph -5` on `main` shows your two commits joined by a "Merge pull request" commit; `git branch` lists only `main`; `git status` says `Your branch is up to date with 'origin/main'`.
+
+**Why `-d` worked here.** The merge commit brought your branch's own commits onto `main`, so Git can see the branch is fully merged. With squash merge, `-d` refuses and you need `-D`, as 5.10 explains.
+
+**The trap.** Mixing up the two restores. `git restore <file>` throws away unstaged edits for good (they were never committed, so even the reflog cannot bring them back). `git restore --staged <file>` only takes the file out of the next commit and keeps your edits. When unsure, run `git status` first: it prints the right command for each state.

@@ -48,11 +48,12 @@ export class ListProductsQuery {
 }
 ```
 
-**Cursor pagination.** Part 14.5 compares offset pagination (`?page=3`) with cursor pagination. A cursor says "continue after this item", so pages stay correct while new products are added, and the database does not have to skip thousands of rows. Our cursor is the last item's `createdAt` and `id`, encoded so the client treats it as an opaque token:
+**Cursor pagination.** Part 15.5 compares offset pagination (`?page=3`) with cursor pagination. A cursor says "continue after this item", so pages stay correct while new products are added, and the database does not have to skip thousands of rows. Our cursor is the last item's `createdAt` and `id`, encoded so the client treats it as an opaque token:
 
 ```ts
 // src/products/cursor.ts
 import { BadRequestException } from '@nestjs/common';
+import { isUUID } from 'class-validator';
 
 export type Cursor = { createdAt: string; id: string };
 
@@ -61,7 +62,8 @@ export const encodeCursor = (c: Cursor): string =>
 
 export function decodeCursor(raw: string): Cursor {
   const [createdAt, id] = Buffer.from(raw, 'base64url').toString('utf8').split('|');
-  if (!createdAt || !id || Number.isNaN(Date.parse(createdAt))) {
+  // A client can send back anything, so check both parts before they reach SQL.
+  if (!createdAt || !id || !isUUID(id) || Number.isNaN(Date.parse(createdAt))) {
     throw new BadRequestException({ code: 'INVALID_CURSOR', message: 'The cursor is not valid' });
   }
   return { createdAt, id };
@@ -95,7 +97,7 @@ async list(q: ListProductsQuery): Promise<{ items: Product[]; nextCursor: string
 }
 
 async update(id: string, dto: UpdateProductDto): Promise<Product> {
-  const product = await this.findOne(id);      // 404 if it does not exist (74.3)
+  const product = await this.findOne(id);      // 404 if it does not exist (6.3)
   Object.assign(product, dto);                 // only fields that passed validation are present (whitelist)
   return this.repo.save(product);              // UPDATE ... WHERE id = $n
 }
@@ -195,7 +197,7 @@ Every door now has a guard, and every guard answers with `400` and a reason.
 
 - **Query values are strings**: without `@Type(() => Number)` and `transform: true`, `@IsInt()` rejects `"20"`, or worse, code compares `"20" > 100` as strings.
 - **Unbounded limits**: no `@Max` means a client (or a bug) can ask for every row in the table.
-- **Offset pagination drift**: with `?page=2`, a product added between page requests shifts items, so users see duplicates or miss items; cursors avoid it (Part 14.5).
+- **Offset pagination drift**: with `?page=2`, a product added between page requests shifts items, so users see duplicates or miss items; cursors avoid it (Part 15.5).
 - **Timestamp precision**: PostgreSQL stores microseconds, JavaScript `Date` keeps milliseconds; two products created in the same millisecond still sort correctly because of the `id` tie-breaker, but a cursor built from a rounded timestamp can skip a row created in that same millisecond. Many teams store `created_at` with millisecond precision (`timestamptz(3)`) to make cursors exact.
 - **`PATCH` with an empty body** passes validation and changes nothing; decide whether that is fine or a `400`.
 - **Configuration typos** like `DATABSE_HOST` leave the real variable missing; validation catches the missing one.
@@ -214,7 +216,7 @@ A senior lists every input of an endpoint (body, path, query, headers, configura
 #### Interview questions
 
 1. **Why does `?limit=20` need `@Type(() => Number)`?** Query strings arrive as text; the transform converts it so numeric rules apply and the code receives a number.
-2. **Why cursor pagination instead of page numbers for a product list?** Stable pages while data changes, and no large `OFFSET` scans; Part 14.5 compares both.
+2. **Why cursor pagination instead of page numbers for a product list?** Stable pages while data changes, and no large `OFFSET` scans; Part 15.5 compares both.
 3. **Why add `id` to the `ORDER BY`?** Two rows can share a timestamp; a unique tie-breaker gives a total order, so cursors never skip or repeat rows.
 4. **What should happen when a required environment variable is missing?** The app refuses to start with a clear message naming the variable.
 
@@ -229,6 +231,100 @@ Acceptance criteria:
 - `PATCH` with `{"priceCents":-1}` returns `400`; `DELETE` of a missing id returns `404`; a successful `DELETE` returns `204` with no body.
 - Starting the app with `DATABASE_PORT=abc` fails at boot with a message naming `DATABASE_PORT`.
 
+#### Worked answer to the exercise
+
+With the DTOs, `cursor.ts`, the service additions, the controller additions and `validateEnv` exactly as above, empty the table (`TRUNCATE products;` in `psql`) and seed it:
+
+```bash
+#!/usr/bin/env bash
+# seed-products.sh: create 45 products and count the status codes that came back
+set -euo pipefail
+for i in $(seq 1 45); do
+  curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:3000/products \
+    -H 'Content-Type: application/json' \
+    -d "{\"name\":\"Practice product $i\",\"priceCents\":$((i * 100))}"
+done | sort | uniq -c
+```
+
+```text
+$ bash seed-products.sh
+     45 201
+```
+
+Then walk the list the way a client would, following `nextCursor` until it is `null`:
+
+```bash
+#!/usr/bin/env bash
+# walk-products.sh: page through GET /products and check for repeats or gaps
+set -euo pipefail
+cursor=""; page=0; : > ids.txt
+while :; do
+  body=$(curl -s "http://localhost:3000/products?limit=20${cursor:+&cursor=$cursor}")
+  page=$((page + 1))
+  echo "page $page: $(jq '.items | length' <<< "$body") items"
+  jq -r '.items[].id' <<< "$body" >> ids.txt
+  cursor=$(jq -r '.nextCursor // empty' <<< "$body")   # empty string when nextCursor is null
+  [ -z "$cursor" ] && break
+done
+echo "total $(wc -l < ids.txt | tr -d ' '), unique $(sort -u ids.txt | wc -l | tr -d ' ')"
+```
+
+```text
+$ bash walk-products.sh
+page 1: 20 items
+page 2: 20 items
+page 3: 5 items
+total 45, unique 45
+```
+
+20, 20 and 5, and 45 unique ids out of 45: nothing repeated, nothing missing. The cursor is base64url, so it goes into the URL without extra encoding.
+
+The rejections, and the update and delete rules:
+
+```text
+$ for q in 'limit=0' 'limit=101' 'limit=abc' 'cursor=not-a-real-cursor'; do
+>   printf '%-26s %s\n' "$q" "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:3000/products?$q")"
+> done
+limit=0                    400
+limit=101                  400
+limit=abc                  400
+cursor=not-a-real-cursor   400
+$ id=$(curl -s 'http://localhost:3000/products?limit=1' | jq -r '.items[0].id')
+$ curl -s -w '\n%{http_code}\n' -X PATCH "http://localhost:3000/products/$id" \
+    -H 'Content-Type: application/json' -d '{"priceCents":-1}'
+{"message":["priceCents must not be less than 0"],"error":"Bad Request","statusCode":400}
+400
+$ curl -s -o /dev/null -w '%{http_code}\n' -X DELETE http://localhost:3000/products/9b1d5f8e-0000-4000-8000-000000000000
+404
+$ curl -s -o /dev/null -w '%{http_code} %{size_download} bytes\n' -X DELETE "http://localhost:3000/products/$id"
+204 0 bytes
+$ DATABASE_PORT=abc npm run start:dev
+Error: Invalid configuration:
+DATABASE_PORT: DATABASE_PORT must not be greater than 65535, DATABASE_PORT must not be less than 1, DATABASE_PORT must be an integer number
+```
+
+The configuration line lists all three rules, because `"abc"` becomes `NaN`, which fails every numeric check; the order of the messages can differ. The shell variable wins over `.env`, which is why this one-off override works.
+
+**Why it is right.** `PartialType` reuses every rule of `CreateProductDto`, so `PATCH` cannot accept what `POST` rejects. `@Type(() => Number)` turns the query text into a number before `@IsInt`, `@Min(1)` and `@Max(100)` judge it. The cursor's `id` tie-breaker gives a total order, so no row is skipped or repeated between pages.
+
+**The trap.** Testing only a *random* cursor. A random string fails to decode into two parts, so even a check that ignores the id rejects it. A *tampered* cursor, a valid date with a broken id, is the real test, and it is why `decodeCursor` calls `isUUID`. Encode one and send it:
+
+```text
+$ bad=$(node -e "process.stdout.write(Buffer.from('2026-11-11T05:00:00.000Z|not-a-uuid').toString('base64url'))")
+$ curl -s -w '\n%{http_code}\n' "http://localhost:3000/products?cursor=$bad"
+{"code":"INVALID_CURSOR","message":"The cursor is not valid"}
+400
+```
+
+Now delete `!isUUID(id) ||` from the condition and send the same cursor again:
+
+```text
+{"statusCode":500,"message":"Internal server error"}
+500
+```
+
+Without the id check the request reaches PostgreSQL, which rejects `'not-a-uuid'` as a `uuid` value, and the client's mistake turns into a server error. Put the check back. Anything a client can send back to you, an "opaque" cursor included, is untrusted input.
+
 ## 6.6 Step 2: Consistent errors, a request ID and logs
 
 ### 6.6.1 One error shape for every failure
@@ -237,7 +333,7 @@ Acceptance criteria:
 
 Right now our API's errors come in several shapes. A validation failure returns NestJS's default `{ "statusCode": 400, "message": [...], "error": "Bad Request" }`. A missing product returns `{ "statusCode": 404, "message": "Product ... not found" }`. A database error, such as a duplicate value in a unique column, returns a bare `500` with `"Internal server error"`. In this step we give every error **one shape**, with a stable machine-readable `code`, a list of `issues` for field problems, and a `requestId` that links the response to the server's log line.
 
-The shape follows the **problem details** standard for HTTP APIs (RFC 9457, the successor of RFC 7807) that the rest of this book uses (Part 14.9, and Part 140.6 for how a frontend consumes it):
+The shape follows the **problem details** standard for HTTP APIs (RFC 9457, the successor of RFC 7807) that the rest of this book uses (Part 15.9, and Part 74.6 for how a frontend consumes it):
 
 ```json
 {
@@ -400,7 +496,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
 }
 ```
 
-Two things to notice. The duplicate check is done by the **database**, not by a `SELECT` before the `INSERT`: two requests at the same moment could both pass a `SELECT`, but only one can pass a unique constraint (Part 20 explains why). And the `500` branch logs the stack trace but returns only `INTERNAL_ERROR` and the request ID: stack traces and SQL in responses help attackers, not users.
+Two things to notice. The duplicate check is done by the **database**, not by a `SELECT` before the `INSERT`: two requests at the same moment could both pass a `SELECT`, but only one can pass a unique constraint (Part 21 explains why). And the `500` branch logs the stack trace but returns only `INTERNAL_ERROR` and the request ID: stack traces and SQL in responses help attackers, not users.
 
 Wiring it all in one place, so tests (6.7) can use exactly the same setup as `main.ts`:
 
@@ -413,7 +509,7 @@ import { ApiExceptionFilter } from './common/api-exception.filter';
 export function configureApp(app: INestApplication): INestApplication {
   app.useGlobalPipes(validationPipe);
   app.useGlobalFilters(new ApiExceptionFilter());
-  app.enableShutdownHooks();                       // close the database pool cleanly on SIGTERM (72.3)
+  app.enableShutdownHooks();                       // close the database pool cleanly on SIGTERM (4.3)
   return app;
 }
 ```
@@ -439,6 +535,8 @@ And the service passes the new field through and gives its not-found error a cod
 const product = this.repo.create({ name: dto.name, priceCents: dto.priceCents, sku: dto.sku, currency: dto.currency ?? 'USD' });
 // in findOne():
 if (!product) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product ${id} not found` });
+// in remove() (update() already goes through findOne):
+if (result.affected === 0) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: `Product ${id} not found` });
 ```
 
 #### Practical example — what clients see now
@@ -463,21 +561,29 @@ curl -s -i http://localhost:3000/products/9b1d5f8e-0000-4000-8000-000000000000 |
 # X-Request-Id: 5c2e...
 ```
 
-And the server log for that 404 has the same request ID, so a support ticket that quotes `5c2e...` leads straight to it:
+And the server log for that 404 has the same request ID, so a support ticket that quotes `5c2e...` leads straight to it. In the terminal running `npm run start:dev` (or the file you send its output to), NestJS's built-in logger prints an object as `Object:` followed by indented JSON:
 
-```bash
-grep 5c2e /var/log/products-api/app.log        # or the terminal running npm run start:dev
-# [Nest] 4821  - WARN [ApiExceptionFilter] {"msg":"request failed","requestId":"5c2e...","status":404,"code":"PRODUCT_NOT_FOUND","path":"/products/9b1d..."}
+```text
+[Nest] 4821  - 11/11/2026, 10:41:55 AM    WARN [ApiExceptionFilter] Object:
+{
+  "msg": "request failed",
+  "requestId": "5c2e...",
+  "status": 404,
+  "code": "PRODUCT_NOT_FOUND",
+  "path": "/products/9b1d..."
+}
 ```
+
+Because one entry spans several lines, `grep 5c2e` finds only the `requestId` line; `grep -B 3 -A 4 5c2e` shows the whole entry. Production setups switch to one JSON object per line, which log tools search and filter directly (Part 43.2).
 
 #### Edge cases & failure modes
 
 - **A `SELECT`-then-`INSERT` duplicate check** races: two requests both see "no such SKU" and both insert, or one fails with an unhandled `500`; rely on the unique constraint and map its error.
 - **Leaking internals**: returning `exception.message` from unknown errors can expose SQL, table names or file paths.
-- **Inconsistent codes**: `NOT_FOUND` here, `PRODUCT_NOT_FOUND` there; keep a list of codes in one file and review additions like API changes (Part 24).
+- **Inconsistent codes**: `NOT_FOUND` here, `PRODUCT_NOT_FOUND` there; keep a list of codes in one file and review additions like API changes (Part 25).
 - **Error text as an API**: clients that match on `title` break when the wording changes; they must use `code`.
 - **Request IDs from clients** can be anything, including very long or malicious strings; validate the format or generate a new one.
-- **Logging personal data** (emails, addresses, tokens) in error logs; log IDs and codes, not payloads (Part 82.31).
+- **Logging personal data** (emails, addresses, tokens) in error logs; log IDs and codes, not payloads (Part 40.31).
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -508,3 +614,80 @@ Acceptance criteria:
 - Creating two products with the same SKU at the same moment (two `curl` commands joined with `&` in one line) creates exactly one product and returns one `201` and one `409`.
 - A deliberately thrown `new Error('boom')` in a test route returns `500` with `code: "INTERNAL_ERROR"`, no stack trace in the body, and the stack trace in the log under the same request ID.
 - Sending `X-Request-Id: my-test-request-123` makes the response and the log use that ID.
+
+#### Worked answer to the exercise
+
+With the entity and DTO additions, `RequestIdMiddleware`, `validation.ts`, `ApiExceptionFilter`, `configureApp` and the new `main.ts` exactly as above, add one temporary route to produce an unexpected error:
+
+```ts
+// src/app.controller.ts (temporary: delete it after the check)
+@Get('boom')
+boom(): never {
+  throw new Error('boom');
+}
+```
+
+**Every error has the one shape.** One case in full:
+
+```text
+$ curl -s -i http://localhost:3000/products/not-a-uuid | grep -iE '^(HTTP|x-request-id|content-type)'
+HTTP/1.1 400 Bad Request
+X-Request-Id: 2f0d6c1a-8b3e-4f59-9c7d-1e2a3b4c5d6e
+Content-Type: application/problem+json; charset=utf-8
+$ curl -s http://localhost:3000/products/not-a-uuid | jq -c .
+{"type":"about:blank","title":"Validation failed (uuid is expected)","status":400,"code":"BAD_REQUEST","issues":[],"requestId":"7a41c0de-3f2b-4e8a-b1c9-5d6e7f8a9b0c"}
+```
+
+Repeat for the other cases; all have the same content type and fields:
+
+| Case | Request | `status` | `code` | `issues` |
+|---|---|---|---|---|
+| Validation | `POST` with `"priceCents":-5` | 400 | `VALIDATION_FAILED` | one entry per broken field |
+| Bad UUID | `GET /products/not-a-uuid` | 400 | `BAD_REQUEST` | `[]` |
+| Not found | `GET` an unused UUID | 404 | `PRODUCT_NOT_FOUND` | `[]` |
+| Duplicate SKU | second `POST` with `DM-001` | 409 | `PRODUCT_SKU_TAKEN` | `[{ "path": "sku", ... }]` |
+| Unexpected | `GET /boom` | 500 | `INTERNAL_ERROR` | `[]` |
+
+The bad UUID gets the fallback `BAD_REQUEST` because `ParseUUIDPipe`'s exception carries no `code`, so the filter uses the status name. That meets the criteria; a stronger answer gives the pipe an `exceptionFactory` that throws `BadRequestException({ code: 'INVALID_ID', message: 'id must be a UUID', issues: [{ path: 'id', message: 'id must be a UUID' }] })`.
+
+**Two creates at the same moment:**
+
+```text
+$ B='{"name":"Race Mirror","priceCents":1299,"sku":"RACE-1"}'
+$ curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:3000/products -H 'Content-Type: application/json' -d "$B" & curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:3000/products -H 'Content-Type: application/json' -d "$B"; wait
+201
+409
+$ docker exec -it shop-db psql -U shop -d shop -c "SELECT sku, count(*) FROM products WHERE sku = 'RACE-1' GROUP BY sku;"
+  sku   | count
+--------+-------
+ RACE-1 |     1
+(1 row)
+```
+
+The order of `201` and `409` can swap between runs; there is always exactly one of each, and one row.
+
+**The unexpected error, with a client-supplied request ID** (this covers the last two criteria at once):
+
+```text
+$ curl -s -i -H 'X-Request-Id: my-test-request-123' http://localhost:3000/boom | grep -iE '^(HTTP|x-request-id)'
+HTTP/1.1 500 Internal Server Error
+X-Request-Id: my-test-request-123
+$ curl -s -H 'X-Request-Id: my-test-request-123' http://localhost:3000/boom | jq -c .
+{"type":"about:blank","title":"Something went wrong","status":500,"code":"INTERNAL_ERROR","issues":[],"requestId":"my-test-request-123"}
+```
+
+No stack, no file paths in the body. The terminal running the app has the details under the same ID (stack shortened here):
+
+```text
+[Nest] 4821  - 11/11/2026, 10:42:07 AM   ERROR [ApiExceptionFilter] Object:
+{
+  "msg": "unhandled error",
+  "requestId": "my-test-request-123",
+  "path": "/boom",
+  "err": "Error: boom\n    at AppController.boom (/Users/asha/work/products-api/src/app.controller.ts:19:11)\n    at ..."
+}
+```
+
+Send `X-Request-Id: bad id!` and the middleware ignores it (it fails `/^[\w-]{8,64}$/`) and generates a UUID instead. Delete the `boom` route when you are done.
+
+**The trap.** A validation error that comes back with `code: "BAD_REQUEST"` and `issues: []`, instead of `VALIDATION_FAILED` with field paths. That means a `ValidationPipe` *without* the `exceptionFactory` is running, almost always the 6.2 `app.useGlobalPipes(new ValidationPipe(...))` still sitting in `main.ts`. `main.ts` must call only `configureApp`, so the app and the tests (6.7) share one setup.

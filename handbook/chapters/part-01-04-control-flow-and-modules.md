@@ -107,7 +107,7 @@ function canTransition(from: Status, to: Status): boolean {
 canTransition('pending', 'shipped'); // false: must be paid first
 ```
 
-This data-driven approach (a lookup table of allowed transitions) is cleaner than a tangle of `if`s and is easy to extend. We return to state machines in Part 65.
+This data-driven approach (a lookup table of allowed transitions) is cleaner than a tangle of `if`s and is easy to extend. We return to state machines in Part 67.
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -127,6 +127,75 @@ A senior keeps the happy path at the top indentation level and pushes error and 
 #### Practical exercise
 
 Implement `transition(order, to)` that uses the `allowed` table above, throws a clear error for an illegal transition, and returns a new order object (not mutated) with the updated status. Acceptance criteria: adding a new status to the `Status` union without updating `allowed` must cause a TypeScript error.
+
+#### Worked answer to the exercise
+
+```ts
+type Status = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+
+interface Order {
+  readonly id: string;
+  readonly status: Status;
+  readonly totalCents: number;
+}
+
+// Record<Status, ...> demands one key per member of the union.
+const allowed: Record<Status, readonly Status[]> = {
+  pending: ['paid', 'cancelled'],
+  paid: ['shipped', 'refunded'],
+  shipped: ['delivered'],
+  delivered: [],
+  cancelled: [],
+  refunded: [],
+};
+
+class IllegalTransitionError extends Error {
+  constructor(orderId: string, from: Status, to: Status) {
+    super(`order ${orderId}: cannot go from '${from}' to '${to}' (allowed: ${allowed[from].join(', ') || 'none'})`);
+    this.name = 'IllegalTransitionError';
+  }
+}
+
+function transition(order: Order, to: Status): Order {
+  if (!allowed[order.status].includes(to)) {
+    throw new IllegalTransitionError(order.id, order.status, to);
+  }
+  return { ...order, status: to }; // a new object; the input is untouched
+}
+
+const placed: Order = { id: 'ord_1001', status: 'pending', totalCents: 4299 };
+const paid = transition(placed, 'paid');
+console.log(placed.status, '->', paid.status, '| same object?', placed === paid);
+
+try {
+  transition(placed, 'shipped');
+} catch (err) {
+  console.log((err as Error).message);
+}
+try {
+  transition({ ...paid, status: 'delivered' }, 'refunded');
+} catch (err) {
+  console.log((err as Error).message);
+}
+```
+
+```text
+pending -> paid | same object? false
+order ord_1001: cannot go from 'pending' to 'shipped' (allowed: paid, cancelled)
+order ord_1001: cannot go from 'delivered' to 'refunded' (allowed: none)
+```
+
+Now the acceptance test. Add `'disputed'` to the `Status` union and change nothing else; `npx tsc --noEmit --strict` fails:
+
+```text
+transition.ts(10,7): error TS2741: Property 'disputed' is missing in type '{ pending: ("cancelled" | "paid")[]; paid: ("refunded" | "shipped")[]; shipped: "delivered"[]; delivered: never[]; cancelled: never[]; refunded: never[]; }' but required in type 'Record<Status, readonly Status[]>'.
+```
+
+Why it is right: `Record<Status, readonly Status[]>` means "an object with exactly one key for every member of `Status`". The day someone adds a status, the table stops compiling until they decide which transitions the new status allows. The guard clause throws before anything changes, and the error names the order, both states and the legal options, so the log line explains itself. `{ ...order, status: to }` builds a new object; `placed === paid` is `false`, and `placed.status` is still `pending`. The `readonly` fields make `order.status = to` a compile error, so nobody can "simplify" it into a mutation later.
+
+The trap most learners fall into is typing the table loosely, as `{ [key: string]: Status[] }` or `Partial<Record<Status, Status[]>>`. Both compile today and both quietly drop the exhaustiveness check, which is the whole point of the exercise. Then `allowed['disputed']` is `undefined` at runtime and `.includes` throws a confusing `TypeError` in production instead of a clear compile error on your laptop.
+
+Check it yourself: run the file and compare the three lines, then add `'disputed'` to the union and confirm the compile error appears.
 
 ### 1.6.2 Loops
 
@@ -197,14 +266,14 @@ A counted `for` loop is the right tool here because we need the attempt number a
 
 #### Edge cases & failure modes
 
-- **Infinite loops.** A `while (true)` with no `break`, or a `for` whose condition never becomes false, hangs the process. On a single-threaded Node server, an infinite loop freezes the entire server for every user, not just one request (Part 9).
+- **Infinite loops.** A `while (true)` with no `break`, or a `for` whose condition never becomes false, hangs the process. On a single-threaded Node server, an infinite loop freezes the entire server for every user, not just one request (Part 10).
 - **`for...in` over arrays** iterates indices as strings and includes inherited properties; use `for...of` for array values.
 - **Modifying an array while iterating it** with a classic `for` can skip or repeat elements. Build a new array instead.
 - **`await` inside a loop** runs iterations one after another (serial). If they are independent, that is needlessly slow; use `Promise.all` (Part 2) to run them together.
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior defaults to array methods for data transformation and reserves explicit loops for early exit, index math, and side effects that read more clearly as a loop. They are acutely aware that on Node a long synchronous loop blocks the event loop and therefore every concurrent request (Part 9), so a loop over a million rows gets rewritten to stream or to yield control. They watch for the accidental-serial-`await`-in-a-loop pattern, one of the most common causes of a slow endpoint.
+A senior defaults to array methods for data transformation and reserves explicit loops for early exit, index math, and side effects that read more clearly as a loop. They are acutely aware that on Node a long synchronous loop blocks the event loop and therefore every concurrent request (Part 10), so a loop over a million rows gets rewritten to stream or to yield control. They watch for the accidental-serial-`await`-in-a-loop pattern, one of the most common causes of a slow endpoint.
 
 #### Common mistakes
 
@@ -215,13 +284,81 @@ A senior defaults to array methods for data transformation and reserves explicit
 
 #### Interview questions
 
-1. **Why can a long synchronous loop freeze an entire Node server?** Node runs your JavaScript on one thread; while the loop runs, the event loop cannot handle any other request (see Part 9).
+1. **Why can a long synchronous loop freeze an entire Node server?** Node runs your JavaScript on one thread; while the loop runs, the event loop cannot handle any other request (see Part 10).
 2. **What is wrong with `for (const x of items) { await save(x); }` when saves are independent?** It runs serially; `await Promise.all(items.map(save))` runs them concurrently and is far faster.
 3. **When do you write a manual `for` loop instead of `map`/`filter`?** When you need early exit (`break`), the index, custom stepping, or side effects that are clearer as a loop.
 
 #### Practical exercise
 
 Rewrite a serial loop that fetches 20 product details one at a time (`for...of` with `await`) into a concurrent version using `Promise.all`, and explain in one sentence why the concurrent version is faster. Acceptance criteria: the concurrent version preserves the order of results.
+
+#### Worked answer to the exercise
+
+```ts
+interface Product {
+  id: number;
+  name: string;
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// A pretend product API: each call takes 30-70 ms, in random order.
+async function fetchProduct(id: number): Promise<Product> {
+  await wait(30 + Math.floor(Math.random() * 40));
+  return { id, name: `product-${id}` };
+}
+
+const ids = Array.from({ length: 20 }, (_, i) => i + 1);
+
+// Before: serial. Each await waits for the previous fetch to finish.
+async function fetchAllSerial(productIds: number[]): Promise<Product[]> {
+  const results: Product[] = [];
+  for (const id of productIds) {
+    results.push(await fetchProduct(id));
+  }
+  return results;
+}
+
+// After: concurrent. Start all 20 fetches first, then wait for all of them.
+async function fetchAllConcurrent(productIds: number[]): Promise<Product[]> {
+  return Promise.all(productIds.map((id) => fetchProduct(id)));
+}
+
+async function main(): Promise<void> {
+  let start = Date.now();
+  const serial = await fetchAllSerial(ids);
+  console.log(`serial:     ${serial.length} products in ${Date.now() - start} ms`);
+
+  start = Date.now();
+  const concurrent = await fetchAllConcurrent(ids);
+  console.log(`concurrent: ${concurrent.length} products in ${Date.now() - start} ms`);
+
+  // Order check: results come back in the order of the input ids, not finish order.
+  const inOrder = concurrent.every((product, index) => product.id === ids[index]);
+  console.log('order preserved:', inOrder, concurrent.slice(0, 3).map((p) => p.id));
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});
+```
+
+```text
+serial:     20 products in 1067 ms
+concurrent: 20 products in 69 ms
+order preserved: true [ 1, 2, 3 ]
+```
+
+The one sentence: the concurrent version is faster because all 20 requests are waiting at the same time, so the total is roughly the slowest single request (about 70 ms) instead of the sum of all twenty (about 1 second).
+
+Why the order is preserved: `Promise.all` returns its results in the same positions as the promises you gave it, whatever order they finish in. Product 7 may arrive before product 2, but it still lands at index 6. The random delays in `fetchProduct` exist precisely to prove this: finish order is shuffled, result order is not. The code is wrapped in `main()` because top-level `await` only works when the file runs as an ES module (Part 2 explains `async`/`await` in depth).
+
+The trap most learners fall into is `ids.forEach(async (id) => results.push(await fetchProduct(id)))`. `forEach` does not wait for async callbacks, so the function returns an empty array immediately, and when results do arrive they are pushed in finish order, not input order. The second trap is applying this pattern without limit: 20 concurrent calls are fine, but 5,000 at once can exhaust a connection pool or trip a rate limit; the worked answer in 2.3 shows how to cap concurrency. And remember that `Promise.all` rejects as soon as any one call fails; use `Promise.allSettled` when partial results are acceptable.
+
+Check it yourself: run it a few times with `npx tsx`. The timings change slightly every run, but `order preserved: true` must never change.
 
 ## 1.7 Modules, interfaces and generics
 
@@ -275,7 +412,7 @@ export * from './orders.controller';
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior treats a module's exports as its public API and keeps it small: export the service, not every helper. They avoid circular imports (file A imports B which imports A), which cause subtle `undefined` bugs at startup, by keeping dependencies flowing in one direction — controllers depend on services, services depend on repositories, never the reverse. The module boundary is the first and cheapest form of architecture, long before you reach for layers or microservices (Part 11).
+A senior treats a module's exports as its public API and keeps it small: export the service, not every helper. They avoid circular imports (file A imports B which imports A), which cause subtle `undefined` bugs at startup, by keeping dependencies flowing in one direction — controllers depend on services, services depend on repositories, never the reverse. The module boundary is the first and cheapest form of architecture, long before you reach for layers or microservices (Part 12).
 
 #### Common mistakes
 
@@ -291,6 +428,72 @@ A senior treats a module's exports as its public API and keeps it small: export 
 #### Practical exercise
 
 Split a single file containing money formatting, order totalling and a `main` that prints a summary into three modules (`money.ts`, `orders.ts`, `main.ts`) with explicit exports and imports. Acceptance criteria: `main.ts` imports only from `orders.ts`, and `orders.ts` imports only from `money.ts` — no circular imports.
+
+#### Worked answer to the exercise
+
+```ts
+// money.ts: knows about cents and dollars, and nothing else. Imports nothing.
+export function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+export function sumCents(amounts: readonly number[]): number {
+  return amounts.reduce((total, amount) => total + amount, 0);
+}
+```
+
+```ts
+// orders.ts: order rules. Depends on money.ts only.
+import { formatCents, sumCents } from './money';
+
+export interface OrderLine {
+  name: string;
+  unitCents: number;
+  qty: number;
+}
+
+export function orderTotalCents(lines: readonly OrderLine[]): number {
+  return sumCents(lines.map((line) => line.unitCents * line.qty));
+}
+
+// main.ts needs a printable summary; orders.ts produces it, so main never touches money.ts.
+export function orderSummaryText(orderId: string, lines: readonly OrderLine[]): string {
+  const rows = lines.map((l) => `  ${l.qty} x ${l.name} @ ${formatCents(l.unitCents)}`);
+  return [`Order ${orderId}`, ...rows, `  Total: ${formatCents(orderTotalCents(lines))}`].join('\n');
+}
+```
+
+```ts
+// main.ts: the entry point. Depends on orders.ts only.
+import { orderSummaryText, type OrderLine } from './orders';
+
+const lines: OrderLine[] = [
+  { name: 'Sonic toothbrush', unitCents: 4999, qty: 1 },
+  { name: 'Replacement heads (4)', unitCents: 1250, qty: 2 },
+];
+
+console.log(orderSummaryText('ord_1001', lines));
+```
+
+Run `npx tsx main.ts`, then list every import:
+
+```text
+$ npx tsx main.ts
+Order ord_1001
+  1 x Sonic toothbrush @ $49.99
+  2 x Replacement heads (4) @ $12.50
+  Total: $74.99
+
+$ grep -n "^import" *.ts
+main.ts:2:import { orderSummaryText, type OrderLine } from './orders';
+orders.ts:2:import { formatCents, sumCents } from './money';
+```
+
+Why it is right: the dependencies form a straight line, `main -> orders -> money`, and nothing points back. `money.ts` imports nothing at all, so it can never be part of a cycle, and it could be reused by an invoices module tomorrow. The key design decision is that `orders.ts` exports a ready-made `orderSummaryText`, so `main.ts` gets a formatted summary without ever needing `formatCents` itself. Each file exports only what its callers need; `type OrderLine` imports just the type, which is erased at runtime.
+
+The trap most learners fall into is letting `main.ts` "just quickly" import `formatCents` from `money.ts` to print one value. It works, and it breaks the acceptance criterion: `main` now depends on two layers. The second trap is the cycle: putting a `currencyForOrder(order: OrderLine)` helper into `money.ts` means `money.ts` imports from `orders.ts`, and you now have `orders -> money -> orders`, where one module can see the other's exports as `undefined` while the files are still loading.
+
+Check it yourself: the `grep` above is the test, with exactly one import line per file and in the right direction. For a bigger project, `npx madge --circular --extensions ts .` scans every file and reports any import cycle it finds.
 
 ### 1.7.2 Interfaces, type aliases and unions
 
@@ -351,6 +554,63 @@ A senior models the domain with unions so that illegal combinations cannot be re
 #### Practical exercise
 
 Model a `WebhookEvent` as a discriminated union with three kinds (`order.created`, `order.paid`, `order.cancelled`), each carrying different fields, and write a `process` function with exhaustiveness checking. Acceptance criteria: adding a fourth kind without handling it causes a compile error.
+
+#### Worked answer to the exercise
+
+```ts
+// Each kind carries only the fields that make sense for it.
+type WebhookEvent =
+  | { type: 'order.created'; orderId: string; customerId: string; totalCents: number }
+  | { type: 'order.paid'; orderId: string; chargeId: string; paidAt: string }
+  | { type: 'order.cancelled'; orderId: string; reason: 'customer_request' | 'payment_failed' };
+
+// Called only when every kind has been handled; otherwise `event` is not `never` and this fails to compile.
+function assertNever(value: never): never {
+  throw new Error(`unhandled webhook event: ${JSON.stringify(value)}`);
+}
+
+function processEvent(event: WebhookEvent): string {
+  switch (event.type) {
+    case 'order.created':
+      return `create order ${event.orderId} for ${event.customerId}, ${event.totalCents} cents`;
+    case 'order.paid':
+      return `mark ${event.orderId} paid (charge ${event.chargeId})`;
+    case 'order.cancelled':
+      return `cancel ${event.orderId}: ${event.reason}`;
+    default:
+      return assertNever(event);
+  }
+}
+
+const events: WebhookEvent[] = [
+  { type: 'order.created', orderId: 'ord_1001', customerId: 'usr_42', totalCents: 4299 },
+  { type: 'order.paid', orderId: 'ord_1001', chargeId: 'ch_9f3a', paidAt: '2026-11-05T09:31:00Z' },
+  { type: 'order.cancelled', orderId: 'ord_1002', reason: 'customer_request' },
+];
+for (const event of events) console.log(processEvent(event));
+```
+
+```text
+create order ord_1001 for usr_42, 4299 cents
+mark ord_1001 paid (charge ch_9f3a)
+cancel ord_1002: customer_request
+```
+
+The function is called `processEvent` rather than `process` so it does not shadow Node's global `process` object; the idea is identical.
+
+Now the acceptance test. Add a fourth kind to the union, `| { type: 'order.refunded'; orderId: string; amountCents: number }`, without adding a `case`. `npx tsc --noEmit --strict` fails:
+
+```text
+webhooks.ts(22,26): error TS2345: Argument of type '{ type: "order.refunded"; orderId: string; amountCents: number; }' is not assignable to parameter of type 'never'.
+```
+
+Why it is right: inside each `case`, TypeScript narrows `event` to the one member whose `type` matches, which is why `event.chargeId` is allowed under `'order.paid'` and would be an error under `'order.cancelled'`. After the three handled cases, nothing is left, so in `default` the type of `event` is `never`, and passing it to `assertNever(value: never)` compiles. Add a fourth kind and `event` in `default` becomes that kind, which is not `never`, so the build fails and names exactly the case you forgot. If a bad value ever slips in at runtime anyway, `assertNever` throws instead of silently doing nothing.
+
+The trap most learners fall into is a `default` that returns something harmless, such as `return 'ignored'`. It compiles today and stays compiling after the union grows, so new events are dropped without a trace. The other trap is typing the field as `type: string`: then there is nothing to narrow on, and every field has to be optional.
+
+One production note: a real webhook arrives as untrusted JSON, so it is `unknown` until a validator has checked its shape (1.2.1). Only after that check is it a `WebhookEvent`.
+
+Check it yourself: run it, then add the `order.refunded` member and confirm the build fails; add the missing `case` and it compiles again.
 
 ### 1.7.3 Generics: types that take parameters
 
@@ -426,6 +686,61 @@ A senior uses generics to remove duplication without sacrificing type safety —
 #### Practical exercise
 
 Write a generic function `groupBy<T, K extends string>(items: T[], keyFn: (item: T) => K): Record<K, T[]>` that groups array elements by a computed key. Test it by grouping orders by status. Acceptance criteria: the return type correctly reflects the key type, and the original array is not mutated.
+
+#### Worked answer to the exercise
+
+```ts
+function groupBy<T, K extends string>(items: readonly T[], keyFn: (item: T) => K): Record<K, T[]> {
+  const groups = {} as Record<K, T[]>; // starts empty; filled below
+  for (const item of items) {
+    const key = keyFn(item);
+    (groups[key] ??= []).push(item);    // create the bucket on first use, then add
+  }
+  return groups;
+}
+
+type OrderStatus = 'pending' | 'paid' | 'cancelled';
+interface Order {
+  id: string;
+  status: OrderStatus;
+  totalCents: number;
+}
+
+const orders: Order[] = [
+  { id: 'ord_1', status: 'paid', totalCents: 4299 },
+  { id: 'ord_2', status: 'pending', totalCents: 1500 },
+  { id: 'ord_3', status: 'paid', totalCents: 12900 },
+  { id: 'ord_4', status: 'cancelled', totalCents: 2500 },
+];
+const before = JSON.stringify(orders);
+
+const byStatus = groupBy(orders, (o) => o.status); // Record<OrderStatus, Order[]>
+console.log(Object.keys(byStatus));
+console.log(byStatus.paid.map((o) => o.id));
+console.log('original unchanged:', JSON.stringify(orders) === before);
+
+// The key type flows through: a typo is a compile error, not undefined at runtime.
+// byStatus.payed;  // Error: Property 'payed' does not exist on type 'Record<OrderStatus, Order[]>'
+
+// The honest caveat: a status with no orders has no bucket at runtime.
+const onlyPaid = groupBy(orders.filter((o) => o.status === 'paid'), (o) => o.status);
+console.log(onlyPaid.pending); // undefined, although the type says Order[]
+```
+
+```text
+[ 'paid', 'pending', 'cancelled' ]
+[ 'ord_1', 'ord_3' ]
+original unchanged: true
+undefined
+```
+
+Why it is right: TypeScript infers `K` from what `keyFn` returns. `o.status` has the type `'pending' | 'paid' | 'cancelled'`, so `K` becomes that union and the result is `Record<OrderStatus, Order[]>`. That is what makes `byStatus.paid` autocomplete and `byStatus.payed` a compile error. The function only reads `items` (the `readonly T[]` parameter makes sure of it) and builds new arrays, so the input is untouched, which the `JSON.stringify` comparison checks. `groups[key] ??= []` means "if there is no bucket for this key yet, create an empty one", and the expression returns the bucket, ready for `push`.
+
+The last two lines show the one honest weakness of the signature the exercise asks for: `Record<K, T[]>` promises a bucket for every key, but a status with no orders simply has none, so `onlyPaid.pending` is `undefined` while its type claims `Order[]`. `Partial<Record<K, T[]>>` is the truthful return type, and it is what the built-in `Object.groupBy` (Node 21 and later) returns. With it, the compiler makes you handle the missing bucket (`byStatus.pending ?? []`).
+
+The trap most learners fall into is writing it with `reduce` and spread: `items.reduce((acc, item) => ({ ...acc, [keyFn(item)]: [...(acc[keyFn(item)] ?? []), item] }), {})`. It looks elegant, but it copies the whole accumulator for every item, which is quadratic and very slow on 100,000 rows. The second trap is a key function that returns a plain `string` (for example when `status` is typed as `string`), which makes `K` just `string` and loses the precise keys.
+
+Check it yourself: run it and compare the four lines, then uncomment the `byStatus.payed` line and confirm the compile error.
 
 ## Senior Checklist — Part 1
 

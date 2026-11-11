@@ -4,7 +4,7 @@ This is the Part where everything in Volume 0 comes together. You know TypeScrip
 
 We build a **products API** for an e-commerce store — list products, get one, create one — because it is the simplest thing that still exercises every layer: an HTTP endpoint, input validation, business logic, and database persistence. The code here is deliberately production-shaped, not a toy: real validation, real error handling, real SQL. It is small enough to hold in your head and real enough that the habits transfer directly to the systems the rest of the book describes.
 
-This Part is a guided build. Later Parts go deep on each piece: NestJS dependency injection in Part 12 (12.7), API design in Part 14, PostgreSQL in Parts 16–20, TypeORM and Sequelize in Part 21, security in Part 39, testing in Part 40. Sections 6.5 to 6.9 then grow the project step by step: better validation, consistent errors, tests, and running everything with Docker. Here we assemble a working whole so those deep dives have something concrete to attach to.
+This Part is a guided build. Later Parts go deep on each piece: NestJS dependency injection in Part 13 (13.7), API design in Part 15, PostgreSQL in Parts 17–21, TypeORM and Sequelize in Part 22, security in Part 40, testing in Part 41. Sections 6.5 to 6.9 then grow the project step by step: better validation, consistent errors, tests, and running everything with Docker. Here we assemble a working whole so those deep dives have something concrete to attach to.
 
 ## 6.1 Project setup
 
@@ -16,7 +16,7 @@ NestJS is a framework for building backend applications in Node.js and TypeScrip
 
 #### Why does it exist?
 
-You could build an HTTP server with raw Node, but you would hand-write routing, request parsing, validation, error handling, and the plumbing to connect everything — and every project would do it differently. NestJS provides a consistent, well-trodden structure so a team can build and a new engineer can navigate any NestJS codebase. It is opinionated in a way that pays off: the conventions mean less bikeshedding and more shared understanding. Part 12 covers its architecture and dependency injection in depth; here we use it.
+You could build an HTTP server with raw Node, but you would hand-write routing, request parsing, validation, error handling, and the plumbing to connect everything — and every project would do it differently. NestJS provides a consistent, well-trodden structure so a team can build and a new engineer can navigate any NestJS codebase. It is opinionated in a way that pays off: the conventions mean less bikeshedding and more shared understanding. Part 13 covers its architecture and dependency injection in depth; here we use it.
 
 #### Mental model
 
@@ -73,7 +73,7 @@ Service      holds business logic. Called by controllers. Knows nothing about HT
 Module       groups related controllers and services and declares their wiring.
 ```
 
-This separation is the single most important convention in NestJS and in good backend design generally (Part 11, Part 12). The controller's job is to translate between HTTP and your logic — parse the request, call a service, shape the response. The service's job is the actual work, with no knowledge of HTTP. Keeping them separate means your logic is testable without a web server and your HTTP handling is thin and uniform.
+This separation is the single most important convention in NestJS and in good backend design generally (Part 12, Part 13). The controller's job is to translate between HTTP and your logic — parse the request, call a service, shape the response. The service's job is the actual work, with no knowledge of HTTP. Keeping them separate means your logic is testable without a web server and your HTTP handling is thin and uniform.
 
 #### Practical example — the generated hello endpoint
 
@@ -126,6 +126,70 @@ A senior values the controller/service separation from the first file, keeping c
 
 Scaffold a new NestJS project, run it in watch mode, and call the default endpoint with `curl`. Then add a second `@Get('health')` endpoint that returns `{ status: 'ok' }`, delegating to a service method. Acceptance criteria: `curl http://localhost:3000/health` returns the JSON, and the logic lives in a service, not the controller.
 
+#### Worked answer to the exercise
+
+After `nest new products-api` and `npm run start:dev`, `curl http://localhost:3000` prints `Hello World!`. Add the health logic to the service first:
+
+```ts
+// src/app.service.ts
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AppService {
+  getHello(): string {
+    return 'Hello World!';
+  }
+
+  getHealth(): { status: 'ok' } {
+    return { status: 'ok' };              // the logic (trivial today) lives here
+  }
+}
+```
+
+Then a thin route in the controller that only delegates:
+
+```ts
+// src/app.controller.ts
+import { Controller, Get } from '@nestjs/common';
+import { AppService } from './app.service';
+
+@Controller()
+export class AppController {
+  constructor(private readonly appService: AppService) {}
+
+  @Get()                                  // GET /
+  getHello(): string {
+    return this.appService.getHello();
+  }
+
+  @Get('health')                          // GET /health
+  getHealth(): { status: 'ok' } {
+    return this.appService.getHealth();   // no logic here: translate HTTP, delegate
+  }
+}
+```
+
+Watch mode restarts the app on save. Call it:
+
+```text
+$ curl http://localhost:3000/health
+{"status":"ok"}
+$ curl -s -o /dev/null -w '%{http_code} %{content_type}\n' http://localhost:3000/health
+200 application/json; charset=utf-8
+```
+
+Add one line to the generated `src/app.controller.spec.ts`, inside its `describe` block, so the behaviour is checked on every `npm test`:
+
+```ts
+it('returns ok from getHealth', () => {
+  expect(appController.getHealth()).toEqual({ status: 'ok' });
+});
+```
+
+**Why it is right.** NestJS turns a returned object into a JSON body with status `200` and the JSON content type, so the controller needs no `res.json(...)`. The controller method is one line that delegates, so the rule "logic lives in a service" holds even for something this small, and when the health check later grows (for example, pinging the database) only the service changes.
+
+**The trap.** Losing the route later. The `AppModule` snippets in 6.1.2 and 6.3.2 show only `imports`; when you edit your real `app.module.ts`, keep `controllers: [AppController]` and `providers: [AppService]` in it. Without them `/health` returns `404`, and the Docker Compose health check in 6.8, which calls `/health`, marks the API unhealthy.
+
 ### 6.1.2 Configuration and starting PostgreSQL
 
 #### Concept
@@ -165,7 +229,7 @@ PORT=3000
 
 #### How it works — running PostgreSQL with Docker
 
-Docker runs PostgreSQL in a container so you do not install it directly (Part 43 covers containers properly). One command starts a PostgreSQL 17 database matching the `.env` above:
+Docker runs PostgreSQL in a container so you do not install it directly (Part 44 covers containers properly). One command starts a PostgreSQL 17 database matching the `.env` above:
 
 ```bash
 docker run --name shop-db \
@@ -183,7 +247,7 @@ docker exec -it shop-db psql -U shop -d shop # open a SQL prompt inside it
 # at the psql prompt: \dt lists tables, \q quits
 ```
 
-`psql` is PostgreSQL's command-line client — a shell for running SQL (Part 17 — SQL Mastery). You will use it constantly to inspect data and test queries.
+`psql` is PostgreSQL's command-line client — a shell for running SQL (Part 18 — SQL Mastery). You will use it constantly to inspect data and test queries.
 
 #### Fail fast on missing config
 
@@ -217,3 +281,56 @@ A senior sets up configuration and a reproducible local database before writing 
 #### Practical exercise
 
 Install `@nestjs/config`, create a `.env` with the database settings, start PostgreSQL 17 in Docker, and connect to it with `psql` to confirm it works. Add a startup check that throws if `DATABASE_PASSWORD` is missing. Acceptance criteria: the app reads config from `.env`, you can open a `psql` prompt against the containerized database, and removing `DATABASE_PASSWORD` makes the app fail fast at startup.
+
+#### Worked answer to the exercise
+
+Install the package, register `ConfigModule.forRoot({ isGlobal: true })` as shown above (keeping `AppController` and `AppService` in the module), and create `.env` with the six values from this section. Confirm Git ignores it, then start and check the database:
+
+```text
+$ git check-ignore -v .env
+.gitignore:38:.env	.env
+$ docker run --name shop-db -e POSTGRES_USER=shop -e POSTGRES_PASSWORD=shop_dev_password \
+    -e POSTGRES_DB=shop -p 5432:5432 -d postgres:17
+$ docker exec -it shop-db psql -U shop -d shop -c 'SELECT current_database(), current_user;'
+ current_database | current_user
+------------------+--------------
+ shop             | shop
+(1 row)
+```
+
+(If `git check-ignore` prints nothing, add `.env` to `.gitignore` before anything else.) Running `docker exec -it shop-db psql -U shop -d shop` without `-c` gives you the interactive `shop=#` prompt; `\dt` says `Did not find any relations.` because there are no tables yet.
+
+The fail-fast check goes in `main.ts`, after the application is created (so `ConfigModule` has loaded `.env` into `process.env`) and before it starts listening:
+
+```ts
+// src/main.ts
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+const REQUIRED_ENV = ['DATABASE_HOST', 'DATABASE_USER', 'DATABASE_PASSWORD', 'DATABASE_NAME'];
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);     // ConfigModule has read .env by now
+  for (const key of REQUIRED_ENV) {
+    if (!process.env[key]) throw new Error(`Missing required env var: ${key}`);   // empty counts as missing
+  }
+  await app.listen(Number(process.env.PORT ?? 3000));
+}
+bootstrap();
+```
+
+Prove it by removing the line and starting the app:
+
+```text
+$ sed -i.bak '/^DATABASE_PASSWORD=/d' .env && npm run start:dev
+...
+Error: Missing required env var: DATABASE_PASSWORD
+    at bootstrap (/Users/asha/work/products-api/src/main.ts:10:35)
+$ mv .env.bak .env                     # stop watch mode with Ctrl+C first, then put it back
+```
+
+The process exits instead of listening, which is the acceptance check: `curl http://localhost:3000/health` gets "connection refused", not a half-working app.
+
+**Why it is right.** The check runs once, at start-up, and names the missing variable, so a broken deploy fails in seconds with a clear message instead of failing the first database call much later. 6.5 replaces this hand-written list with a validation function in `ConfigModule.forRoot`, using the same idea.
+
+**The trap.** Testing with a variable that is also set in your shell. `ConfigModule` (through dotenv) never overwrites a variable that already exists in the environment, so if you once ran `export DATABASE_PASSWORD=...`, deleting it from `.env` changes nothing and the check never fires. `env | grep DATABASE_` shows what the shell is supplying; `unset DATABASE_PASSWORD` clears it.

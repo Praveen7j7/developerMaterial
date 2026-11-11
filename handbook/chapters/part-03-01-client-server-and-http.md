@@ -2,7 +2,7 @@
 
 Before you build a backend, you need a clear picture of what a backend actually does. A backend is a program that sits on a computer somewhere, waits for requests to arrive over the internet, and sends back responses. That is the whole job, at the highest level. Everything else — databases, caches, authentication — is detail in service of that one loop: receive a request, produce a response.
 
-This Part explains the web from the ground up for a beginner: what a client is and what a server is, what the browser does, what an HTTP request and response look like, status codes and headers, URLs, JSON, and what people mean when they say "REST API". Part 10 covers the networking stack (TCP, DNS, TLS) in full depth and Part 14 covers API design as a craft; this Part is the on-ramp, the mental model you need before those make sense. We keep it concrete: every example is a real request you could send with a browser or with `curl`.
+This Part explains the web from the ground up for a beginner: what a client is and what a server is, what the browser does, what an HTTP request and response look like, status codes and headers, URLs, JSON, and what people mean when they say "REST API". Part 11 covers the networking stack (TCP, DNS, TLS) in full depth and Part 15 covers API design as a craft; this Part is the on-ramp, the mental model you need before those make sense. We keep it concrete: every example is a real request you could send with a browser or with `curl`.
 
 ## 3.1 Client and server
 
@@ -35,7 +35,7 @@ sequenceDiagram
 ```
 
 1. The client builds a request: a method (what it wants to do), a URL (what it wants to act on), headers (extra information), and sometimes a body (data it is sending).
-2. The request travels over the internet to the server (Part 10 explains how — DNS in 10.3, TCP in 10.4, TLS in 10.12).
+2. The request travels over the internet to the server (Part 11 explains how — DNS in 11.3, TCP in 11.4, TLS in 11.12).
 3. The server reads the request, does its work (query a database, call another service), and builds a response.
 4. The response travels back: a status code (how it went), headers, and usually a body (the data).
 5. The client uses the response — the browser renders it, the mobile app updates the screen, another server continues its logic.
@@ -166,22 +166,22 @@ curl -sv http://localhost:4020/products/42
 
 The three kinds of line are easy to tell apart once you know the code:
 
-- Lines starting with `*` are curl talking to you: it looked up `localhost` (DNS, Part 10.3) and opened a connection.
+- Lines starting with `*` are curl talking to you: it looked up `localhost` (DNS, Part 11.3) and opened a connection.
 - Lines starting with `>` are the **request** curl sent: the request line (`GET /products/42 HTTP/1.1`), then headers, then a blank line that means "headers finished".
 - Lines starting with `<` are the **response**: the status line (`HTTP/1.1 200 OK`), headers, a blank line, then the body.
 
-Two headers you did not write appeared by themselves. Node added `Date`, and because our code never said how long the body was, Node sent it in pieces and said so with `Transfer-Encoding: chunked` instead of `Content-Length` (Part 10.10 explains chunked transfer). `Connection: keep-alive` means the connection stays open for the next request instead of being torn down (Part 10.9). The `-s` flag only hides curl's progress bar. Use `curl -i` when you want just the response status, headers and body without the `*` and `>` lines.
+Two headers you did not write appeared by themselves. Node added `Date`, and because our code never said how long the body was, Node sent it in pieces and said so with `Transfer-Encoding: chunked` instead of `Content-Length` (Part 11.10 explains chunked transfer). `Connection: keep-alive` means the connection stays open for the next request instead of being torn down (Part 11.9). The `-s` flag only hides curl's progress bar. Use `curl -i` when you want just the response status, headers and body without the `*` and `>` lines.
 
 #### Production scenario
 
-A product API server handles 3,000 requests per second. Each request is independent: it arrives, the server reads it, queries PostgreSQL, builds a response and sends it, all in a few milliseconds, then forgets about it. Because each request is self-contained, the business can run twenty identical copies of the server behind a load balancer (Part 88.7), and any copy can handle any request — there is no "your" server that remembers you. This is only possible because of the stateless request-response model.
+A product API server handles 3,000 requests per second. Each request is independent: it arrives, the server reads it, queries PostgreSQL, builds a response and sends it, all in a few milliseconds, then forgets about it. Because each request is self-contained, the business can run twenty identical copies of the server behind a load balancer (Part 46.7), and any copy can handle any request — there is no "your" server that remembers you. This is only possible because of the stateless request-response model.
 
 #### Edge cases & failure modes
 
 - **The request never arrives** (network drops). The client sees a timeout and may retry.
-- **The response never arrives** even though the server did the work. The client cannot tell "did it fail?" from "did the reply get lost?" — which is exactly why writes need idempotency (Part 14.12 and Part 29 — Distributed Transactions).
+- **The response never arrives** even though the server did the work. The client cannot tell "did it fail?" from "did the reply get lost?" — which is exactly why writes need idempotency (Part 15.12 and Part 30 — Distributed Transactions).
 - **The server is slow**, so the client waits. A client should have a timeout (Part 2).
-- **A large body** (a big upload or a huge response) takes time and memory; servers stream large bodies rather than loading them whole (Part 9.23).
+- **A large body** (a big upload or a huge response) takes time and memory; servers stream large bodies rather than loading them whole (Part 10.23).
 - **A client sends a request to the wrong port or the server is not running.** `fetch` rejects with `TypeError: fetch failed` and curl prints `Failed to connect`. That is a connection error, not an HTTP error: there is no status code because no response ever came.
 
 #### How a Senior Backend Engineer thinks about this
@@ -260,7 +260,7 @@ The HTTP **method** (also called the verb) says what the client wants to do. The
 | `PATCH` | Change part of something | Yes | Usually | Update one field |
 | `DELETE` | Remove something | Yes | Yes | Delete a resource |
 
-Two properties in that table matter a lot. **"Changes data"** (the technical word is "safe" for methods that do not) tells you whether the request is a read or a write; reads can be cached and retried freely. **"Idempotent"** means doing it twice has the same effect as doing it once. `GET`, `PUT` and `DELETE` are idempotent — deleting an already-deleted thing still ends with it deleted. `POST` is not — posting the same order twice creates two orders. This is why retrying a lost `GET` is safe but retrying a lost `POST` needs care (Part 71.13 covers the "unknown outcome").
+Two properties in that table matter a lot. **"Changes data"** (the technical word is "safe" for methods that do not) tells you whether the request is a read or a write; reads can be cached and retried freely. **"Idempotent"** means doing it twice has the same effect as doing it once. `GET`, `PUT` and `DELETE` are idempotent — deleting an already-deleted thing still ends with it deleted. `POST` is not — posting the same order twice creates two orders. This is why retrying a lost `GET` is safe but retrying a lost `POST` needs care (Part 30.13 covers the "unknown outcome").
 
 Here is idempotency as a tiny simulation. A client sends a request, the reply is lost on the way back, and the client retries once.
 
@@ -300,7 +300,7 @@ after POST + retry: 2 orders [ 'ord_1001', 'ord_1002' ]
 after PUT + retry:  1 order  [ 'ord_2001' ]
 ```
 
-The `POST` retry created a second order: the customer is charged twice. The `PUT` retry wrote the same thing to the same place: no harm done. Real APIs make `POST` safe to retry with an **idempotency key**, a unique id the client sends in a header so the server can recognize a repeat (Part 14.12 and Part 71.12).
+The `POST` retry created a second order: the customer is charged twice. The `PUT` retry wrote the same thing to the same place: no harm done. Real APIs make `POST` safe to retry with an **idempotency key**, a unique id the client sends in a header so the server can recognize a repeat (Part 15.12 and Part 30.12).
 
 #### How it works — the URL
 
@@ -313,7 +313,7 @@ scheme        host           port   path          query        fragment
 ```
 
 - **Scheme**: `https` (encrypted) or `http` (not). Always `https` in production.
-- **Host**: which server to reach (`api.shop.example.com`). DNS turns this into an IP address (Part 10).
+- **Host**: which server to reach (`api.shop.example.com`). DNS turns this into an IP address (Part 11).
 - **Port**: which door on the server (443 for https, 80 for http, often omitted because they are the defaults).
 - **Path**: which resource (`/v1/products/42`). This is what your backend routes on.
 - **Query string**: optional parameters after `?`, as `key=value` pairs joined by `&`. Used for filtering, pagination, search.
@@ -416,12 +416,12 @@ GET    /v1/orders/ord_1001    -> get one order
 
 - **Using `GET` to change data** (for example `GET /deleteUser?id=5`) is a classic mistake: search engines and browsers prefetch and cache `GET`s, so a crawler could delete your data. Reads must be safe; writes must use `POST`/`PUT`/`PATCH`/`DELETE`.
 - **Very long URLs** (huge query strings) can be truncated by proxies; there is a practical limit around 2,000 to 8,000 characters. Large inputs belong in a `POST` body.
-- **Query-string injection**: query values are user input and must be validated like any other (Part 39 — Security).
+- **Query-string injection**: query values are user input and must be validated like any other (Part 40 — Security).
 - **Unencoded characters** in a URL (spaces, `&`, non-ASCII) break parsing; they must be percent-encoded (`%20` for a space).
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior maps each operation to the method whose safety and idempotency match it: reads are `GET`, creates are `POST`, full replacements are `PUT`, partial updates are `PATCH`, removals are `DELETE`. They never hide a write behind a `GET`, because safe methods get retried, prefetched and cached by machinery outside their control. They design paths as nouns and keep them stable, because a URL printed in a mobile app or an integration is a contract that is expensive to change (Part 24 on compatibility).
+A senior maps each operation to the method whose safety and idempotency match it: reads are `GET`, creates are `POST`, full replacements are `PUT`, partial updates are `PATCH`, removals are `DELETE`. They never hide a write behind a `GET`, because safe methods get retried, prefetched and cached by machinery outside their control. They design paths as nouns and keep them stable, because a URL printed in a mobile app or an integration is a contract that is expensive to change (Part 25 on compatibility).
 
 #### Common mistakes
 

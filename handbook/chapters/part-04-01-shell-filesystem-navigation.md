@@ -2,7 +2,7 @@
 
 Your code runs on Linux. Not on your laptop's friendly desktop, but on a Linux server in a data center, inside a container, reached over a text-only connection. When your backend misbehaves at 2 a.m., you will not click buttons to fix it; you will type commands into a terminal. The command line is where backend engineers actually live, and fluency in it is the difference between an engineer who can only write code and one who can run, inspect and repair a production system.
 
-This Part teaches the Linux command line from the beginning, aimed squarely at what a backend developer needs: the shell and the filesystem, navigation, permissions, processes, pipes and redirection, environment variables, package managers, and the SSH basics for reaching a remote server. We do not cover system administration in depth; we cover the commands you will reach for every day and the mental models that make them stick. Part 9 covers processes, threads and signals at the operating-system level; this Part is the practical, hands-on layer.
+This Part teaches the Linux command line from the beginning, aimed squarely at what a backend developer needs: the shell and the filesystem, navigation, permissions, processes, pipes and redirection, environment variables, package managers, and the SSH basics for reaching a remote server. We do not cover system administration in depth; we cover the commands you will reach for every day and the mental models that make them stick. Part 10 covers processes, threads and signals at the operating-system level; this Part is the practical, hands-on layer.
 
 A note on terms. "The shell" is the program that reads your commands and runs them — on most systems that is `bash` or `zsh`. "The terminal" is the window the shell runs in. "The command line" is the general idea of typing commands. We use them loosely, as everyone does.
 
@@ -88,6 +88,55 @@ A senior is fluent enough in the shell that it disappears — they think about t
 #### Practical exercise
 
 Open a terminal and, using only the commands above, answer: your username, your machine's hostname, your current directory, the current server time, and how long the machine has been up. Then open the manual page for `ls`, find what the `-h` option does, and quit the manual. Acceptance criteria: you can state what `ls -lh` would show differently from `ls -l`.
+
+#### Worked answer to the exercise
+
+```bash
+whoami
+hostname
+pwd
+date
+uptime
+```
+
+```text
+alice
+dev-laptop
+/home/alice
+Wed Nov 11 09:41:07 UTC 2026
+ 09:41:07 up 3 days,  2:15,  1 user,  load average: 0.42, 0.37, 0.30
+```
+
+Read the `uptime` line from left to right: the current time, how long the machine has run since its last boot (3 days, 2 hours 15 minutes), how many people are logged in, and the load average (4.9 explains it). On macOS the format is almost the same.
+
+Now the manual:
+
+```bash
+man ls          # opens the manual in a pager
+# type   /-h   and press Enter to search; n jumps to the next match; q quits
+```
+
+On Linux (GNU `ls`) the entry reads:
+
+```text
+-h, --human-readable
+       with -l and -s, print sizes like 1K 234M 2G etc.
+```
+
+The macOS manual words it differently but means the same thing. The difference, shown on a 50 MB log file:
+
+```text
+$ ls -l app.log
+-rw-r--r-- 1 alice alice 52428800 Nov 11 09:30 app.log
+$ ls -lh app.log
+-rw-r--r-- 1 alice alice 50M Nov 11 09:30 app.log
+```
+
+The answer to the acceptance question: `ls -lh` shows exactly the same columns as `ls -l`, but the size column uses human-readable units (K, M, G, in powers of 1024) instead of a raw count of bytes. Nothing else changes.
+
+The trap most learners fall into is guessing that `-h` means "help", because it does for many other commands. For `ls` it does not, which is precisely why you read `man` instead of guessing. A smaller trap: on its own, `ls -h` looks identical to `ls`, because `-h` only changes how sizes are printed, and plain `ls` prints no sizes. Searching in `man` for `-h` also lands on every line that mentions `-h`; typing `/^ *-h` jumps to the line where the option is defined.
+
+Check it yourself: run `ls -l /usr/bin | head -n 5` and then `ls -lh /usr/bin | head -n 5` and compare the fifth column.
 
 ### 4.1.2 The filesystem and navigating it
 
@@ -194,3 +243,41 @@ A senior treats destructive commands (`rm -rf`, `mv` over an existing file) with
 #### Practical exercise
 
 Create a directory `~/practice`, inside it create `src/` and `logs/`, create an empty `.env` file and a `README.md`, list all files including hidden ones, copy `src/` to a `backup/`, then rename `README.md` to `NOTES.md`. Finally, confirm the `.env` file exists with `ls -a`. Acceptance criteria: you use both absolute and relative paths at least once, and you can explain why a plain `ls` did not show `.env`.
+
+#### Worked answer to the exercise
+
+```bash
+mkdir -p ~/practice/src ~/practice/logs   # ~ is your home directory; -p creates parents as needed
+cd ~/practice
+touch .env README.md                      # relative paths: created in the current directory
+ls                                        # .env is missing from this list
+ls -la "$HOME/practice"                   # absolute path: $HOME expands to /home/alice
+cp -r src backup                          # relative paths again
+mv README.md NOTES.md
+ls -a
+```
+
+```text
+$ ls
+README.md  logs  src
+$ ls -la /home/alice/practice
+total 16
+drwxr-xr-x  4 alice alice 4096 Nov 11 09:50 .
+drwxr-x--- 18 alice alice 4096 Nov 11 09:50 ..
+-rw-r--r--  1 alice alice    0 Nov 11 09:50 .env
+-rw-r--r--  1 alice alice    0 Nov 11 09:50 README.md
+drwxr-xr-x  2 alice alice 4096 Nov 11 09:50 logs
+drwxr-xr-x  2 alice alice 4096 Nov 11 09:50 src
+$ ls -a
+.  ..  .env  NOTES.md  backup  logs  src
+```
+
+(The sort order of `ls` depends on your locale, so your lines may be in a slightly different order.)
+
+Where the paths are: `~/practice/src`, `"$HOME/practice"` and `/home/alice/practice` are absolute; they start from `/` (the shell expands `~` and `$HOME` to `/home/alice` before running the command). `src`, `backup`, `.env` and `README.md` are relative; they are looked up from the current directory, which is `~/practice` after the `cd`.
+
+Why a plain `ls` did not show `.env`: by convention, any name that starts with a dot is hidden, and `ls` skips hidden names unless you pass `-a` (all, including `.` and `..`) or `-A` (all except those two). The file is there; it is just not listed. Configuration files (`.env`, `.gitignore`, `.ssh`) are hidden so they do not clutter everyday listings.
+
+The trap most learners fall into is running `cp -r src backup` a second time. The first time, `backup` does not exist, so `cp` creates it as a copy of `src`. The second time, `backup` exists, so `cp` puts the copy inside it, giving `backup/src`. On macOS, a trailing slash also changes the meaning: `cp -r src/ backup` copies the contents of `src`, not the folder itself. Run `ls backup` after copying to be sure.
+
+Check it yourself: `ls -a ~/practice` must list `.env`, `NOTES.md`, `backup`, `logs` and `src`, and `test -f ~/practice/.env && echo ".env exists"` prints `.env exists`. Keep the `~/practice` folder; later exercises in this Part use it.

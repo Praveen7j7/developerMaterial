@@ -77,7 +77,7 @@ async function bootstrap() {
 bootstrap();
 ```
 
-`whitelist: true` strips any field the client sends that is not in the DTO — so a client cannot sneak extra fields (like `isAdmin: true`) into your logic. `forbidNonWhitelisted` goes further and rejects such requests outright. These two settings are a meaningful security measure (Part 39 — Security, mass-assignment protection), and they are one line each.
+`whitelist: true` strips any field the client sends that is not in the DTO — so a client cannot sneak extra fields (like `isAdmin: true`) into your logic. `forbidNonWhitelisted` goes further and rejects such requests outright. These two settings are a meaningful security measure (Part 40 — Security, mass-assignment protection), and they are one line each.
 
 #### The controller
 
@@ -86,7 +86,7 @@ bootstrap();
 import { Controller, Get, Post, Body, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
-import { Product } from './product.entity';   // the entity class, defined in 74.3.2
+import { Product } from './product.entity';   // the entity class, defined in 6.3.2
 
 @Controller('products')                    // all routes start with /products
 export class ProductsController {
@@ -145,9 +145,9 @@ You wrote no validation logic, yet bad input, negative prices and injected field
 #### Edge cases & failure modes
 
 - **Forgetting to enable the `ValidationPipe`** means DTO decorators do nothing and invalid data flows straight through — a silent, dangerous gap. Enable it globally in `main.ts`.
-- **Not setting `whitelist`** lets clients send extra fields that may reach your logic or ORM (mass assignment, Part 39).
+- **Not setting `whitelist`** lets clients send extra fields that may reach your logic or ORM (mass assignment, Part 40).
 - **Business logic creeping into the controller** makes it untestable and tangles concerns; keep it in the service.
-- **Returning raw entities** can leak internal fields; map to a response shape for anything sensitive (Part 1).
+- **Returning raw entities** can leak internal fields; map to a response shape for anything sensitive (Part 13.23).
 - **Missing `Content-Type: application/json`** on the request means the body is not parsed as JSON (Part 3).
 
 #### How a Senior Backend Engineer thinks about this
@@ -172,3 +172,80 @@ A senior treats the DTO as the contract and the validation boundary: everything 
 #### Practical exercise
 
 Build the products controller, service (stubbed to return in-memory data for now) and `CreateProductDto`, enable the global `ValidationPipe` with `whitelist` and `forbidNonWhitelisted`, and verify with `curl` that a valid create returns `201`, a negative price returns `400`, and an unknown field returns `400`. Acceptance criteria: no validation code appears in the controller, and all three cases behave correctly.
+
+#### Worked answer to the exercise
+
+Keep the controller, `CreateProductDto` and `main.ts` exactly as shown above. Until 6.3 adds TypeORM, `Product` is a plain class in the file the controller already imports:
+
+```ts
+// src/products/product.entity.ts (plain class for now; 6.3 adds the TypeORM decorators)
+export class Product {
+  id!: string;
+  name!: string;
+  priceCents!: number;
+  currency!: string;
+  createdAt!: Date;
+}
+```
+
+The stubbed service keeps the same `async` method signatures the repository version will have, so the controller does not change in 6.3:
+
+```ts
+// src/products/products.service.ts (in-memory stub)
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { CreateProductDto } from './dto/create-product.dto';
+import { Product } from './product.entity';
+
+@Injectable()
+export class ProductsService {
+  private readonly products: Product[] = [];        // lost on restart: 6.3 fixes that
+
+  async findAll(): Promise<Product[]> {
+    return [...this.products];
+  }
+
+  async findOne(id: string): Promise<Product> {
+    const product = this.products.find((p) => p.id === id);
+    if (!product) throw new NotFoundException(`Product ${id} not found`);
+    return product;
+  }
+
+  async create(dto: CreateProductDto): Promise<Product> {
+    const product: Product = {
+      id: randomUUID(),
+      name: dto.name,
+      priceCents: dto.priceCents,
+      currency: dto.currency ?? 'USD',
+      createdAt: new Date(),
+    };
+    this.products.push(product);
+    return product;
+  }
+}
+```
+
+The three checks, with the status code printed on its own line:
+
+```text
+$ curl -s -w '\n%{http_code}\n' -X POST http://localhost:3000/products \
+    -H 'Content-Type: application/json' -d '{"name":"Dental Mirror","priceCents":1299}'
+{"id":"c0a8e5d2-4b7f-4e1a-9c3d-2f6b8a1e7d40","name":"Dental Mirror","priceCents":1299,"currency":"USD","createdAt":"2026-11-11T04:45:10.123Z"}
+201
+
+$ curl -s -w '\n%{http_code}\n' -X POST http://localhost:3000/products \
+    -H 'Content-Type: application/json' -d '{"name":"Bad","priceCents":-5}'
+{"message":["priceCents must not be less than 0"],"error":"Bad Request","statusCode":400}
+400
+
+$ curl -s -w '\n%{http_code}\n' -X POST http://localhost:3000/products \
+    -H 'Content-Type: application/json' -d '{"name":"X","priceCents":100,"isAdmin":true}'
+{"message":["property isAdmin should not exist"],"error":"Bad Request","statusCode":400}
+400
+```
+
+For the first acceptance check, `grep -nE 'if \(|throw' src/products/products.controller.ts` prints nothing: every rule lives in the DTO, the pipe and `ParseUUIDPipe`.
+
+**Why it is right.** The global `ValidationPipe` checks the body against `CreateProductDto` before `create()` runs, so the service only ever sees valid data. `whitelist` plus `forbidNonWhitelisted` turns an unknown field into a `400` instead of silently passing it along.
+
+**The trap.** Keeping what `nest generate resource` wrote. Its controller uses `@Param('id') id: string` with `+id`, which turns a UUID into `NaN`, and it adds `update` and `remove` routes that call service methods you have not written yet. Replace the generated controller with the one above (6.5 adds update and delete properly). The second trap: if the negative price returns `201`, the `ValidationPipe` is not registered; check `main.ts`.

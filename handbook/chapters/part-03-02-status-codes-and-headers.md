@@ -33,7 +33,7 @@ The ones you will use constantly:
 | 204 | No Content | Success, no body | A successful `DELETE` |
 | 301 | Moved Permanently | Resource has a new URL forever | Permanent redirects |
 | 302 | Found | Temporary redirect | Temporary redirects |
-| 304 | Not Modified | Your cached copy is still good | Conditional `GET` with ETags (Part 10.11) |
+| 304 | Not Modified | Your cached copy is still good | Conditional `GET` with ETags (Part 11.11) |
 | 400 | Bad Request | The request is malformed or fails validation | Invalid JSON, missing required field |
 | 401 | Unauthorized | You are not authenticated | No or invalid login token |
 | 403 | Forbidden | You are authenticated but not allowed | A normal user hitting an admin endpoint |
@@ -56,7 +56,7 @@ You will meet codes that are not in the table. Do not panic and do not guess fro
 2. **`307 Temporary Redirect`.** First digit 3: go somewhere else. The `Location` header says where. Unlike `302`, a `307` promises the client will repeat the **same method and body** at the new address, which matters for a `POST`.
 3. **`507 Insufficient Storage`.** First digit 5: the server's problem. The client did nothing wrong. It may be worth retrying later, and someone on the server side should be alerted.
 
-The official list is the IANA HTTP Status Code Registry (most codes are defined in RFC 9110), and MDN's "HTTP response status codes" page explains each one in plain language. Part 14.4 discusses which codes a well-designed API actually uses.
+The official list is the IANA HTTP Status Code Registry (most codes are defined in RFC 9110), and MDN's "HTTP response status codes" page explains each one in plain language. Part 15.4 discusses which codes a well-designed API actually uses.
 
 #### Practical example
 
@@ -81,12 +81,12 @@ An API returned `200 OK` with a body like `{"error": "not found"}` for everythin
 
 - **Returning `200` for errors** (the lie above) breaks caching, monitoring and client logic.
 - **Returning `500` for a client's bad input** pages the on-call for what is actually a `400`; separate client faults from server faults.
-- **Returning `404` versus `403`** for a resource the user may not see: sometimes `404` is deliberately used to avoid revealing that a resource exists (Part 74.12).
+- **Returning `404` versus `403`** for a resource the user may not see: sometimes `404` is deliberately used to avoid revealing that a resource exists (Part 40.12).
 - **Retrying `4xx`** is usually pointless (the request is wrong and will stay wrong); retrying `5xx` and `429` can help (the server may recover).
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior is precise with status codes because machines, not just humans, read them: load balancers route on them, caches decide what to store by them, clients decide whether to retry by them, and dashboards alert on them. They keep the discipline that `5xx` means "our bug or outage" and `4xx` means "the caller's mistake", so the `5xx` rate is a clean signal of system health. They also return a consistent error body shape alongside the code (Part 14), so clients get both a machine-readable status and a human-readable reason.
+A senior is precise with status codes because machines, not just humans, read them: load balancers route on them, caches decide what to store by them, clients decide whether to retry by them, and dashboards alert on them. They keep the discipline that `5xx` means "our bug or outage" and `4xx` means "the caller's mistake", so the `5xx` rate is a clean signal of system health. They also return a consistent error body shape alongside the code (Part 15), so clients get both a machine-readable status and a human-readable reason.
 
 #### Common mistakes
 
@@ -149,16 +149,16 @@ The body carries the data; everything else the client and server need to know ab
 |---|---|---|
 | `Content-Type` | both | What format the body is (`application/json`, `text/html`, `image/png`) |
 | `Content-Length` | both | Size of the body in bytes |
-| `Authorization` | request | Credentials, usually `Bearer <token>` (Part 74.3) |
+| `Authorization` | request | Credentials, usually `Bearer <token>` (Part 40.3) |
 | `Accept` | request | What formats the client can handle in the response |
 | `Accept-Encoding` | request | Compression the client supports (`gzip`, `br`) |
 | `Content-Encoding` | response | How the body is compressed |
-| `Cache-Control` | response | Whether and how long to cache (Part 10.11, Part 26) |
+| `Cache-Control` | response | Whether and how long to cache (Part 11.11, Part 27) |
 | `ETag` | response | A version fingerprint for conditional requests |
 | `Set-Cookie` | response | Tells the browser to store a cookie |
 | `Cookie` | request | Sends stored cookies back |
 | `Location` | response | Where to go, on a `201` (new resource) or `3xx` (redirect) |
-| `X-Request-Id` | both | A trace id to follow one request across services (Part 77.4) |
+| `X-Request-Id` | both | A trace id to follow one request across services (Part 43.4) |
 
 `Content-Type` is the one you must always get right. When your API returns JSON, it must send `Content-Type: application/json`, or clients may misinterpret the bytes. When a client sends a JSON body, it must send the same header, or your server may not parse it.
 
@@ -213,7 +213,7 @@ client sees: 201 {
 ```
 
 1. **Header names ignore case.** The client wrote `X-User-Id`; Node's `req.headers` stores it as `x-user-id`. The client asked for `CONTENT-TYPE`; `res.headers.get` found `Content-Type`. Always read request headers in lowercase in Node.
-2. **Any client can send any header.** The server happily received `x-user-id: usr_1`. Nothing checked it. If your code trusted that header, anyone with curl could become user 1 by typing `curl -H "X-User-Id: usr_1" ...`. Identity must come from something the server can verify, like a signed token (Part 74.3).
+2. **Any client can send any header.** The server happily received `x-user-id: usr_1`. Nothing checked it. If your code trusted that header, anyone with curl could become user 1 by typing `curl -H "X-User-Id: usr_1" ...`. Identity must come from something the server can verify, like a signed token (Part 40.3).
 3. **The request id travels both ways.** The server echoed the client's `X-Request-Id`, or made a new one with `randomUUID()` if there was none. Log that id on every line, and you can follow one request through every service it touches.
 
 #### Practical example
@@ -246,14 +246,14 @@ X-Request-Id: 7f3c-...                       <- same trace id echoed back
 #### Edge cases & failure modes
 
 - **Wrong or missing `Content-Type`** so JSON is treated as plain text and parsing fails.
-- **Trusting client-supplied headers** (like a `X-User-Id` the client sets) for security decisions; clients can send any header, so authentication must come from a verified token, not a self-declared header (Part 39 — Security).
+- **Trusting client-supplied headers** (like a `X-User-Id` the client sets) for security decisions; clients can send any header, so authentication must come from a verified token, not a self-declared header (Part 40 — Security).
 - **Huge or many headers** can be rejected by proxies and servers (limits are often 8 to 16 KB in total; Node's default is 16 KB).
 - **Case and duplicates**: header names are case-insensitive; some headers can appear more than once.
 - **Leaking information** in headers (server version, stack details) helps attackers; strip revealing headers in production.
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior treats headers as a contract and a security surface at once. They always set `Content-Type` correctly, always propagate a request-id header for tracing across services, and never trust a client-set header for anything that matters — identity and permissions come from a verified token, period. They use `Cache-Control` deliberately (a private, user-specific response must be `no-store`; a public, shareable one can be cached), because a wrong cache header either leaks one user's data to another or wastes a caching opportunity (Part 26).
+A senior treats headers as a contract and a security surface at once. They always set `Content-Type` correctly, always propagate a request-id header for tracing across services, and never trust a client-set header for anything that matters — identity and permissions come from a verified token, period. They use `Cache-Control` deliberately (a private, user-specific response must be `no-store`; a public, shareable one can be cached), because a wrong cache header either leaks one user's data to another or wastes a caching opportunity (Part 27).
 
 #### Common mistakes
 
@@ -267,7 +267,7 @@ A senior treats headers as a contract and a security surface at once. They alway
 1. **What is the role of the `Content-Type` header?** It tells the receiver what format the body is in, so it can parse it correctly; JSON APIs must set `application/json`.
 2. **Why must you never trust a client-set header for authorization?** Clients can send any header value, so a self-declared `X-User-Id` or `X-Role` is forgeable; identity must come from a server-verified token.
 3. **Where does the authentication token usually go, and in what format?** In the `Authorization` request header, typically as `Bearer <token>`.
-4. **Why propagate an `X-Request-Id` header?** To trace a single request across multiple services and logs, which is essential for debugging distributed systems (Part 42 — Observability).
+4. **Why propagate an `X-Request-Id` header?** To trace a single request across multiple services and logs, which is essential for debugging distributed systems (Part 43 — Observability).
 
 #### Practical exercise
 
@@ -275,7 +275,7 @@ Inspect the headers of a real API response in your browser's network tab. Identi
 
 #### Worked answer to the exercise
 
-Open DevTools (F12 or Cmd+Option+I), go to the **Network** tab, reload the page, click an API request (filter by "Fetch/XHR"), and look at **Response Headers**. On a typical shop's product API you might find `content-type: application/json; charset=utf-8`, `cache-control: public, max-age=60` (anyone may cache this for 60 seconds) and no `set-cookie`. On a login response you would find a `set-cookie` with `HttpOnly; Secure; SameSite=Lax`. (Part 135.10 is a full tour of these panels.)
+Open DevTools (F12 or Cmd+Option+I), go to the **Network** tab, reload the page, click an API request (filter by "Fetch/XHR"), and look at **Response Headers**. On a typical shop's product API you might find `content-type: application/json; charset=utf-8`, `cache-control: public, max-age=60` (anyone may cache this for 60 seconds) and no `set-cookie`. On a login response you would find a `set-cookie` with `HttpOnly; Secure; SameSite=Lax`. (Part 69.10 is a full tour of these panels.)
 
 The caching justification: a response with your account data must say `Cache-Control: no-store`. Otherwise a shared cache (a company proxy, a CDN) could store it and hand **your** address and orders to the next person who requests the same URL. Public product data can be cached; private data never.
 

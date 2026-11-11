@@ -158,7 +158,7 @@ Nobody ships a framework-free server like this for a real shop. Here is what Nes
 
 - **Trailing slash.** `/v1/products/` splits into an empty `id`, so it behaves like the collection. Real routers decide this explicitly.
 - **`limit=abc`.** `Number('abc')` is `NaN`, `Math.min(NaN, 100)` is `NaN`, and `slice(0, NaN)` returns an empty list. A real API returns `400` for a bad `limit`.
-- **An unexpected exception.** If code inside this `async` handler throws, nothing turns it into a `500`: the rejected promise is unhandled, so Node stops the whole server (Part 130.4, trap 3), and every client is cut off. NestJS wraps every handler in an exception filter that always answers with a `500` instead.
+- **An unexpected exception.** If code inside this `async` handler throws, nothing turns it into a `500`: the rejected promise is unhandled, so Node stops the whole server (Part 2.4, trap 3), and every client is cut off. NestJS wraps every handler in an exception filter that always answers with a `500` instead.
 
 #### Try it yourself
 

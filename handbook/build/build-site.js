@@ -34,17 +34,30 @@ const OLD_NUMBERS = [69, 70, 71, 72, 73, 74, 1, 2, 3, 4, 5, 6, 7, 8, 61, 9, 10, 
   40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 65, 66, 67, 68, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85,
   51, 52, 53, 54, 55, 56, 57, 58];
 
-// ---------- the ten volumes (writing is done up to Vol 8; 7 & 9 come later) ----------
+// 2026-11-11: five Parts were inserted (0, 7, 53, 80, 89) and the rest shifted.
+// NOV5_OF(n) is the 2026-11-05 number of today's Part n (null for the new Parts).
+const NEW_PARTS_2026_11_11 = [0, 7, 53, 80, 89];
+function NOV5_OF(n) {
+  if (NEW_PARTS_2026_11_11.includes(n)) return null;
+  return n <= 6 ? n : n <= 52 ? n - 1 : n <= 79 ? n - 2 : n - 3;
+}
+// Past numberings, oldest first; a newer numbering wins when two map the same old anchor.
+const PAST_NUMBERINGS = [
+  n => { const n5 = NOV5_OF(n); return n5 == null ? null : OLD_NUMBERS[n5 - 1]; },  // before 2026-11-05
+  NOV5_OF,                                                                          // 2026-11-05 to 2026-11-11
+];
+
+// ---------- the ten volumes (writing is done up to Vol 8; 9 comes later) ----------
 const VOLUMES = [
-  { n: 0, slug: 'from-scratch', title: 'From Scratch', parts: [1, 2, 3, 4, 5, 6], blurb: 'Starting from zero: JavaScript and TypeScript, async, how the web works, Linux, Git and your first NestJS backend.' },
-  { n: 1, slug: 'foundations', title: 'Foundations', parts: [7, 8, 9, 10], blurb: 'Data structures, algorithms, operating systems, the Node.js runtime and networking. The layer underneath every framework.' },
-  { n: 2, slug: 'architecture-and-apis', title: 'Architecture and APIs', parts: [11, 12, 13, 14, 15], blurb: 'Choosing a system shape, clean design and patterns, domain-driven design, and API design people can live with — REST, GraphQL and gRPC.' },
-  { n: 3, slug: 'data', title: 'Data', parts: [16, 17, 18, 19, 20, 21, 22, 23, 24, 25], blurb: 'The relational model, SQL, PostgreSQL internals, indexing, transactions, ORMs, scaling, migrations, compatibility and NoSQL modelling.' },
-  { n: 4, slug: 'distributed-systems', title: 'Distributed Systems', parts: [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38], blurb: 'Caching, messaging, distributed systems and transactions, reliability, concurrency, storage, search, real-time, jobs, LLM backends, RAG and data engineering.' },
-  { n: 5, slug: 'production-engineering', title: 'Production Engineering', parts: [39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51], blurb: 'Security, testing, performance, observability, containers, Kubernetes, cloud, CI/CD, Git, SRE, disaster recovery, cost and infrastructure as code.' },
-  { n: 6, slug: 'mastery', title: 'Mastery', parts: [52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66], blurb: 'System designs, capacity estimation, debugging, the senior mindset, levels, interviews, projects, patterns, decisions, the roadmap, low-level design and the interview playbook.' },
-  { n: 7, slug: 'frontend-and-full-stack', title: 'Frontend and Full Stack', parts: [67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77], blurb: 'How the browser builds a page, frontend tooling, React and Next.js, client data fetching, frontend-backend contracts, browser auth and security, web performance, testing, shipping frontends, and one feature built end to end.' },
-  { n: 8, slug: 'principal-and-architect', title: 'Principal and Architect', parts: [78, 79, 80, 81, 82, 83, 84, 85], blurb: 'Writing as an architect, technical strategy, governance, large migrations, org design, influence, growing engineers, and enterprise multi-tenant SaaS.' },
+  { n: 0, slug: 'from-scratch', title: 'From Scratch', parts: [0, 1, 2, 3, 4, 5, 6, 7], blurb: 'Starting from zero: how to understand any technology, JavaScript and TypeScript, async, how the web works, Linux, Git, your first NestJS backend and your first frontend.' },
+  { n: 1, slug: 'foundations', title: 'Foundations', parts: [8, 9, 10, 11], blurb: 'Data structures, algorithms, operating systems, the Node.js runtime and networking. The layer underneath every framework.' },
+  { n: 2, slug: 'architecture-and-apis', title: 'Architecture and APIs', parts: [12, 13, 14, 15, 16], blurb: 'Choosing a system shape, clean design and patterns, domain-driven design, and API design people can live with — REST, GraphQL and gRPC.' },
+  { n: 3, slug: 'data', title: 'Data', parts: [17, 18, 19, 20, 21, 22, 23, 24, 25, 26], blurb: 'The relational model, SQL, PostgreSQL internals, indexing, transactions, ORMs, scaling, migrations, compatibility and NoSQL modelling.' },
+  { n: 4, slug: 'distributed-systems', title: 'Distributed Systems', parts: [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39], blurb: 'Caching, messaging, distributed systems and transactions, reliability, concurrency, storage, search, real-time, jobs, LLM backends, RAG and data engineering.' },
+  { n: 5, slug: 'production-engineering', title: 'Production Engineering', parts: [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53], blurb: 'Security, testing, performance, observability, containers, Kubernetes, cloud, CI/CD, Git, SRE, disaster recovery, cost, infrastructure as code and AI-assisted engineering.' },
+  { n: 6, slug: 'mastery', title: 'Mastery', parts: [54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68], blurb: 'System designs, capacity estimation, debugging, the senior mindset, levels, interviews, projects, patterns, decisions, the roadmap, low-level design and the interview playbook.' },
+  { n: 7, slug: 'frontend-and-full-stack', title: 'Frontend and Full Stack', parts: [69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80], blurb: 'How the browser builds a page, frontend tooling, React and Next.js, client data fetching, frontend-backend contracts, browser auth and security, web performance, testing, shipping frontends, one feature built end to end, and frontend and full-stack interviews.' },
+  { n: 8, slug: 'principal-and-architect', title: 'Principal and Architect', parts: [81, 82, 83, 84, 85, 86, 87, 88, 89], blurb: 'Writing as an architect, technical strategy, governance, large migrations, org design, influence, growing engineers, enterprise multi-tenant SaaS, and staff and principal interviews.' },
 ];
 
 // ---------- load chapters ----------
@@ -203,13 +216,17 @@ for (const v of VOLUMES) {
     // anchor each part with a stable id; the part title h1 already rendered inside
     bodyHtml += `<section class="part" id="part-${pn}">${html}</section>`;
     // old-bookmark map: the same heading as it was numbered before the renumbering
-    const old = OLD_NUMBERS[pn - 1];
-    pageIds.add(`part-${pn}`); oldAnchors[`part-${old}`] = `part-${pn}`;
-    for (const h of headings) {
-      pageIds.add(h.id);
-      const oldText = h.level === 1 ? h.text.replace(/^Part \d+/, `Part ${old}`) : h.text.replace(new RegExp(`^${pn}\\.`), `${old}.`);
-      const oldId = slugify(oldText);
-      if (oldId && oldId !== h.id) oldAnchors[oldId] = h.id;
+    pageIds.add(`part-${pn}`);
+    for (const h of headings) pageIds.add(h.id);
+    for (const oldOf of PAST_NUMBERINGS) {
+      const old = oldOf(pn);
+      if (old == null || old === pn) continue;
+      oldAnchors[`part-${old}`] = `part-${pn}`;
+      for (const h of headings) {
+        const oldText = h.level === 1 ? h.text.replace(/^Part \d+/, `Part ${old}`) : h.text.replace(new RegExp(`^${pn}\\.`), `${old}.`);
+        const oldId = slugify(oldText);
+        if (oldId && oldId !== h.id) oldAnchors[oldId] = h.id;
+      }
     }
     // search entries: the part + its h2/h3 headings
     searchIndex.push({ p: pn, t: partTitle[pn], v: v.n, s: v.slug, a: `part-${pn}`, k: 'part' });

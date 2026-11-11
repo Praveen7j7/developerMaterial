@@ -15,30 +15,16 @@ Open `docs/index.html` locally to read it without hosting.
 
 ## What's inside
 
-| Volume | Title | Parts |
-|---|---|---|
-| 0 | From Scratch | 69–74 |
-| 1 | Foundations | 1–4 |
-| 2 | Architecture and APIs | 5–8, 61 |
-| 3 | Data | 9–15, 31, 32, 62 |
-| 4 | Distributed Systems | 16–21, 33–36, 59, 60, 63 |
-| 5 | Production Engineering | 22–30, 37–39, 64 |
-| 6 | Mastery | 40–50, 65–68 |
-| 8 | Principal and Architect | 51–58 |
+| Volume | Title | Parts | Covers |
+|---|---|---|---|
+| 0 | From Scratch | 0–7 | How to understand any technology, JavaScript and TypeScript, async, the web, Linux, Git, your first backend and your first frontend |
+| 1 | Foundations | 8–11 | Data structures, algorithms, operating systems and the Node.js runtime, networking |
+| 2 | Architecture and APIs | 12–16 | Architecture styles, clean code and patterns, domain-driven design, REST, GraphQL and gRPC |
+| 3 | Data | 17–26 | Relational model, SQL, PostgreSQL internals, indexing, transactions, ORMs, scaling, migrations, compatibility, NoSQL |
+| 4 | Distributed Systems | 27–39 | Caching, messaging, distributed transactions, reliability, concurrency, storage, search, real-time, jobs, LLM backends, RAG, data engineering |
+| 5 | Production Engineering | 40–53 | Security, testing, performance, observability, Docker, Kubernetes, cloud, CI/CD, Git, SRE, disaster recovery, cost, IaC, AI-assisted engineering |
+| 6 | Mastery | 54–68 | System designs, capacity estimation, debugging, mindset, levels, backend interviews, projects, patterns, decisions, roadmap, low-level design |
+| 7 | Frontend and Full Stack | 69–80 | Browser, tooling, React, Next.js, data fetching, contracts, browser security, web performance, testing, shipping, a full-stack project, frontend interviews |
+| 8 | Principal and Architect | 81–89 | Writing, strategy, governance, migrations, org design, influence, growing engineers, multi-tenant SaaS, staff and principal interviews |
 
-74 parts in all. Volumes 7 (Frontend and Full Stack) and 9 (Specialist Depth) are planned.
-
-## Repo layout
-
-- `docs/` — the generated static website (what GitHub Pages serves). Do not edit by hand.
-- `handbook/chapters/` — the Markdown source, one file per chunk of a part (`part-NN-SS-slug.md`).
-- `handbook/_spec/` — the writing contracts and outlines.
-- `handbook/build/` — the build scripts.
-
-## Rebuild the site after editing chapters
-
-```bash
-cd handbook/build
-npm install
-node build-site.js   # regenerates ../../docs
-```
+90 parts in all (Part 0 to Part 89), numbered in reading order.

@@ -8,7 +8,7 @@ A **test** is code that runs your code and checks the result automatically. We w
 
 #### Why does it exist?
 
-Because every change can break something that used to work, and checking by hand with `curl` after every change is slow and gets skipped. With tests, `npm test` checks 30 behaviours in a few seconds, every time, and CI (Part 46) runs them on every pull request (Part 5). Tests are also the fastest way to know your validation and error work from 6.5 and 6.6 actually does what you think.
+Because every change can break something that used to work, and checking by hand with `curl` after every change is slow and gets skipped. With tests, `npm test` checks 30 behaviours in a few seconds, every time, and CI (Part 47) runs them on every pull request (Part 5). Tests are also the fastest way to know your validation and error work from 6.5 and 6.6 actually does what you think.
 
 #### Mental model
 
@@ -161,15 +161,15 @@ Without the test, `GET /products/<missing>` would have returned `200` with an em
 #### Edge cases & failure modes
 
 - **Tests against the development database** delete your data with `TRUNCATE`; always use a separate test database.
-- **Different wiring in tests and production**: tests that skip `configureApp` pass with errors that look different in production; share one function (Part 140.10 makes the same point for contract tests).
+- **Different wiring in tests and production**: tests that skip `configureApp` pass with errors that look different in production; share one function (Part 74.10 makes the same point for contract tests).
 - **Tests that depend on each other's data** fail randomly when run in another order; reset state in `beforeEach`.
-- **Mocking too much**: a unit test with every method mocked tests the mocks; keep e2e tests for the real wiring (Part 75.5 discusses what to mock).
+- **Mocking too much**: a unit test with every method mocked tests the mocks; keep e2e tests for the real wiring (Part 41.5 discusses what to mock).
 - **Slow e2e tests** from creating the app per test; create it once in `beforeAll`.
 - **Forgetting `await`** on supertest calls: the test ends before the request does and passes without checking anything.
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior writes a few fast unit tests for real logic and a handful of e2e tests for the important paths through the real stack, and makes the error contract part of what the tests assert: status, code, field path and request ID. They run tests against a real PostgreSQL rather than mocking the database for e2e, because constraints like the unique SKU only exist in the real thing (Part 75.7 uses Testcontainers for this). They make tests start from a known state and wire the app the same way as production. And they add a test for every bug they fix, so it cannot return.
+A senior writes a few fast unit tests for real logic and a handful of e2e tests for the important paths through the real stack, and makes the error contract part of what the tests assert: status, code, field path and request ID. They run tests against a real PostgreSQL rather than mocking the database for e2e, because constraints like the unique SKU only exist in the real thing (Part 41.7 uses Testcontainers for this). They make tests start from a known state and wire the app the same way as production. And they add a test for every bug they fix, so it cannot return.
 
 #### Common mistakes
 
@@ -196,17 +196,111 @@ Acceptance criteria:
 - Every error test asserts `code` and `requestId`, not the English `title`.
 - Deleting the unique constraint from the entity makes the duplicate-SKU test fail.
 
+#### Worked answer to the exercise
+
+**Unit tests: three more, for six in total.** Add these inside the `describe('ProductsService', ...)` block above; they reuse its `repo` fake and `beforeEach`:
+
+```ts
+it('returns the product when it exists', async () => {
+  const stored = { id: 'p1', name: 'Dental Mirror', priceCents: 1299, currency: 'USD', sku: 'DM-001' };
+  repo.findOne.mockResolvedValue(stored);
+  await expect(service.findOne('p1')).resolves.toEqual(stored);
+  expect(repo.findOne).toHaveBeenCalledWith({ where: { id: 'p1' } });
+});
+
+it('update changes only the fields it was given', async () => {
+  repo.findOne.mockResolvedValue({ id: 'p1', name: 'Dental Mirror', priceCents: 1299, currency: 'USD', sku: 'DM-001' });
+  const updated = await service.update('p1', { priceCents: 1499 });
+  expect(updated).toMatchObject({ name: 'Dental Mirror', priceCents: 1499, sku: 'DM-001' });
+  expect(repo.save).toHaveBeenCalledTimes(1);
+});
+
+it('remove resolves when one row was deleted', async () => {
+  repo.delete.mockResolvedValue({ affected: 1, raw: [] });
+  await expect(service.remove('p1')).resolves.toBeUndefined();
+});
+```
+
+**E2E tests: four more, for eight in total.** First a helper, so every error test asserts the contract the same way:
+
+```ts
+// test/products.e2e-spec.ts (inside the describe block)
+const expectProblem = (res: request.Response, status: number, code: string) => {
+  expect(res.status).toBe(status);
+  expect(res.headers['content-type']).toMatch(/application\/problem\+json/);
+  expect(res.body.code).toBe(code);
+  expect(res.body.requestId).toMatch(/^[\w-]{8,64}$/);   // expect.any(String) would also accept ""
+};
+
+it('updates a product with PATCH', async () => {
+  const { body } = await request(app.getHttpServer()).post('/products').send(valid).expect(201);
+  const res = await request(app.getHttpServer()).patch(`/products/${body.id}`).send({ priceCents: 1499 }).expect(200);
+  expect(res.body).toMatchObject({ id: body.id, name: 'Dental Mirror', priceCents: 1499 });
+});
+
+it('deletes with 204 and no body, then reads 404 PRODUCT_NOT_FOUND', async () => {
+  const { body } = await request(app.getHttpServer()).post('/products').send(valid).expect(201);
+  const del = await request(app.getHttpServer()).delete(`/products/${body.id}`).expect(204);
+  expect(del.text).toBe('');
+  expectProblem(await request(app.getHttpServer()).get(`/products/${body.id}`), 404, 'PRODUCT_NOT_FOUND');
+});
+
+it('rejects a malformed id with 400', async () => {
+  expectProblem(await request(app.getHttpServer()).get('/products/not-a-uuid'), 400, 'BAD_REQUEST');
+});
+
+it('returns 404 PRODUCT_NOT_FOUND when deleting a missing product', async () => {
+  const res = await request(app.getHttpServer()).delete('/products/9b1d5f8e-0000-4000-8000-000000000000');
+  expectProblem(res, 404, 'PRODUCT_NOT_FOUND');
+});
+```
+
+The last test guards the "inconsistent codes" failure from 6.6. It passes because 6.6 gave `remove` the same coded exception as `findOne`. Prove that it would catch a regression: put back the plain-message line from 6.5 in `remove()`,
+
+```ts
+// src/products/products.service.ts, in remove() (temporarily, to watch the test fail)
+if (result.affected === 0) throw new NotFoundException(`Product ${id} not found`);
+```
+
+and the test fails with `code` `NOT_FOUND` instead of `PRODUCT_NOT_FOUND`, because the exception carries no `code` and the filter falls back to the status name. Restore the coded line from 6.6 and it passes again.
+
+Also switch the existing validation and duplicate-SKU tests to `expectProblem(res, 400, 'VALIDATION_FAILED')` and `expectProblem(res, 409, 'PRODUCT_SKU_TAKEN')`, keeping the `issues` path assertion, so every error test checks `code` and `requestId` and none checks the English `title`.
+
+```text
+$ npm test
+Test Suites: 1 passed, 1 total
+Tests:       6 passed, 6 total
+Time:        1.38 s
+$ npm run test:e2e
+ PASS  test/products.e2e-spec.ts
+  Products API (e2e)
+    ✓ creates a product and reads it back (61 ms)
+    ✓ rejects a negative price with VALIDATION_FAILED and a field path (12 ms)
+    ✓ returns 409 PRODUCT_SKU_TAKEN for a duplicate SKU (18 ms)
+    ✓ pages through products with a cursor, without repeats (47 ms)
+    ✓ updates a product with PATCH (15 ms)
+    ✓ deletes with 204 and no body, then reads 404 PRODUCT_NOT_FOUND (16 ms)
+    ✓ rejects a malformed id with 400 (5 ms)
+    ✓ returns 404 PRODUCT_NOT_FOUND when deleting a missing product (7 ms)
+
+Tests:       8 passed, 8 total
+```
+
+**Prove the duplicate test can fail.** Remove `unique: true` from `sku` in the entity and run `npm run test:e2e` again. `synchronize: true` drops the constraint in `shop_test`, the second insert succeeds, and supertest reports `expected 409 "Conflict", got 201 "Created"`. Put `unique: true` back and the test is green again. A test you have never seen fail has not yet proved anything.
+
+**The trap.** `expect.any(String)` for the request ID. It matches the empty string, which is exactly what the filter returns when `RequestIdMiddleware` is not registered (`String(undefined ?? '')`). Matching the real format, as the helper does, catches a missing middleware; `expect.any(String)` does not.
+
 ## 6.8 Step 4: Running everything with Docker
 
 ### 6.8.1 A Dockerfile, a first migration and Docker Compose
 
 #### Concept
 
-So far the API runs with `npm run start:dev` on your laptop, next to a PostgreSQL container started by hand. In this step we package the API itself as a **Docker image**, replace `synchronize: true` with a **migration**, and describe both containers in one **Docker Compose** file, so anyone can start the whole system with one command: `docker compose up`. Part 43 — Docker for Backend Engineers explains every piece in depth; here we build a first working version.
+So far the API runs with `npm run start:dev` on your laptop, next to a PostgreSQL container started by hand. In this step we package the API itself as a **Docker image**, replace `synchronize: true` with a **migration**, and describe both containers in one **Docker Compose** file, so anyone can start the whole system with one command: `docker compose up`. Part 44 — Docker for Backend Engineers explains every piece in depth; here we build a first working version.
 
 #### Why does it exist?
 
-Because "it works on my machine" is not a deployment plan. A new teammate should not need the right Node version, the right PostgreSQL version and a page of setup steps; a CI server (Part 46) should run exactly what production runs. An image packages your built code with the exact Node runtime it needs. Compose describes how the API and the database start together. And a migration makes schema changes explicit, reviewed and repeatable, instead of letting the ORM guess (6.3).
+Because "it works on my machine" is not a deployment plan. A new teammate should not need the right Node version, the right PostgreSQL version and a page of setup steps; a CI server (Part 47) should run exactly what production runs. An image packages your built code with the exact Node runtime it needs. Compose describes how the API and the database start together. And a migration makes schema changes explicit, reviewed and repeatable, instead of letting the ORM guess (6.3).
 
 #### Mental model
 
@@ -257,6 +351,7 @@ The generated file contains the SQL TypeORM will run. Read it before committing,
 
 ```ts
 // src/migrations/1730800000000-CreateProducts.ts (generated, abridged)
+// Constraint names are shown readable for teaching; TypeORM generates hashed names (e.g. "UQ_3a5f...") unless you configure a naming strategy.
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateProducts1730800000000 implements MigrationInterface {
@@ -285,16 +380,16 @@ TypeOrmModule.forRoot({
 }),
 ```
 
-Running migrations at start-up is fine for one instance. With several instances starting at once, teams run migrations as a separate step before the new version starts (Part 23, and Part 143.11 shows it in a test stack).
+Running migrations at start-up is fine for one instance. With several instances starting at once, teams run migrations as a separate step before the new version starts (Part 24, and Part 77.11 shows it in a test stack).
 
-**The Dockerfile.** A **multi-stage build** (Part 86.6) compiles TypeScript in a first stage that has all the build tools, then copies only the compiled code and production dependencies into a small final image:
+**The Dockerfile.** A **multi-stage build** (Part 44.6) compiles TypeScript in a first stage that has all the build tools, then copies only the compiled code and production dependencies into a small final image:
 
 ```dockerfile
 # Dockerfile
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci                                  # exact versions from package-lock.json (72.6)
+RUN npm ci                                  # exact versions from package-lock.json (4.6)
 COPY . .
 RUN npm run build && npm prune --omit=dev   # compile to dist/, then drop dev dependencies
 
@@ -304,7 +399,8 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-USER node                                   # do not run as root (72.2)
+# Do not run as root (4.2). Comments go on their own line: USER would read a trailing one as part of the user name.
+USER node
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
 ```
@@ -339,7 +435,7 @@ services:
   api:
     build: .
     environment:
-      DATABASE_HOST: db                       # the service name: Compose's network resolves it (Part 86.7)
+      DATABASE_HOST: db                       # the service name: Compose's network resolves it (Part 44.7)
       DATABASE_PORT: "5432"
       DATABASE_USER: shop
       DATABASE_PASSWORD: shop_dev_password
@@ -362,7 +458,7 @@ volumes:
 #### Practical example — the whole system in three commands
 
 ```bash
-docker stop shop-db                            # the hand-started database from 74.1 would hold port 5432
+docker stop shop-db                            # the hand-started database from 6.1 would hold port 5432
 docker compose up --build -d                   # build the API image, start db then api, in the background
 docker compose ps
 # NAME                 SERVICE  STATUS                   PORTS
@@ -371,7 +467,7 @@ docker compose ps
 
 curl -s -X POST http://localhost:3000/products -H 'Content-Type: application/json' \
   -d '{"name":"Dental Mirror","priceCents":1299,"sku":"DM-001"}' | jq '{id, sku}'
-docker compose logs api | tail -n 5            # the app's logs, including "Migration CreateProducts... has been executed"
+docker compose logs api | tail -n 5            # the app's logs; with TypeORM logging on, they include "Migration CreateProducts... has been executed"
 docker compose down                            # stop everything; the db-data volume keeps the products
 ```
 
@@ -384,12 +480,12 @@ docker compose down                            # stop everything; the db-data vo
 - **Secrets in the image**: a missing `.dockerignore` copies `.env` into the image, where anyone with the image can read it.
 - **`synchronize: true` left on** alongside migrations makes the ORM change the schema behind the migrations' back; set it to `false`.
 - **`docker compose down -v`** deletes the volume and all its data; fine for development, never on a real database.
-- **Apple Silicon versus x86 servers**: images built on an ARM laptop may not run on an x86 server; build in CI (Part 86.15) or use `--platform`.
+- **Apple Silicon versus x86 servers**: images built on an ARM laptop may not run on an x86 server; build in CI (Part 44.15) or use `--platform`.
 - **Port 3000 or 5432 already used** by an old process or container (4.10): stop it first.
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior wants the whole system to start from a clean machine with one command, because that is what makes onboarding, CI and production boring. They build small images with multi-stage builds, run as a non-root user, keep secrets out of images, and gate start-up on real health checks. They treat migrations as code: generated, read, completed by hand where needed, committed and reviewed. And they know this Compose file is a development and test setup; production adds managed databases, secrets from a secret manager and an orchestrator (Parts 44, 45).
+A senior wants the whole system to start from a clean machine with one command, because that is what makes onboarding, CI and production boring. They build small images with multi-stage builds, run as a non-root user, keep secrets out of images, and gate start-up on real health checks. They treat migrations as code: generated, read, completed by hand where needed, committed and reviewed. And they know this Compose file is a development and test setup; production adds managed databases, secrets from a secret manager and an orchestrator (Parts 45, 46).
 
 #### Common mistakes
 
@@ -417,6 +513,77 @@ Acceptance criteria:
 - After `docker compose down` and `up` again, previously created products are still there.
 - The e2e tests from 6.7 pass against the database in Compose (port 5432 published, `DATABASE_NAME=shop_test`).
 
+#### Worked answer to the exercise
+
+Use the `data-source.ts`, scripts, `Dockerfile`, `.dockerignore` and `docker-compose.yml` from this section, with three completions.
+
+**1. The migration gets its `CHECK` constraint.** In the generated `CreateProducts` migration, add one statement to `up` after the `CREATE TABLE`:
+
+```ts
+await queryRunner.query(
+  `ALTER TABLE "products" ADD CONSTRAINT "chk_price_non_negative" CHECK ("price_cents" >= 0)`,
+);
+```
+
+`down` stays `DROP TABLE "products"`, which removes the constraint with the table. Also declare it on the entity with TypeORM's real `@Check` decorator, `@Check('chk_price_non_negative', '"price_cents" >= 0')` above `@Entity('products')`. TypeORM compares `CHECK` constraints too, so without the decorator the next `migration:generate` would propose dropping a constraint the entity does not know about.
+
+**2. Publish the database port** for the e2e tests, under the `db` service:
+
+```yaml
+    ports:
+      - "5432:5432"                  # only for running tests from the laptop
+```
+
+**3. Keep `/health`.** The API's health check calls `GET /health` with `wget`, so the route from 6.1.1 must exist; without it, the API stays `(unhealthy)`.
+
+Now the checks, one per acceptance criterion:
+
+```text
+$ docker stop shop-db
+$ docker compose up --build -d
+$ docker compose ps --format 'table {{.Name}}\t{{.Service}}\t{{.Status}}\t{{.Ports}}'
+NAME                 SERVICE   STATUS                    PORTS
+products-api-db-1    db        Up 14 seconds (healthy)   0.0.0.0:5432->5432/tcp
+products-api-api-1   api       Up 8 seconds (healthy)    0.0.0.0:3000->3000/tcp
+$ docker compose exec api whoami
+node
+$ docker run --rm --entrypoint ls products-api-api -la /app
+total 24
+drwxr-xr-x    1 root     root          4096 Nov 11 05:51 .
+drwxr-xr-x    1 root     root          4096 Nov 11 05:52 ..
+drwxr-xr-x    4 root     root          4096 Nov 11 05:51 dist
+drwxr-xr-x  212 root     root         12288 Nov 11 05:51 node_modules
+-rw-r--r--    1 root     root          1563 Nov 11 05:51 package.json
+```
+
+The process runs as `node`, and `/app` has no `.env` (the files belong to `root`, so the app cannot rewrite its own code, which is a good thing). Compose names the built image `<project>-<service>`, here `products-api-api`. Check the constraint and persistence:
+
+```text
+$ docker compose exec -T db psql -U shop -d shop -c '\d products' | grep chk_
+    "chk_price_non_negative" CHECK (price_cents >= 0)
+$ curl -s -X POST http://localhost:3000/products -H 'Content-Type: application/json' \
+    -d '{"name":"Dental Mirror","priceCents":1299,"sku":"DM-001"}' -o /dev/null -w '%{http_code}\n'
+201
+$ docker compose down && docker compose up -d
+$ curl -s http://localhost:3000/products | jq -c '[.items[].sku]'
+["DM-001"]
+```
+
+Finally the e2e tests from the laptop against the Compose database. Your `.env` still says `DATABASE_HOST=localhost`, which now reaches the published port:
+
+```text
+$ docker compose exec db psql -U shop -d shop -c 'CREATE DATABASE shop_test;'
+CREATE DATABASE
+$ npm run test:e2e
+Tests:       8 passed, 8 total
+```
+
+No extra migration step is needed in the tests: `migrationsRun: true` in `AppModule` builds the schema in `shop_test` when the test app initialises, so `TRUNCATE` finds the table.
+
+**Why it is right.** The image contains only compiled code and production dependencies and runs unprivileged; the schema comes from a reviewed file, not from `synchronize`; and the named volume, not the container, holds the data, which is why `down` and `up` keep the product.
+
+**The trap.** `docker compose down -v` when you meant `down`. The `-v` deletes the `db-data` volume, and with it every product. The second trap is the API exiting with "connection refused" to `localhost:5432`: inside the container, the database is `db`, not `localhost`, which is why Compose sets `DATABASE_HOST: db`.
+
 ## 6.9 Putting it together: the finished project
 
 ### 6.9.1 One request through every layer, and what you have built
@@ -432,13 +599,13 @@ You started this Part with a hello endpoint. You now have a small but genuine ba
 ```text
 curl (your laptop)
   -> port 3000 published by Compose -> api container, node dist/main.js
-  -> RequestIdMiddleware: X-Request-Id 5c2e... assigned            (74.6)
-  -> ValidationPipe: body matches CreateProductDto, whitelisted      (74.2, 74.6)
-  -> ProductsController.create: thin, calls the service             (74.2)
-  -> ProductsService.create: repo.create + repo.save                 (74.3)
+  -> RequestIdMiddleware: X-Request-Id 5c2e... assigned            (6.6)
+  -> ValidationPipe: body matches CreateProductDto, whitelisted      (6.2, 6.6)
+  -> ProductsController.create: thin, calls the service             (6.2)
+  -> ProductsService.create: repo.create + repo.save                 (6.3)
   -> TypeORM: INSERT INTO "products" (...) VALUES ($1, ...) RETURNING ...
   -> db container, PostgreSQL 17: unique constraint UQ_products_sku violated, error 23505
-  -> ApiExceptionFilter: 409, code PRODUCT_SKU_TAKEN, issues[sku]   (74.6)
+  -> ApiExceptionFilter: 409, code PRODUCT_SKU_TAKEN, issues[sku]   (6.6)
   -> logger: WARN request failed requestId=5c2e... code=PRODUCT_SKU_TAKEN
   <- 409 application/problem+json { status, code, issues, requestId }
 ```
@@ -449,28 +616,28 @@ Every layer has one job, and each job was added in one step of this Part. The e2
 
 ```text
 products-api/
-├── Dockerfile, .dockerignore, docker-compose.yml          74.8
-├── .env (gitignored), .env.example                         74.1
+├── Dockerfile, .dockerignore, docker-compose.yml          6.8
+├── .env (gitignored), .env.example                         6.1
 ├── src/
-│   ├── main.ts, configure-app.ts                           74.1, 74.6
-│   ├── app.module.ts                                       74.1, 74.3, 74.6, 74.8
-│   ├── data-source.ts, migrations/                         74.8
-│   ├── config/env.validation.ts                            74.5
-│   ├── common/request-id.middleware.ts                     74.6
-│   ├── common/validation.ts, common/api-exception.filter.ts 74.6
+│   ├── main.ts, configure-app.ts                           6.1, 6.6
+│   ├── app.module.ts                                       6.1, 6.3, 6.6, 6.8
+│   ├── data-source.ts, migrations/                         6.8
+│   ├── config/env.validation.ts                            6.5
+│   ├── common/request-id.middleware.ts                     6.6
+│   ├── common/validation.ts, common/api-exception.filter.ts 6.6
 │   └── products/
-│       ├── products.module.ts, products.controller.ts      74.2, 74.5
-│       ├── products.service.ts, products.service.spec.ts   74.3, 74.5, 74.7
-│       ├── product.entity.ts, cursor.ts                    74.3, 74.5, 74.6
+│       ├── products.module.ts, products.controller.ts      6.2, 6.5
+│       ├── products.service.ts, products.service.spec.ts   6.3, 6.5, 6.7
+│       ├── product.entity.ts, cursor.ts                    6.3, 6.5, 6.6
 │       └── dto/ create-product.dto.ts, update-product.dto.ts, list-products.query.ts
-└── test/products.e2e-spec.ts                               74.7
+└── test/products.e2e-spec.ts                               6.7
 ```
 
-Compare it with the tiny products API without a framework in Part 131.7: the same idea (receive, validate, store, respond), now with structure, guarantees and tests.
+Compare it with the tiny products API without a framework in Part 3.7: the same idea (receive, validate, store, respond), now with structure, guarantees and tests.
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior would recognise this project as a sound starting point, and would also see exactly what is missing for production: authentication (Part 39), idempotency for retried creates (Part 14.12), structured JSON logs, metrics and traces (Part 42), a CI pipeline that runs the tests and builds the image (Part 46), and migrations run as a separate deploy step (Part 23). None of those require changing the shape you built. That is the point of getting the shape right first.
+A senior would recognise this project as a sound starting point, and would also see exactly what is missing for production: authentication (Part 40), idempotency for retried creates (Part 15.12), structured JSON logs, metrics and traces (Part 43), a CI pipeline that runs the tests and builds the image (Part 47), and migrations run as a separate deploy step (Part 24). None of those require changing the shape you built. That is the point of getting the shape right first.
 
 #### Practical exercise
 
@@ -478,11 +645,120 @@ The capstone for Volume 0: extend the project with one new resource, `categories
 
 Acceptance criteria:
 
-- A `categories` table created by a new migration, with a unique `slug`, and a `category_id` foreign key on `products` (Part 16.5 explains foreign keys).
+- A `categories` table created by a new migration, with a unique `slug`, and a `category_id` foreign key on `products` (Part 17.5 explains foreign keys).
 - `POST /categories`, `GET /categories`, and `GET /products?category=<slug>` with the same cursor pagination as 6.5.
 - Every error uses the shape from 6.6; creating a product with an unknown category returns `422` with `code: "CATEGORY_NOT_FOUND"` and `issues[0].path` equal to `categoryId`.
 - Unit and e2e tests for the new endpoints pass, and the whole system starts with `docker compose up --build`.
-- The work is done on a branch, in focused commits, merged through a pull request (Part 133.11).
+- The work is done on a branch, in focused commits, merged through a pull request (Part 5.11).
+
+#### Worked answer to the exercise
+
+This is open-ended, so here is a model answer built only from the patterns of this Part, followed by what a strong answer includes.
+
+**The entity and the link.** `categories` mirrors `products`. On `Product`, the foreign key column is nullable because existing products have no category, and adding a `NOT NULL` column to a table that already has rows would fail:
+
+```ts
+// src/categories/category.entity.ts
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+
+@Entity('categories')
+export class Category {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  @Column({ type: 'text' })
+  name!: string;
+
+  @Column({ type: 'text', unique: true })          // UNIQUE: two categories cannot share a slug
+  slug!: string;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
+}
+```
+
+```ts
+// src/products/product.entity.ts (additions)
+@Index('idx_products_category_id')                  // PostgreSQL does not index foreign keys by itself
+@Column({ type: 'uuid', name: 'category_id', nullable: true })
+categoryId!: string | null;
+
+@ManyToOne(() => Category, { nullable: true, onDelete: 'RESTRICT' })
+@JoinColumn({ name: 'category_id' })                // the FOREIGN KEY is on this column
+category?: Category | null;
+```
+
+Add `Category` to `entities` in `data-source.ts` (otherwise TypeORM fails with `No metadata for "Category" was found`), run `npm run migration:generate -- src/migrations/AddCategories`, and read the result. Abridged, `up` must contain:
+
+```sql
+CREATE TABLE "categories" ("id" uuid NOT NULL DEFAULT gen_random_uuid(), "name" text NOT NULL, "slug" text NOT NULL,
+  "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  CONSTRAINT "UQ_categories_slug" UNIQUE ("slug"), CONSTRAINT "PK_categories_id" PRIMARY KEY ("id"));
+ALTER TABLE "products" ADD "category_id" uuid;
+CREATE INDEX "idx_products_category_id" ON "products" ("category_id");
+ALTER TABLE "products" ADD CONSTRAINT "FK_products_category" FOREIGN KEY ("category_id")
+  REFERENCES "categories"("id") ON DELETE RESTRICT ON UPDATE NO ACTION;
+```
+
+**Validation.** `CreateProductDto` gets `@IsOptional() @IsUUID() categoryId?: string;` (and `create()` passes `categoryId: dto.categoryId ?? null` to `repo.create`). `CreateCategoryDto` has `name` (`@IsString() @Length(1, 100)`) and `slug` (`@Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/) @Length(2, 64)`). `ListProductsQuery` gets an optional `category` with the same slug pattern. `CategoriesModule` follows `ProductsModule`: `TypeOrmModule.forFeature([Category])`, a thin controller with `@Post()` and `@Get()`, and a service whose `list()` copies the cursor logic of 6.5 onto the `categories` table.
+
+**The filter.** In `list()`, join only when filtering, and change the cursor's `where` to `andWhere`, or it replaces the category condition:
+
+```ts
+if (q.category) qb.innerJoin('p.category', 'c').andWhere('c.slug = :slug', { slug: q.category });
+if (q.cursor) {
+  const c = decodeCursor(q.cursor);
+  qb.andWhere('(p.createdAt, p.id) < (:createdAt, :id)', { createdAt: c.createdAt, id: c.id });
+}
+```
+
+**Errors, decided by the database.** As with the SKU in 6.6, the foreign key, not a `SELECT` beforehand, decides whether the category exists. The filter's single `23505` branch becomes a small table keyed by PostgreSQL error code and table (node-postgres puts both on `driverError`):
+
+```ts
+// src/common/api-exception.filter.ts (replaces the 23505 branch)
+type DbRule = { status: HttpStatus; code: string; title: string; path: string };
+const DB_RULES: Record<string, DbRule> = {
+  '23505:products':   { status: HttpStatus.CONFLICT, code: 'PRODUCT_SKU_TAKEN', title: 'A product with this SKU already exists', path: 'sku' },
+  '23505:categories': { status: HttpStatus.CONFLICT, code: 'CATEGORY_SLUG_TAKEN', title: 'A category with this slug already exists', path: 'slug' },
+  '23503:products':   { status: HttpStatus.UNPROCESSABLE_ENTITY, code: 'CATEGORY_NOT_FOUND', title: 'The category does not exist', path: 'categoryId' },
+};
+const dbRule = (e: unknown): DbRule | undefined => {
+  if (!(e instanceof QueryFailedError)) return undefined;
+  const d = e.driverError as { code?: string; table?: string };
+  return DB_RULES[`${d.code}:${d.table}`];
+};
+
+// in catch(): const rule = dbRule(exception); then, after the HttpException branch:
+} else if (rule) {
+  status = rule.status;
+  code = rule.code;
+  title = rule.title;
+  issues = [{ path: rule.path, message: rule.title }];
+} else {
+```
+
+**Tests.** `products` now references `categories`, so reset both in one statement: `TRUNCATE TABLE products, categories` (truncating `categories` alone fails, because a foreign key points at it). Two of the new e2e tests:
+
+```ts
+it('rejects an unknown category with 422 CATEGORY_NOT_FOUND on categoryId', async () => {
+  const res = await request(app.getHttpServer()).post('/products')
+    .send({ ...valid, categoryId: '9b1d5f8e-0000-4000-8000-000000000000' });
+  expectProblem(res, 422, 'CATEGORY_NOT_FOUND');                    // the helper from 6.7
+  expect(res.body.issues[0].path).toBe('categoryId');
+});
+
+it('filters products by category slug', async () => {
+  const cat = await request(app.getHttpServer()).post('/categories').send({ name: 'Dental tools', slug: 'dental-tools' }).expect(201);
+  await request(app.getHttpServer()).post('/products').send({ ...valid, categoryId: cat.body.id }).expect(201);
+  await request(app.getHttpServer()).post('/products').send({ ...valid, sku: 'DM-002' }).expect(201);
+  const res = await request(app.getHttpServer()).get('/products?category=dental-tools').expect(200);
+  expect(res.body.items.map((p: { sku: string }) => p.sku)).toEqual(['DM-001']);
+});
+```
+
+**The Git side** (Part 5.11): a branch such as `feat/TSB-4620-categories`, and commits like "Add Category entity, module and migration", "Link products to categories and filter by slug", "Map foreign key and slug violations to problem responses", "Test categories end to end", merged through a pull request.
+
+**What a strong answer includes.** A migration that was read and completed, not trusted blindly; a nullable foreign key with an index; the database deciding both "slug taken" (`409`) and "category missing" (`422`), so there is no race; one error shape with `issues[0].path` equal to `categoryId`; cursor pagination reused rather than reinvented; an explicit decision on what `?category=unknown-slug` returns (an empty page is the simplest; say so in the pull request); tests for the error paths, not only the happy path; and `docker compose up --build` from a clean checkout as the final check. **The trap** most people hit: keeping `qb.where(...)` for the cursor after adding the category filter, so page 2 silently shows products from every category. The "filters by slug" test catches it only if it walks to a second page, so add one that does.
 
 ## Senior Checklist — Part 6
 
@@ -518,7 +794,7 @@ Acceptance criteria:
 - Validate every incoming request with a DTO and a global `ValidationPipe`; `whitelist` and `forbidNonWhitelisted` block injected fields for free.
 - Understand the SQL even when an ORM writes it; parameterize always (never concatenate user input), and push invariants into the database as constraints.
 - Connect NestJS to PostgreSQL with a TypeORM entity and repository; you work in typed objects while the ORM generates safe, parameterized SQL.
-- Never ship `synchronize: true`; production schema changes go through reviewed migrations (Part 23).
+- Never ship `synchronize: true`; production schema changes go through reviewed migrations (Part 24).
 - Persistence is what makes it a backend: data lives in the database, surviving restarts and shared across every server instance.
 - Every input is a door: bodies, paths, query strings and configuration all need validation and bounds.
 - Errors are part of the API: one shape, stable codes, field paths, a request ID, and no internals in responses.
@@ -526,4 +802,4 @@ Acceptance criteria:
 - One `docker compose up` that starts everything is the difference between a project and a recipe.
 - Production systems are this same shape, hardened and scaled; add complexity (caching, queues, services) only when real pressure demands it.
 - The discipline practiced here — thin controllers, validated input, clean layering, safe SQL and schema, secrets out of git — is the same discipline that keeps large systems maintainable.
-- Volume 0 is complete: you can now build, test and run a small correct backend, which is the foundation every later Part builds on.
+- You can now build, test and run a small correct backend, which is the foundation every later Part builds on; Part 7 — Your First Frontend puts a browser screen in front of it and completes Volume 0.

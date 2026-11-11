@@ -8,7 +8,7 @@ An **environment variable** is a named value that the shell and every program it
 
 #### Why does it exist?
 
-The same code runs on your laptop, in staging and in production, but it must connect to a different database and use different secrets in each. You cannot hardcode those values — that would mean a different build per environment, and secrets committed to source control. Environment variables solve this: the code reads `process.env.DATABASE_URL`, and each environment supplies a different value from the outside. This separation of configuration from code is a core principle of well-built applications (the "twelve-factor app", Part 43 — Docker for Backend Engineers, 43.9).
+The same code runs on your laptop, in staging and in production, but it must connect to a different database and use different secrets in each. You cannot hardcode those values — that would mean a different build per environment, and secrets committed to source control. Environment variables solve this: the code reads `process.env.DATABASE_URL`, and each environment supplies a different value from the outside. This separation of configuration from code is a core principle of well-built applications (the "twelve-factor app", Part 44 — Docker for Backend Engineers, 44.9).
 
 #### Mental model
 
@@ -44,7 +44,7 @@ NODE_ENV=development
 PORT=3000
 ```
 
-The `.env` file must be in `.gitignore` so it is never committed — it contains secrets. A committed `.env.example` with placeholder values documents which variables are needed without leaking the real ones. In production, secrets usually come from a secret manager (AWS Secrets Manager, Part 88.11) rather than a file on disk.
+The `.env` file must be in `.gitignore` so it is never committed — it contains secrets. A committed `.env.example` with placeholder values documents which variables are needed without leaking the real ones. In production, secrets usually come from a secret manager (AWS Secrets Manager, Part 46.11) rather than a file on disk.
 
 #### Reading them in Node
 
@@ -88,6 +88,70 @@ A senior keeps all configuration in environment variables and never hardcodes a 
 #### Practical exercise
 
 Create a `.env` file with `PORT` and a fake `API_KEY`, add it to a `.gitignore`, write a small Node script that reads both, converts `PORT` to a number, and throws a clear error if `API_KEY` is missing. Run it once with the variable present and once with it removed. Acceptance criteria: the missing-variable case fails fast at startup with a readable message, and `.env` is ignored by git.
+
+#### Worked answer to the exercise
+
+Set up a small folder that is a git repository, with a `.env` and a `.gitignore`:
+
+```bash
+mkdir -p ~/practice/config-demo && cd ~/practice/config-demo
+git init -q
+printf 'PORT=4000\nAPI_KEY=test-key-not-real-123\n' > .env
+echo '.env' >> .gitignore
+```
+
+The script, `config-check.js`:
+
+```js
+// config-check.js: read and validate configuration once, at startup.
+const rawPort = process.env.PORT ?? '3000';
+const port = Number(rawPort);                 // env values are always strings
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error(`PORT must be a whole number from 1 to 65535, got "${rawPort}"`);
+}
+
+const apiKey = process.env.API_KEY;
+if (!apiKey) {                                // missing OR empty: both are wrong here
+  throw new Error('API_KEY is required: add it to .env or set it in the environment');
+}
+
+console.log(`config ok: PORT=${port} (${typeof port}), API_KEY=${apiKey.slice(0, 4)}...`);
+```
+
+Node 20.6 and later can load a `.env` file itself with `--env-file`, so no library is needed. Run it with the key present, then delete the `API_KEY` line and run it again:
+
+```bash
+node --env-file=.env config-check.js
+sed -i.bak '/^API_KEY=/d' .env          # delete the line (works with GNU and macOS sed; leaves .env.bak)
+node --env-file=.env config-check.js
+echo $?
+git check-ignore -v .env
+git status --short
+```
+
+```text
+config ok: PORT=4000 (number), API_KEY=test...
+/home/alice/practice/config-demo/config-check.js:10
+  throw new Error('API_KEY is required: add it to .env or set it in the environment');
+  ^
+
+Error: API_KEY is required: add it to .env or set it in the environment
+    at Object.<anonymous> (/home/alice/practice/config-demo/config-check.js:10:9)
+    (more stack lines from Node's module loader)
+1
+.gitignore:1:.env	.env
+?? .env.bak
+?? .gitignore
+?? config-check.js
+```
+
+Why it is right: the checks run on the first lines of the program, before anything else starts, so a missing key stops the process in milliseconds with a sentence that says what is wrong and how to fix it. The exit code `1` tells a process manager or CI that start-up failed. `Number(rawPort)` turns the string `'4000'` into the number `4000`, and the range check also catches `PORT=abc` (`NaN`) and an empty `PORT=` (which `Number` turns into `0`). Here `!apiKey` is the right test, unlike the quantity example in 1.1.3, because an empty key is just as invalid as a missing one. `git check-ignore -v` names the `.gitignore` line that ignores `.env`, and `.env` is absent from `git status`.
+
+Look again at the last `git status`: `.env.bak` is listed. The backup `sed` made still contains the key, and `.gitignore` only ignores the exact name `.env`. Delete the backup (`rm .env.bak`), or ignore the whole family with a `.env*` line followed by `!.env.example`, so the committed example file still shows.
+
+The trap most learners fall into is a variable that is still exported in the shell. Node's `--env-file` does not override variables that already exist in the environment, so if you ran `export API_KEY=...` earlier, deleting the line from `.env` changes nothing and the script still says `config ok`. Run `unset API_KEY` and try again. The second trap: adding `.env` to `.gitignore` after it was committed does not untrack it; you need `git rm --cached .env`, and you must rotate every secret in it (4.5.1).
+
+Check it yourself: you should see one `config ok` line, then the error and exit code `1`, and `.env` never appears in `git status`. Commit a `.env.example` with placeholder values so teammates know which variables exist.
 
 ## 4.6 Package managers
 
@@ -140,14 +204,14 @@ Two directories and two files matter:
 
 #### Semantic versioning
 
-Versions follow `MAJOR.MINOR.PATCH` (for example `4.18.2`). A `MAJOR` bump may break compatibility; `MINOR` adds features compatibly; `PATCH` fixes bugs compatibly. The `^` in `^4.18.0` means "any `4.x.y` at or above this", allowing compatible updates but not a breaking major bump. Understanding this tells you how risky an upgrade is (Part 24 covers compatibility in depth).
+Versions follow `MAJOR.MINOR.PATCH` (for example `4.18.2`). A `MAJOR` bump may break compatibility; `MINOR` adds features compatibly; `PATCH` fixes bugs compatibly. The `^` in `^4.18.0` means "any `4.x.y` at or above this", allowing compatible updates but not a breaking major bump. Understanding this tells you how risky an upgrade is (Part 25 covers compatibility in depth).
 
 #### Edge cases & failure modes
 
 - **Committing `node_modules`** bloats the repository enormously; it must be in `.gitignore` and rebuilt from the lock file.
 - **Not committing the lock file** means different machines install different versions, causing "works on my machine" bugs; always commit the lock file.
 - **`npm install` in CI** can quietly update the lock file; use `npm ci` for reproducible builds.
-- **Supply-chain risk**: a dependency (or one of its dependencies) can be malicious or compromised; this is a real attack vector (Part 39 — Security, 39.28). Audit with `npm audit` and be cautious adding dependencies.
+- **Supply-chain risk**: a dependency (or one of its dependencies) can be malicious or compromised; this is a real attack vector (Part 40 — Security, 40.28). Audit with `npm audit` and be cautious adding dependencies.
 - **Global vs local installs**: `npm install -g` installs system-wide; prefer local project dependencies so each project pins its own versions.
 - **Version conflicts** when two dependencies need incompatible versions of a third; package managers resolve most but not all.
 
@@ -172,6 +236,64 @@ A senior always commits the lock file and uses `npm ci` in automated builds, bec
 #### Practical exercise
 
 Initialize a new Node project with `npm init -y`, install `express` as a dependency and `jest` as a dev dependency, and inspect `package.json` to see where each landed. Then delete `node_modules` and restore it with `npm ci`. Acceptance criteria: you can explain why `node_modules` is gitignored, what the lock file guarantees, and the difference between a dependency and a dev dependency.
+
+#### Worked answer to the exercise
+
+```bash
+mkdir -p ~/practice/npm-demo && cd ~/practice/npm-demo
+npm init -y                       # creates package.json with default values
+npm install express               # a runtime dependency
+npm install --save-dev jest       # a development-only dependency
+echo 'node_modules/' > .gitignore
+cat package.json
+```
+
+The interesting part of `package.json` afterwards (trimmed; your version numbers will be newer):
+
+```json
+{
+  "name": "npm-demo",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
+  }
+}
+```
+
+Now throw `node_modules` away and rebuild it from the lock file. `rm -rf` has no undo, so run `pwd` first and make sure you are inside `npm-demo`:
+
+```bash
+pwd                               # must print .../practice/npm-demo
+rm -rf node_modules               # relative path, inside the demo folder only
+npm ci
+npm ls --depth=0
+```
+
+```text
+/home/alice/practice/npm-demo
+added 268 packages, and audited 269 packages in 5s
+npm-demo@1.0.0 /home/alice/practice/npm-demo
+├── express@5.1.0
+└── jest@30.2.0
+```
+
+(Package counts and versions are approximate; they change with every release.)
+
+The three explanations the acceptance criteria ask for:
+
+- **Why `node_modules` is gitignored**: it is large (tens of megabytes even for this tiny project, mostly `jest` and its dependencies), it can contain files compiled for your operating system, and it can be rebuilt exactly from `package.json` plus `package-lock.json`. Committing it bloats every clone forever and causes conflicts on every upgrade.
+- **What the lock file guarantees**: the exact version of every package in the tree, including the dependencies of your dependencies, plus an integrity hash for each one. `package.json` says "`express` at `^5.1.0` or a compatible newer version"; the lock file says "exactly 5.1.0, and this is what its files must hash to". `npm ci` installs precisely that, so your laptop, CI and production get identical code.
+- **Dependency vs dev dependency**: `express` runs in production, so it is a dependency. `jest` is only needed to run tests on a developer machine or in CI, so it is a dev dependency, and `npm ci --omit=dev` (what a production Docker image should run) leaves it out.
+
+The trap most learners fall into is forgetting `--save-dev` for tools like `jest`, `typescript` or `eslint`. They land in `dependencies`, get installed into every production image, and enlarge both the image and the attack surface (Part 40 — Security, 40.28). The second trap: editing `package.json` by hand and then running `npm ci`, which refuses to continue because `package.json` and `package-lock.json` disagree. Run `npm install` once to update the lock file, commit both files, and use `npm ci` from then on.
+
+Check it yourself: `npm ls --depth=0` lists both packages after `npm ci`, and `npm ls --omit=dev --depth=0` lists only `express`.
 
 ## 4.7 SSH: reaching a remote server
 
@@ -216,7 +338,7 @@ The private key is the most sensitive file you own — anyone with it can log in
 
 #### Practical example — a deploy over SSH
 
-A simple manual deploy (real deploys use CI/CD, Part 46, but this shows the primitives):
+A simple manual deploy (real deploys use CI/CD, Part 47, but this shows the primitives):
 
 ```bash
 # Build locally, then copy the build up and restart the service on the server:
@@ -256,3 +378,53 @@ A senior uses key-based SSH exclusively, protects the private key with a passphr
 #### Practical exercise
 
 Generate an ed25519 SSH key pair, verify the private key has `600` permissions, and identify which of the two files you would put on a server and which you must keep secret. Then write the single `ssh` command that would run `uptime` on a remote host without opening an interactive session. Acceptance criteria: you correctly identify the public vs private key and can explain why the private key's permissions matter.
+
+#### Worked answer to the exercise
+
+Give the practice key its own file name with `-f`, so you cannot overwrite a real key you already use:
+
+```bash
+ssh-keygen -t ed25519 -C "alice@laptop-practice" -f ~/.ssh/practice_ed25519
+```
+
+```text
+Generating public/private ed25519 key pair.
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /home/alice/.ssh/practice_ed25519
+Your public key has been saved in /home/alice/.ssh/practice_ed25519.pub
+The key fingerprint is:
+SHA256:yH3kPp0ExampleFingerprintOnlyNotARealKey0000 alice@laptop-practice
+```
+
+(A random-art picture follows, and newer OpenSSH versions word the passphrase prompt slightly differently.)
+
+```bash
+ls -l ~/.ssh/practice_ed25519 ~/.ssh/practice_ed25519.pub
+```
+
+```text
+-rw------- 1 alice alice 464 Nov 11 10:40 /home/alice/.ssh/practice_ed25519
+-rw-r--r-- 1 alice alice 103 Nov 11 10:40 /home/alice/.ssh/practice_ed25519.pub
+```
+
+- **`practice_ed25519.pub` is the public key.** It is the one you put on a server (it ends up as a line in `~/.ssh/authorized_keys` there; `ssh-copy-id` does that for you). It is safe to share: it lets a server check your identity, not impersonate you.
+- **`practice_ed25519`, with no extension, is the private key.** It never leaves your machine. `ssh-keygen` already created it as `-rw-------` (600): read and write for you, nothing for anyone else.
+
+The single command that runs `uptime` on a remote host and returns, without an interactive session:
+
+```bash
+ssh -i ~/.ssh/practice_ed25519 alice@web-prod-1.example.com uptime
+```
+
+```text
+ 10:41:12 up 41 days,  3:51,  0 users,  load average: 0.31, 0.28, 0.25
+```
+
+Everything after the host name is run on the remote machine; quote it when it has several words or special characters, for example `ssh alice@host 'df -h / && free -h'`.
+
+Why the private key's permissions matter: anyone who can read that file can log in to every server that trusts it, as you, with no password. If it were `644`, any other user or compromised process on your laptop could copy it. SSH itself enforces this: if the key is readable by others it prints `WARNING: UNPROTECTED PRIVATE KEY FILE!` and `This private key will be ignored`, and refuses to use it. A passphrase adds a second lock: a stolen copy of the file is useless without it.
+
+The trap most learners fall into is running plain `ssh-keygen -t ed25519` on a machine that already has `~/.ssh/id_ed25519` and answering `y` to "Overwrite?". The old private key is gone, and so is your access to every server and Git host that only knew the old public key. That is why this answer uses `-f`.
+
+Check it yourself: `ssh-keygen -y -f ~/.ssh/practice_ed25519` rebuilds the public key from the private one and must print the same line as `cat ~/.ssh/practice_ed25519.pub`, which proves which file is which. When you are done practising, delete exactly these two files: `rm ~/.ssh/practice_ed25519 ~/.ssh/practice_ed25519.pub`.

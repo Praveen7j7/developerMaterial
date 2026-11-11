@@ -141,6 +141,78 @@ A senior defines the core domain objects (`Order`, `Customer`, `Product`) as int
 
 Write a function `publicProfile(user)` where the user object has `id`, `email`, `passwordHash` and `createdAt`. Return an object with only `id`, `email` and `createdAt` (as an ISO string), and prove with a TypeScript type that `passwordHash` cannot appear in the return type. Acceptance criteria: changing the function to include `passwordHash` must cause a compile error.
 
+#### Worked answer to the exercise
+
+```ts
+interface User {
+  id: string;
+  email: string;
+  passwordHash: string;
+  createdAt: Date;
+}
+
+// The public shape. `passwordHash?: never` means "this key may never hold a value".
+interface PublicProfile {
+  id: string;
+  email: string;
+  createdAt: string; // ISO string, ready for JSON
+  passwordHash?: never;
+}
+
+function publicProfile(user: User): PublicProfile {
+  return {
+    id: user.id,
+    email: user.email,
+    createdAt: user.createdAt.toISOString(),
+  };
+}
+
+const user: User = {
+  id: 'usr_42',
+  email: 'alice@example.com',
+  passwordHash: 'not-a-real-hash',
+  createdAt: new Date('2026-11-05T09:30:00Z'),
+};
+console.log(publicProfile(user));
+```
+
+```text
+{
+  id: 'usr_42',
+  email: 'alice@example.com',
+  createdAt: '2026-11-05T09:30:00.000Z'
+}
+```
+
+Now prove the acceptance criterion by trying to leak the hash in the two ways people actually do it:
+
+```ts
+// Attempt 1: the extra field written out in the literal.
+function leak1(user: User): PublicProfile {
+  return { id: user.id, email: user.email, createdAt: user.createdAt.toISOString(), passwordHash: user.passwordHash };
+}
+
+// Attempt 2: the sneaky one, via spread.
+function leak2(user: User): PublicProfile {
+  return { ...user, createdAt: user.createdAt.toISOString() };
+}
+```
+
+Add both functions below the two interfaces and run `npx tsc --noEmit --strict public-profile.ts`. It rejects both (your line numbers depend on your file):
+
+```text
+public-profile.ts(19,85): error TS2322: Type 'string' is not assignable to type 'undefined'.
+public-profile.ts(24,3): error TS2322: Type '{ id: string; email: string; passwordHash: string; createdAt: string; }' is not assignable to type 'PublicProfile'.
+  Types of property 'passwordHash' are incompatible.
+    Type 'string' is not assignable to type 'undefined'.
+```
+
+Why `passwordHash?: never` is needed: without it, TypeScript only catches attempt 1. Its "excess property check" runs on properties you write out in an object literal, but not on properties that arrive through a spread or from another variable. So with a plain `{ id; email; createdAt }` type, attempt 2 compiles, and the hash goes out in the JSON. Declaring the key as optional `never` turns "this key is not part of the type" into "this key is forbidden", and the compiler then checks it however the object was built. (The message mentions `undefined` because an optional `never` property can only ever be missing.)
+
+The trap most learners fall into is `Omit<User, 'passwordHash'>`. It reads like a guarantee, but it only removes the key from the type; it does not forbid it, so the spread version still compiles. The real defence is the habit from the mapper above: build the response field by field, never by spreading the database row (1.5.1).
+
+Check it yourself: paste the two leak functions into your file and run `npx tsc --noEmit --strict` on it; both must fail. Then delete `passwordHash?: never` from `PublicProfile` and run it again: attempt 2 now compiles, which shows why the line is there.
+
 ### 1.5.2 Arrays and the methods you will actually use
 
 #### Concept
@@ -241,7 +313,7 @@ At 09:00 a reporting endpoint starts returning the wrong order of results interm
 - `sort` without a comparator sorts **as strings**, so `[10, 2, 1].sort()` gives `[1, 10, 2]`. Always pass `(a, b) => a - b` for numbers.
 - `find` returns `undefined` when nothing matches; using the result without checking throws.
 - `reduce` with no initial value throws on an empty array; always pass the initial accumulator.
-- `map` over a huge array builds a whole second array in memory; for millions of rows, stream instead (Part 9).
+- `map` over a huge array builds a whole second array in memory; for millions of rows, stream instead (Part 10).
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -265,6 +337,60 @@ A senior reaches for `map`/`filter`/`reduce` by default and writes a manual `for
 #### Practical exercise
 
 Given an array of order objects each with `status` and `totalCents`, write one chained expression that computes the total revenue of only the `'paid'` orders. Then write a second expression that returns the three highest-value paid orders. Acceptance criteria: the original array is not mutated, and both handle an empty input array without throwing.
+
+#### Worked answer to the exercise
+
+```ts
+interface Order {
+  id: string;
+  status: 'pending' | 'paid' | 'cancelled';
+  totalCents: number;
+}
+
+// readonly Order[]: the compiler now refuses .sort(), .push() and friends on this array.
+const orders: readonly Order[] = Object.freeze([
+  { id: 'ord_1', status: 'paid', totalCents: 4299 },
+  { id: 'ord_2', status: 'pending', totalCents: 1500 },
+  { id: 'ord_3', status: 'paid', totalCents: 12900 },
+  { id: 'ord_4', status: 'cancelled', totalCents: 99900 },
+  { id: 'ord_5', status: 'paid', totalCents: 2500 },
+  { id: 'ord_6', status: 'paid', totalCents: 7800 },
+]);
+
+// 1. Revenue of paid orders. The 0 makes an empty input return 0 instead of throwing.
+const paidRevenueCents = orders
+  .filter((o) => o.status === 'paid')
+  .reduce((sum, o) => sum + o.totalCents, 0);
+
+// 2. Three highest-value paid orders. filter() returns a NEW array, so sorting it is safe.
+const topThreePaid = orders
+  .filter((o) => o.status === 'paid')
+  .sort((a, b) => b.totalCents - a.totalCents)
+  .slice(0, 3);
+
+console.log(paidRevenueCents);
+console.log(topThreePaid.map((o) => `${o.id}=${o.totalCents}`));
+console.log(orders.map((o) => o.id).join(',')); // original order untouched
+
+// Empty input: no throw, sensible results.
+const none: readonly Order[] = [];
+console.log(none.filter((o) => o.status === 'paid').reduce((s, o) => s + o.totalCents, 0));
+console.log(none.filter((o) => o.status === 'paid').sort((a, b) => b.totalCents - a.totalCents).slice(0, 3));
+```
+
+```text
+27499
+[ 'ord_3=12900', 'ord_6=7800', 'ord_1=4299' ]
+ord_1,ord_2,ord_3,ord_4,ord_5,ord_6
+0
+[]
+```
+
+Why it is right: both expressions start with `filter`, which always returns a new array, so the `sort` that follows reorders that copy and never the original. `b.totalCents - a.totalCents` is negative when `b` is smaller, which puts larger totals first (descending). `slice(0, 3)` takes at most three, so a list with only two paid orders simply returns two. The `0` passed to `reduce` is the starting sum: on an empty list `reduce` returns it instead of throwing `TypeError: Reduce of empty array with no initial value`. Note that the big cancelled order (99900) is correctly left out of both answers.
+
+The trap most learners fall into is writing the steps in the other order: `orders.sort(...).filter(...)`. The result looks the same, but `sort` ran on the original array and reordered it for every other piece of code that holds it, which is the shared-cache incident from the failure scenario above. Another classic is the comparator `(a, b) => a.totalCents < b.totalCents`, which returns a boolean instead of a number and sorts unpredictably.
+
+Check it yourself: the `readonly Order[]` type and `Object.freeze` are the test. Write `orders.sort((a, b) => b.totalCents - a.totalCents)` and the compiler stops you with `Property 'sort' does not exist on type 'readonly Order[]'`; if you sneak past the compiler with a cast, the frozen array throws a `TypeError` at runtime instead of being silently reordered. On Node 20 and later you can also write `.toSorted(...)`, which always returns a sorted copy.
 
 ### 1.5.3 Maps, Sets and when to use them
 
@@ -296,7 +422,7 @@ const unique = [...new Set(['a', 'b', 'a', 'c'])]; // ['a', 'b', 'c']
 
 #### How a Senior Backend Engineer thinks about this
 
-Reaching the right collection is a small decision with a real performance consequence. Checking `array.includes(x)` scans the whole array every time (slow for large lists); a `Set.has(x)` is near-instant. Building a lookup by scanning an array inside a loop is accidentally quadratic; building a `Map` once and looking up is linear. For the data structures behind these (hash tables), see Part 7; here, the habit is: list of things to iterate is an array, lookup by key is a `Map`, uniqueness or membership is a `Set`.
+Reaching the right collection is a small decision with a real performance consequence. Checking `array.includes(x)` scans the whole array every time (slow for large lists); a `Set.has(x)` is near-instant. Building a lookup by scanning an array inside a loop is accidentally quadratic; building a `Map` once and looking up is linear. For the data structures behind these (hash tables), see Part 8; here, the habit is: list of things to iterate is an array, lookup by key is a `Map`, uniqueness or membership is a `Set`.
 
 #### Interview questions
 
@@ -306,3 +432,40 @@ Reaching the right collection is a small decision with a real performance conseq
 #### Practical exercise
 
 You have 100,000 order IDs already processed (in an array) and a new batch of 10,000. Write code that returns only the new batch IDs not already processed, using a `Set` so it runs in linear time. Acceptance criteria: do not use `array.includes` inside a loop.
+
+#### Worked answer to the exercise
+
+```ts
+// Test data: 100,000 processed ids, and a batch of 10,000 where half were already seen.
+const processedIds: string[] = Array.from({ length: 100_000 }, (_, i) => `ord_${i}`);
+const batch: string[] = Array.from({ length: 10_000 }, (_, i) => `ord_${95_000 + i}`);
+
+function newIdsOnly(processed: readonly string[], incoming: readonly string[]): string[] {
+  const seen = new Set(processed);                  // one pass: O(n)
+  return incoming.filter((id) => !seen.has(id));    // one pass, O(1) per lookup: O(m)
+}
+
+let start = performance.now();
+const fresh = newIdsOnly(processedIds, batch);
+console.log(`Set:      ${fresh.length} new ids in ${(performance.now() - start).toFixed(1)} ms`);
+console.log(fresh[0], fresh[fresh.length - 1]);
+
+// For comparison only: the slow version the exercise forbids.
+start = performance.now();
+const slow = batch.filter((id) => !processedIds.includes(id));
+console.log(`includes: ${slow.length} new ids in ${(performance.now() - start).toFixed(1)} ms`);
+```
+
+```text
+Set:      5000 new ids in 7.7 ms
+ord_100000 ord_104999
+includes: 5000 new ids in 3263.0 ms
+```
+
+(Timings are from one laptop run; yours will differ, but the gap will not.)
+
+Why it is right: building the `Set` touches each of the 100,000 processed ids once. After that, `seen.has(id)` answers in roughly constant time, because a `Set` is a hash table: it jumps straight to where the id would be instead of scanning. The whole job is about 100,000 + 10,000 steps. The `includes` version scans up to 100,000 ids for each of the 10,000 batch ids, up to a billion comparisons, which is why it is about 400 times slower here and gets worse as either list grows.
+
+The trap most learners fall into is building the `Set` in the wrong place: `batch.filter((id) => !new Set(processedIds).has(id))`. It uses a `Set`, so it looks right, but it rebuilds a 100,000-entry set for every one of the 10,000 ids, and is even slower than `includes`. Build the lookup once, outside the loop. A second point to decide: if the batch itself contains the same id twice, this keeps both copies. If you need each new id only once, add each id to `seen` as you keep it.
+
+Check it yourself: the expected answer is 5,000 ids, from `ord_100000` to `ord_104999`, because the batch runs from `ord_95000` to `ord_104999` and everything below `ord_100000` was already processed. Then double the size of `processedIds` and run again: the `Set` time barely moves, while the `includes` time roughly doubles.

@@ -1,256 +1,253 @@
-## 84.7 Worked example: an interview loop and rubrics for a senior NestJS/PostgreSQL engineer
+## 84.7 Worked example: PHP monolith on MySQL to NestJS services on PostgreSQL
 
-This section brings the hiring half of the Part together in one complete artifact: the full interview loop and rubrics for hiring a senior NestJS/PostgreSQL backend engineer. It applies the loop design (84.4), the question-and-rubric writing (84.5), and the interviewer practices (84.6) to a concrete, realistic role.
+This section brings the whole Part together in one eighteen-month migration: moving an order system from a PHP monolith on MySQL to NestJS services on PostgreSQL. It exercises every tool in this Part — run as a program, decomposed by data ownership, migrated with the right strategies, data moved with backfill + CDC + reconciliation, and the old system actually turned off. It also contains the incident story the outline asks for: the migration that silently lost 0.3% of refunds, and how reconciliation caught it.
 
-#### The role and its success signals
+#### The situation
 
-QuickBite needs a senior backend engineer for its ordering team: NestJS and PostgreSQL, owning features end to end, operating them in production. Following 84.4, the signals that predict success in this specific role, defined first:
+OrderCo runs its whole order system as a PHP monolith on a single large MySQL database. It is 400,000 lines of PHP, deploys are scary, and the team wants to move to NestJS services on PostgreSQL to enable independent deploys, better tooling, and the type safety the rest of the company has. The migration is expected to take eighteen months. A principal engineer leads it. Here is how it runs, compressed.
 
-```text
-1. Coding: correct, clean TypeScript; reasons about complexity and edge cases.
-2. System design: designs under realistic constraints; failure modes, scale,
-   tradeoffs, operability. (The critical senior signal.)
-3. Backend depth: PostgreSQL (indexes, transactions, locking), NestJS patterns,
-   concurrency, API design — the role's technical core.
-4. Debugging: methodical diagnosis of a realistic production problem.
-5. Ownership & collaboration: operating under ambiguity, production ownership,
-   working with and growing others.
-```
+#### Run as a program (84.2)
 
-#### The loop (four stages, one distinct signal each)
+A single program owner (the principal) holds the whole thing. The inventory lists all 140 endpoints, 12 background jobs, 34 tables, and 43 external/internal callers. A dashboard shows completion (not volume) and the headline "legacy monolith: STILL RUNNING, scheduled deletion month 18". Milestones have dates. A weekly update goes to all stakeholders and the exec sponsor, with the countdown to deletion. This is what keeps the migration from stalling at 80%.
 
-```markdown
-# Loop: Senior Backend Engineer, ordering team (4 stages, no redundancy)
-| Stage | Targets | Format |
-|---|---|---|
-| 1. Screen | Coding + basic backend depth | 1hr: a realistic coding problem (e.g. an in-memory order-rate limiter) |
-| 2. System design | System design | 1hr: "design the order notification system" (57.6) |
-| 3. Backend deep-dive | Backend depth + debugging | 1hr: PostgreSQL/NestJS/concurrency Qs + a debug scenario |
-| 4. Past-project + behavioural | Ownership + collaboration | 1hr: structured past-project deep-dive |
+#### Strategy: strangler + parallel run (84.3)
 
-Coverage check: coding(1), design(2), depth(3), debugging(3), ownership(4).
-All signals covered, none redundant. No 3rd coding round, no "culture fit" chat.
-```
+The overall strategy is strangler: a routing facade (an Nginx/NestJS gateway) sits in front and routes each endpoint to either the PHP monolith or the new NestJS service, reversible per endpoint. For the money-critical parts — refund and payment calculations — a parallel run is layered on: the new service computes the result, the old monolith's result is served, and the two are diffed and logged until they match. For shared logic used by many internal callers, branch-by-abstraction.
 
-#### The rubrics (one per stage, strong/mixed/weak by behaviour)
+#### Decomposition by data ownership (84.4)
 
-The system design rubric is in 84.5. Here are the other three, abbreviated to their strong/weak poles:
+The monolith's 34 tables are assigned to bounded contexts: orders, payments, inventory, notifications. The orders service is extracted first (the hard, pathfinding first service, three months) and becomes the sole owner of the order tables. Temporary shared-database bridges (the orders service reading the products and users tables directly) are created with end dates. Every other reader of the order tables is cut over to the orders service API. The data-ownership map governs this.
+
+#### Data migration: backfill + CDC + reconciliation (84.5)
+
+Order data moves from MySQL to PostgreSQL: a batched, idempotent, throttled backfill of the historical rows (several days), CDC via Debezium reading the MySQL binlog streaming ongoing changes to PostgreSQL during the backfill, and reconciliation (row counts, value checksums, field-level sampling) gating every cutover. This is where the incident happens.
+
+#### The incident: 0.3% of refunds silently lost
 
 ```markdown
-# Stage 1 — Coding rubric (order-rate-limiter problem)
-STRONG: correct solution; handles edge cases (concurrent requests, window
-  boundaries) unprompted; clean, readable TypeScript; reasons about complexity.
-WEAK: incorrect or needs heavy hints; misses edge cases even when prompted;
-  tangled code; can't reason about complexity.
+# Incident retro (blameless): refund data divergence caught by reconciliation
 
-# Stage 3 — Backend deep-dive rubric
-STRONG (PostgreSQL): explains index choice and reads EXPLAIN; knows transaction
-  isolation and locking (e.g. SELECT FOR UPDATE for a hot row); understands
-  connection pooling. (Concurrency): reasons about race conditions, idempotency.
-  (Debugging): methodical — forms hypotheses, checks them, narrows down.
-WEAK: vague on indexes and isolation; no idempotency awareness; debugging is
-  random guessing rather than hypothesis-driven.
+## What happened
+During the refunds cutover prep, the reconciliation report showed row counts
+matching between MySQL and PostgreSQL, but the VALUE CHECKSUM over refund
+amounts was off — PostgreSQL's total was lower than MySQL's by an amount that
+worked out to ~0.3% of refunds being wrong or missing.
 
-# Stage 4 — Past-project + behavioural rubric (ownership & collaboration)
-STRONG: has owned a system in production (alerts, on-call, incidents); defined
-  an ambiguous problem and wrote it down; grown another engineer; disagreed and
-  committed; explains tradeoffs to non-engineers. (These map to the senior bar,
-  Part 56.)
-WEAK: only ever implemented specs; no production ownership; no evidence of
-  deciding under ambiguity or growing others.
+## Why (root cause)
+The refund sync used application-level DUAL WRITES during an early phase of
+the migration (before CDC was in place for that table). About 0.3% of the
+time, the write to PostgreSQL failed (a transient timeout) after the MySQL
+write succeeded, and the error handler just logged and continued. Each
+failure was one refund that existed in MySQL but not PostgreSQL — a silent,
+gradual divergence (the classic dual-write problem, Part 30.9).
+
+## How it was caught
+The value-checksum reconciliation check. Row counts ALONE would have missed
+it in some cases, and even where counts differed, it was the checksum that
+quantified the money impact and flagged it as critical. This is exactly why
+we reconcile on value, not just count (54.5).
+
+## Why it did NOT become a customer incident
+Because reconciliation GATES cutover. We had not cut refunds over to
+PostgreSQL yet — MySQL was still the served source of truth. The divergence
+was caught in a report, affecting ZERO customers.
+
+## Fix
+1. Replaced the refund dual-writes with CDC (captures every committed change
+   from the binlog; cannot miss a committed write).
+2. Backfilled the missing 0.3% of refunds from MySQL into PostgreSQL.
+3. Re-ran reconciliation until the value checksum matched to the cent.
+4. Only then cut refunds over.
+
+## Lesson
+Dual writes silently diverge; reconciliation on VALUE (not just count) is what
+stands between a silent data-loss migration and a safe one. Had we cut over on
+test confidence or row-count-only reconciliation, 0.3% of refunds would have
+shipped wrong to production — a financial incident requiring mass corrections.
 ```
 
-#### Running it well and deciding
+This is the migration that "silently lost 0.3% of refunds" — except reconciliation caught it before cutover, so it lost nothing that reached a customer. The difference between a catastrophe and a non-event was a single reconciliation check on value rather than count, run as a gate before cutover. That is the entire lesson of 84.5 made concrete.
 
-Each interviewer runs their stage per the 84.6 practices — the system design interviewer steers without leading and probes for depth; the coding interviewer lets the candidate drive; everyone scores against the rubric with evidence-based feedback (84.5). After the loop, a debrief combines the evidence. Because each stage produced a distinct, rubric-based signal, the debrief is a comparison of clear evidence, not a clash of vague impressions: "strong coder (stage 1), strong design instincts but weak scale reasoning (stage 2), solid PostgreSQL but shaky on idempotency (stage 3), clear production ownership and has grown others (stage 4)". A bar raiser holds the senior bar. The decision — say, "hire: the scale-reasoning gap is real but coachable given the strong fundamentals and clear ownership" — rests on combined, comparable, evidence-based signal across all the dimensions that predict success in the role.
+#### Turning the monolith off (84.6)
 
-#### Why this loop and these rubrics work
+With all contexts extracted and data migrated, the final act: usage telemetry shows the remaining callers of the PHP monolith declining to 7, then to 2 orphans. Deprecation notices go out. Two brownouts flush out the laggards. The orphaned callers are escalated with the deletion date; one is claimed and migrated, one is turned off with a rollback ready and nobody screams. At month 18, on schedule, the PHP monolith is powered off and its code deleted. The migration is *done* — not 95% done, not "the monolith returns 410", but deleted. OrderCo now pays for one system, deploys independently per service, and has the type safety and tooling it wanted.
 
-Trace it against the Part. The signals were defined *first*, from what predicts success in this specific role (84.4). The loop maps one distinct signal per stage with a coverage check and no redundancy — no three coding rounds, no unstructured "culture fit" chat (84.4). Each stage has a rubric defining strong/mixed/weak by concrete behaviours, so evaluation is against a standard, not gut feel, and feedback is evidence-based (84.5). The questions are realistic (drawn from the actual work — order rate limiter, order notifications, a production debug) rather than trivia (84.5). The interviewers run their stages to elicit the candidate's judgement, not to lecture (84.6). And a bar raiser holds the standard (84.5). The result is a hiring process that is efficient (four focused rounds), comprehensive (all success signals covered), consistent and fair (rubrics and calibration), and produces decisions based on comparable evidence — which is what separates good hiring from the lottery of idiosyncratic, bias-prone impressions that unstructured loops produce.
+#### Why this migration succeeded
+
+Trace it against the Part. It was run as a *program* with a single owner, a complete inventory, a completion-focused dashboard, and a relentless weekly cadence — so it never stalled. It used the right *strategy per component* — strangler for routing, parallel run for money math — so the blast radius always matched the stakes. It decomposed by *data ownership* with temporary, dated bridges — so it never became a distributed monolith. It moved data with *backfill + CDC + reconciliation* — so it never silently lost data, and the one divergence that occurred was caught in a report affecting zero customers. And it *actually turned the old system off* — telemetry, brownouts, orphan handling, a scheduled deletion date — so it delivered its full value instead of becoming the 80%-done-forever tax. Every one of those was a deliberate choice by the principal, and skipping any one of them is how the many migrations that stall or cause incidents go wrong.
 
 #### Practical exercise
 
-Design a complete interview loop and rubrics for a role your team hires for. Define the success signals first, design a loop of four to five stages each targeting a distinct signal (with a coverage check showing all signals covered and none redundant), write a rubric for each stage defining strong/mixed/weak by concrete behaviours, and ensure the questions are realistic rather than trivia. Specify how you will run each stage to elicit the candidate's judgement and how a bar raiser will hold the standard.
+Plan a real or hypothetical platform migration end to end using every tool in this Part. Produce: the program setup (owner, inventory, completion-focused dashboard, cadence), the strategy choice per major component (justified by blast radius), the data-ownership decomposition plan, the data-migration plan (backfill + sync + multi-dimensional reconciliation), and the deprecation-and-deletion plan (telemetry, brownouts, orphan handling, deletion date). Define done as the old system deleted.
 
-**Acceptance criteria:** the signals are defined first from what predicts success in the specific role; the loop maps each stage to a distinct signal with an explicit coverage check (all covered, none redundant) and excludes unstructured "culture fit" rounds; each stage has a behaviour-based rubric; the questions are realistic (drawn from the actual work); and the process includes evidence-based feedback and a bar-raiser mechanism — so hiring decisions rest on comparable, fair, standard-based evidence.
+**Acceptance criteria:** the plan measures completion (old system running: yes/no) not volume; assigns different migration strategies to components by blast radius with parallel run for anything correctness-critical; decomposes by data ownership with time-boxed bridges; reconciles data on value (not just count) as a cutover gate; and ends with a scheduled deletion of the old system, with a plan for the orphaned last callers. A reader can see that this migration is designed to finish and to never silently lose data.
 
-## 84.8 Feedback, difficult conversations, and retention
+## 84.8 Migration verification, observability, and the human side
 
 #### Concept
 
-Three aspects of growing engineers that go beyond mentoring and hiring into the harder human territory. **Giving feedback** well — specific, timely, actionable, balanced between reinforcing and corrective — is the everyday mechanism of growth. **Difficult conversations** — telling someone their work is not good enough, that they are not ready for promotion, or that they need to change a behaviour — are where growth leadership is tested, and handling them well (honest, kind, clear, with a path forward) is a distinct skill. **Retention** — keeping the engineers you have grown and hired — is the often-overlooked other half of talent: hiring and growing people is wasted if they leave, so understanding why engineers stay or go, and acting on it, protects the investment.
+Two aspects of large migrations that determine success as much as the technical plan. **Migration verification and observability** is how you continuously prove the migration is working and catch problems early — comparison dashboards, diffing old versus new outputs, metrics that show the migration's health, and the reconciliation that gates each cutover (84.5). **The human side** is managing the people through a long migration — keeping morale up during the unglamorous grind, maintaining momentum when the migration competes with features, and handling the organisational fatigue that sets in during a multi-year effort. A migration that is technically sound but loses the people (burnout, lost momentum, fatigue) stalls as surely as one with a bad plan.
 
 #### Why does it exist?
 
-Imagine growing engineers with no feedback, avoiding difficult conversations, and ignoring retention. Without feedback, people do not know what to improve or what to keep doing, so growth is slow and random. Without difficult conversations, underperformance festers (nobody told them), promotion disappointments blindside people (nobody set expectations), and bad behaviours continue (nobody addressed them) — until the problems become crises. And without attention to retention, the engineers you painstakingly grew and hired leave, taking the investment with them, often for reasons (lack of growth, bad management, feeling undervalued) that were addressable.
+Imagine a migration running without verification — you cut over and *hope* the new system is correct, discovering problems only when customers complain. Or imagine a migration with no observability — you cannot tell whether it is healthy, how far along it is, or whether the new path is working under real traffic. Verification and observability exist because a migration touches live, important systems, and you must *know*, continuously and with evidence, that it is working — not hope, not assume, but prove via diffs, metrics, and reconciliation.
 
-These skills exist because growing people requires honest communication (feedback and difficult conversations) and because the point of growing people is to keep them (retention). Feedback is the everyday growth signal; difficult conversations are the hard honest moments that growth leadership cannot avoid; and retention is the protection of the whole talent investment. A leader who grows people but cannot give feedback, avoids hard conversations, and loses people to addressable causes has a leaky, inefficient talent pipeline.
+The human side exists because large migrations are long, unglamorous grinds that compete with exciting feature work for people's energy and attention over months or years. The engineers doing the migration can burn out on the tedium; the organisation can lose patience and momentum; fatigue sets in as the migration drags. A migration that ignores the human side loses the very people it depends on, and a demoralised team or a fatigued organisation stalls a technically-sound migration. The human side exists because migrations are run by people over a long time, and sustaining those people is as essential as the technical plan.
 
 #### Mental model
 
-Imagine a coach developing athletes. Feedback is the constant, specific guidance after every practice ("your form on that was strong; your timing was off here, try this") — without it, athletes improve slowly and randomly. Difficult conversations are the hard honest moments ("you're not going to make the starting team this season, and here's specifically what you need to work on") — avoided, they let problems fester and blindside people; handled well, they are honest, kind, and give a path forward. And retention is keeping the athletes you developed on the team — a coach who develops great athletes who then leave for other teams has wasted the development. Growing engineers is coaching: constant feedback, honest hard conversations, and keeping the talent you built.
+For verification, imagine a parallel flight test of a new aircraft. You do not just build the new plane and put passengers on it; you fly it alongside proven conditions, instrument everything, and compare its behaviour to the expected, catching problems in telemetry before they endanger anyone. Migration verification is the parallel flight test: run the new system, instrument it, compare its outputs to the old (diffing), and prove it is correct via telemetry and reconciliation before you trust it with real traffic.
+
+For the human side, imagine a long expedition — a months-long trek. The route (technical plan) matters, but so does keeping the team's morale up through the tedious middle stretches, maintaining momentum when energy flags, and managing the fatigue of a long journey. An expedition leader who only plans the route and ignores the team's morale finds the team exhausted and demoralised halfway, and the expedition stalls. A long migration is an expedition, and leading the people through it is as essential as the route.
 
 #### How it works
 
-**Giving feedback:**
+**Verification and observability:**
 
 ```text
-- Specific, not vague: "your design didn't address the failure mode of a retry"
-  not "the design could be better." Specific feedback is actionable.
-- Timely: close to the event, while it's fresh and changeable.
-- Actionable: the person can do something with it; tied to a behaviour, not a trait.
-- Balanced: reinforcing feedback (what to keep doing — "your incident handling
-  was excellent") AND corrective feedback. Reinforcing is as important as
-  corrective; people grow by doing more of what works, not just fixing what doesn't.
-- Kind and direct: honest about the problem, respectful of the person (hard on
-  the issue, soft on the person — Part 116.4).
+- Diffing old vs new: during parallel run (54.3), compare the two systems'
+  outputs on the same inputs. Any diff is investigated. Catches correctness
+  bugs (the 0.3% refunds, 54.7) before cutover, affecting zero customers.
+- Comparison dashboards: show the diff rate over time. Trending to zero = the
+  new system matches = confidence to cut over.
+- Migration-health metrics: progress (completion, not volume — 54.1), error
+  rates on the new path, latency comparison, CDC lag (54.5), reconciliation status.
+- Reconciliation as a cutover GATE (54.5): data cutover requires reconciliation
+  (multi-dimensional, value checksums) to pass. Proof, not hope.
+- Canary observability: as you ramp (54.6), watch the new path's metrics at each
+  step; a regression means roll back (kill switch) before going further.
 ```
 
-**Difficult conversations** (underperformance, promotion disappointment, behaviour):
+The principle: you must be able to *prove*, continuously, that the migration is working — via diffs that trend to zero, metrics that show health, and reconciliation that gates cutover. A migration you cannot observe is a migration you cannot trust.
+
+**The human side:**
 
 ```text
-- Don't avoid them: avoided, problems fester and blindside people; the kindest
-  thing is honest, timely clarity.
-- Be clear and specific: name the gap/behaviour concretely, with examples.
-- Be kind: deliver it respectfully; it's hard for them to hear.
-- Give a path forward: what specifically would change the outcome (what to work
-  on for the promotion, what behaviour to change). Honest + path forward = growth.
-- Own your part: if you failed to give feedback earlier, acknowledge it.
-```
-
-**Retention:**
-
-```text
-- Understand why engineers stay/leave: growth opportunities, interesting work,
-  good management, feeling valued, compensation, autonomy. Most addressable
-  reasons are about growth and management, not just pay.
-- Growth is retention: engineers who are growing (stretch work, sponsorship —
-  57.1/57.2) stay; those who've stagnated leave. Growing people IS retaining them.
-- Stay conversations (not just exit interviews): ask people what would make them
-  stay/leave BEFORE they're leaving, and act on it.
-- Protect the investment: a regretted departure of someone you grew/hired is a
-  large loss; retention protects the whole talent pipeline.
+- Morale through the grind: the migration's unglamorous middle is where morale
+  sags. Celebrate milestones (completion milestones, 54.2), rotate people through
+  the tedious parts, and make the progress visible (the dashboard) so people see
+  they're advancing.
+- Momentum vs features: the migration constantly competes with feature work. The
+  program owner (54.2) defends the migration's resourcing and keeps it visible
+  (the cadence) so it isn't quietly deprioritised.
+- Organisational fatigue: in a multi-year migration, patience wears thin ("are we
+  STILL doing this?"). Combat it by showing progress against completion, delivering
+  incremental value where possible, and holding the deletion date (54.1) as the
+  visible finish line.
+- Avoid the death march: a migration driven by overwork is unsustainable; pace it,
+  and protect the team (Part 86.5).
 ```
 
 ```mermaid
 flowchart LR
-    FB["Feedback: specific, timely, balanced"] --> GROW["People grow"]
-    DC["Difficult conversations: honest, kind, path forward"] --> GROW
-    GROW --> RET["Retention: growing people keeps them"]
-    STAY["Stay conversations: ask + act before they leave"] --> RET
-    RET --> INVEST["Talent investment protected"]
+    V["Verification: diff old vs new, trending to zero"] --> CONF["Confidence to cut over"]
+    OBS["Observability: progress, error rates, CDC lag, reconciliation"] --> CONF
+    REC["Reconciliation GATES cutover (proof, not hope)"] --> CONF
+    H["Human side: morale, momentum, fatigue, no death march"] --> FINISH["Migration finishes"]
+    CONF --> FINISH
 ```
 
 #### Artifact example
 
-A difficult-conversation structure and a stay-conversation guide — the artifacts for the hardest growth moments and for retention.
+A migration verification dashboard and a human-side health note — the artifacts that prove the migration works and keep the people with it.
 
 ```markdown
-# Difficult conversation: promotion-not-this-cycle (structure)
-DON'T avoid it or soften it into vagueness. Structure:
-1. Be clear up front: "You're not going to be promoted to staff this cycle. I
-   want to be honest about why and what would change it."
-2. Specific gap (with examples): "Staff requires leading a cross-team initiative
-   to completion. You've done excellent team-level work, but haven't yet owned a
-   cross-team project. That's the gap."
-3. Path forward: "Here's the plan — I'm going to sponsor you to lead the
-   notification-pipeline project (57.2). That's the cross-team evidence. Let's
-   check in monthly."
-4. Own my part: "I should have made this expectation clearer earlier — that's on
-   me, and we're fixing it now."
-RESULT: honest (no false hope), kind (respectful, with a plan), actionable (clear
-path). The WRONG version: vague ("maybe next time"), no reason, no path — leaves
-them confused, demotivated, and likely to leave.
+# Migration verification dashboard: order system (parallel run phase)
+
+## Output diffing (old vs new, same inputs)
+- Refund calculation: 0 diffs over last 7 days (was 0.3% — fixed, 54.7). READY.
+- Order totals: 0 diffs. READY.
+- Status transitions: 2 diffs/day — investigating (edge case in cancellations).
+  NOT YET ready to cut over status handling.
+
+## Data reconciliation (gates data cutover, 54.5)
+- Row counts match. Value checksums match to the cent. 100k sample: 0 field diffs.
+- CDC lag: 0.4s. DATA CUTOVER: CLEARED.
+
+## New-path health (canary at 10%)
+- Error rate: 0.02% (vs 0.02% old — equivalent). Latency: p99 better. HEALTHY.
+
+## Progress (completion, not volume, 54.1)
+- Legacy system: STILL RUNNING. Deletion: T-112 days. Callers remaining: 7.
 
 ---
-# Stay-conversation guide (retention — BEFORE they're leaving)
-Ask, periodically (not just at exit):
-- "What's keeping you here? What would make you consider leaving?"
-- "Are you growing? Is the work interesting? What would make it more so?"
-- "Do you feel valued? What would help?"
-Then ACT: if someone says they've stagnated, give them stretch work/sponsorship
-(57.1/57.2). If they feel undervalued, address it. Most regretted departures are
-about growth and management (addressable), not just pay — and are preventable if
-you ask and act BEFORE the exit interview.
+# Human-side health note (for the program owner)
+- Team morale: dipping — we're in the unglamorous middle. ACTION: celebrated the
+  50% milestone publicly; rotating the two engineers off the tedious backfill
+  verification next sprint.
+- Momentum: a feature push threatened to pull 1 engineer off. Held the line
+  (reframed: the migration enables the features). 
+- Org fatigue: "are we still doing this?" surfaced in a review. ACTION: shared the
+  deletion countdown and the incidents the migration has already prevented.
+- Pace: sustainable, no death march. Watching for burnout on the 2 core engineers.
 ```
 
-The difficult-conversation structure's power is that it is honest (clear up front, no false hope), specific (the gap with examples), kind (respectful, with a plan), and forward-looking (a concrete path, including sponsorship) — turning a hard moment into a growth opportunity rather than a demotivating, confusing blindside. The stay-conversation guide's power is that it addresses retention proactively (asking what would make someone stay or leave before they are leaving, then acting), recognising that most regretted departures are about addressable growth and management issues, not just pay. Both handle the human territory where growing engineers is genuinely hard.
+The dashboard's power is that it *proves* the migration is working — output diffs trending to zero (per sub-system, so you cut over each only when its diffs are zero), reconciliation gating data cutover, canary health — rather than hoping. And the human-side note treats morale, momentum, fatigue, and pace as first-class risks to actively manage, because a migration that loses its people stalls regardless of how good the verification looks. Together they address the two things beyond the technical plan that determine whether a long migration finishes: continuous proof that it works, and sustained people to carry it.
 
 #### Real-world scenario
 
-A principal engineer handles the hard human moments of growing people well, and it shows in both development and retention. She gives specific, timely, balanced feedback constantly, so the engineers she works with always know what to improve and what to keep doing, and they grow fast. When a difficult conversation is needed — telling someone they are not ready for promotion this cycle — she does not avoid it or soften it into vagueness; she is clear about the gap, kind in delivery, and concrete about the path forward (including sponsoring the stretch project that would close the gap), so the person leaves the conversation disappointed but motivated and clear, not confused and demoralised. And she attends to retention proactively, having stay conversations that surface what would keep people, and acting on them — giving a stagnating engineer stretch work before they start looking elsewhere. The result is that she both grows people effectively and keeps them, so her talent investment compounds. A peer who avoids difficult conversations (so problems fester and promotion disappointments blindside people) and ignores retention (so grown engineers leave for addressable reasons) has a leaky pipeline — he grows people and then loses them, and his teams are weaker despite comparable hiring and mentoring, because he neglected the hard honest conversations and the retention that protect the investment.
+A principal engineer running a long migration treats verification and the human side as seriously as the technical plan. On verification: she runs output diffing throughout the parallel-run phase, cutting over each sub-system only when its diff rate reaches zero, and she gates every data cutover on multi-dimensional reconciliation — so she *proves* correctness rather than hoping, and the one real bug (a refund-calculation edge case) is caught in a diff affecting zero customers. On the human side: she notices morale dipping during the unglamorous middle, so she celebrates the completion milestones publicly and rotates engineers off the most tedious work; when a feature push threatens the migration's resourcing, she defends it by reframing it as what enables the features; and when organisational fatigue surfaces ("are we still doing this?"), she combats it by showing the deletion countdown and the incidents already prevented. The migration finishes on schedule, because it was both continuously proven correct and carried by a team whose morale and momentum she actively sustained. A peer running a comparable migration with a sound technical plan but no verification discipline (cutting over on hope) and no attention to the human side (letting morale and momentum erode) sees it stall — a correctness bug reaches production, and the demoralised, fatigued team loses momentum. The technical plans were comparable; the difference was verification and the human side, which determine whether a long migration actually finishes.
 
 #### How a Senior Backend Engineer thinks about this
 
-They give feedback as a constant, specific, timely, balanced practice — reinforcing what works as much as correcting what does not — because they know feedback is the everyday signal that drives growth, and that vague or absent feedback leaves people improving slowly and randomly. They do not avoid difficult conversations, because they understand that avoidance is unkind in the long run: unaddressed underperformance festers, promotion disappointments blindside people, and bad behaviours continue, until the problems become crises — whereas honest, kind, specific conversations with a path forward turn hard moments into growth. They own their part when they failed to give feedback earlier.
+They treat verification as non-negotiable: they prove the migration is working continuously — via output diffing that must trend to zero before cutover, migration-health metrics, and reconciliation that gates every data cutover — because they know that a migration touches live important systems and must be *proven* correct, not hoped correct, and that the cost of a correctness bug reaching production (data corruption, a breach of trust) is far higher than the cost of the verification. They observe the migration thoroughly (progress by completion, error rates, CDC lag) because a migration they cannot see is a migration they cannot trust or steer.
 
-And they treat retention as the other half of talent, because they know that growing and hiring people is wasted if those people leave, and that most regretted departures are about addressable causes — stagnation, bad management, feeling undervalued — not just pay. So they attend to retention proactively: growing people (which is itself retention, since growing engineers stay), having stay conversations before the exit interview, and acting on what they learn. The senior engineer understands that growing engineers requires the hard human skills — honest feedback, difficult conversations, and retention — not just the pleasant parts (mentoring, hiring), and that neglecting the hard parts produces a leaky, inefficient talent pipeline where people are grown and then lost.
+They also treat the human side as a first-class risk, because they understand that a long migration is a grind carried by people over months or years, and that a demoralised team, lost momentum, or organisational fatigue will stall a technically-sound migration as surely as a bad plan. So they actively manage morale (celebrate milestones, rotate the tedious work), defend momentum (protect resourcing against feature pulls, keep the cadence), combat fatigue (show progress and the finish line), and avoid the death march (sustainable pace, protect the team). The senior engineer knows that finishing a large migration — the whole challenge of this Part — requires three things together: a sound plan, continuous proof it is working, and sustained people to carry it to completion, and that neglecting either of the latter two is how good plans still fail.
 
 #### Common mistakes
 
-- **Vague or absent feedback,** so people don't know what to improve or keep doing.
-- **Only corrective feedback, no reinforcing,** so people don't know what's working to do more of.
-- **Avoiding difficult conversations,** letting problems fester and blindside people.
-- **Difficult conversations with no path forward,** leaving people demotivated and confused rather than clear.
-- **Ignoring retention,** so grown and hired engineers leave for addressable reasons, wasting the investment.
-- **Only doing exit interviews,** learning why people leave after it's too late, instead of stay conversations.
+- **Cutting over on hope** instead of proving correctness via diffing and reconciliation.
+- **No output diffing during parallel run,** so correctness bugs reach production instead of being caught in a diff.
+- **No migration observability,** so you cannot tell if it is healthy or how far along (by completion).
+- **Ignoring team morale through the grind,** so the engineers burn out on the tedium and the migration stalls.
+- **Not defending the migration's momentum,** letting it be quietly deprioritised for features.
+- **Running a death march,** an unsustainable pace that burns out the team before the finish.
 
 #### Interview questions
 
-1. **What makes feedback effective for growing engineers?**
-   *Expected answer:* specific (tied to a behaviour with examples, not a vague trait), timely (close to the event), actionable (the person can do something with it), and balanced — reinforcing feedback (what to keep doing) as much as corrective, because people grow by doing more of what works, not just fixing what doesn't — delivered kindly and directly (hard on the issue, soft on the person). *Why it matters:* feedback is the everyday mechanism of growth.
+1. **How do you prove a migration is working, rather than hoping?**
+   *Expected answer:* output diffing during parallel run (compare old vs new on the same inputs; cut over each sub-system only when its diff rate reaches zero), migration-health observability (progress by completion, error rates, latency comparison, CDC lag), and reconciliation that gates every data cutover (multi-dimensional, value checksums). A migration you cannot observe or verify is one you cannot trust. *Why it matters:* verification catches correctness bugs before they reach customers.
 
-2. **How do you handle telling someone they're not getting promoted this cycle?**
-   *Expected answer:* don't avoid it or make it vague; be clear up front, name the specific gap with examples, deliver it kindly, give a concrete path forward (including sponsoring the stretch work that would close the gap), and own your part if you failed to set the expectation earlier. Honest + specific + kind + path forward turns a hard moment into growth; vague ("maybe next time") with no reason or path demotivates and loses people. *Why it matters:* difficult conversations are where growth leadership is tested.
+2. **Why is the human side as important as the technical plan in a large migration?**
+   *Expected answer:* a long migration is an unglamorous grind carried by people over months or years, competing with exciting feature work; if morale erodes (burnout on tedium), momentum is lost (deprioritised for features), or organisational fatigue sets in ("are we still doing this?"), the migration stalls regardless of how sound the technical plan is. You must actively manage morale, momentum, fatigue, and pace. *Why it matters:* tests whether they see migrations as human efforts, not just technical ones.
 
-3. **Why is retention part of growing engineers, and how do you attend to it?**
-   *Expected answer:* growing and hiring people is wasted if they leave, and most regretted departures are about addressable causes (stagnation, bad management, feeling undervalued), not just pay; attend to it proactively — growing people (which is itself retention, since growing engineers stay), having stay conversations (asking what would make them stay/leave before they're leaving) and acting on them, rather than only learning why people left in exit interviews. *Why it matters:* retention protects the whole talent investment.
+3. **How do you sustain momentum and morale through the unglamorous middle of a multi-year migration?**
+   *Expected answer:* celebrate completion milestones publicly, rotate people off the most tedious work, make progress visible (the completion dashboard), defend the migration's resourcing against feature pulls (reframe it as enabling features), combat organisational fatigue by showing the deletion countdown and the value already delivered (incidents prevented), and keep a sustainable pace (no death march). *Why it matters:* tests the human-leadership side of long migrations.
 
 #### Practical exercise
 
-Practise the three skills. Write out specific, balanced feedback (reinforcing and corrective) for an engineer you work with, tied to concrete behaviours. Structure a difficult conversation you need to have (or might) — clear statement, specific gap with examples, kind delivery, concrete path forward. And prepare a stay conversation for a key engineer: the questions you would ask to learn what keeps them and what might make them leave, and how you would act on likely answers.
+For a migration you are planning or running, design its verification and observability: how you will diff old versus new outputs during parallel run, the migration-health metrics you will track, and how reconciliation will gate each cutover. Then write a human-side plan: how you will sustain morale through the grind, defend momentum against feature competition, combat organisational fatigue, and keep a sustainable pace.
 
-**Acceptance criteria:** your feedback is specific (tied to behaviours with examples), timely, and balanced (reinforcing as well as corrective); your difficult conversation is honest and clear (no vagueness or false hope), kind, and includes a concrete path forward; and your stay conversation proactively surfaces what would make the engineer stay or leave with a plan to act on addressable causes (growth, management, feeling valued) before they reach the exit interview — demonstrating that you handle the hard human skills of growing engineers, not just the pleasant ones.
+**Acceptance criteria:** your verification proves correctness (output diffing that must trend to zero before cutover, reconciliation gating data cutover) rather than relying on hope; your observability covers progress by completion, new-path health, and sync lag; and your human-side plan actively manages morale (milestone celebration, rotating tedious work), momentum (defending resourcing), fatigue (showing progress and the finish line), and pace (no death march) — demonstrating that you treat finishing a migration as requiring a sound plan, continuous proof, and sustained people together.
 
-## 84.9 A quick-reference for growing and hiring engineers
+## 84.9 A quick-reference for large migrations
 
-A compact reference distilling the Part into the checks that matter most when you develop or select engineers.
+A compact reference distilling the Part into the checks that matter most when you plan or run a large migration.
 
-#### The growing-engineers checklist
-
-```text
-[ ] Am I matching the mode to the need — MENTORING (knowledge), COACHING
-    (judgement), SPONSORSHIP (access)? Am I sponsoring enough (the neglected one)?
-[ ] Am I using REVIEW to teach (explain the why, ask questions), not just gatekeep?
-[ ] Am I growing seniors into staff by GIVING AWAY the interesting work and
-    delegating real OWNERSHIP (not tasks)?
-[ ] Is ONBOARDING measured (time to first meaningful change) and designed (ready
-    access, scripted setup, architecture tour, buddy, full-path starter task)?
-[ ] Am I giving FEEDBACK that's specific, timely, balanced (reinforcing + corrective)?
-[ ] Am I not avoiding DIFFICULT CONVERSATIONS (honest, kind, with a path forward)?
-[ ] Am I attending to RETENTION (stay conversations, growth = retention)?
-```
-
-#### The hiring checklist
+#### The migration checklist
 
 ```text
-[ ] Is the LOOP designed backward from the signals that predict role success,
-    with each stage a distinct signal and NO redundancy?
-[ ] Does every stage have a RUBRIC defining strong/mixed/weak by behaviour?
-[ ] Are interviewers CALIBRATED to a shared bar, with a BAR RAISER holding it?
-[ ] Is feedback EVIDENCE-BASED and rubric-tied (not "good vibes")?
-[ ] Am I running system design interviews to ELICIT the candidate's judgement
-    (steer without leading), not lecture?
-[ ] Is the process STRUCTURED (a fairness tool, removing where bias operates),
-    not an unstructured "culture fit" chat?
-[ ] Am I building a BLAMELESS, LEARNING, WRITING culture by modelling it?
+[ ] Am I measuring COMPLETION (is the old system still running?), not volume?
+[ ] Is there a scheduled DELETION DATE for the old system, worked backward from?
+[ ] Is it run as a PROGRAM — single owner, full inventory, dashboard, cadence?
+[ ] Is the STRATEGY matched to blast radius per component? (Parallel run for
+    correctness-critical; strangler for live systems; big bang only low-risk.)
+[ ] For a monolith split: decomposed by DATA OWNERSHIP, with the shared-database
+    phase time-boxed? (Else a distributed monolith.)
+[ ] For data: backfill (idempotent, keyset) + CDC + RECONCILIATION on VALUE
+    (not just row count), gating cutover?
+[ ] Is there a KILL SWITCH and rollback point for every step? Blast radius controlled?
+[ ] Am I PROVING it works (output diffing, reconciliation), not hoping?
+[ ] Is the old system actually being TURNED OFF — telemetry, deprecation,
+    brownouts, orphan handling — and DELETED (not just "returns 410")?
+[ ] Am I managing the HUMAN side — morale, momentum, fatigue, sustainable pace?
 ```
 
 #### The enduring principle
 
-The whole Part reduces to one idea: **growing and selecting engineers is a principal's highest-leverage work, because a great engineer you grow or hire compounds far beyond any system you build.** Growing people means matching mentoring, coaching, and sponsorship to the need (and not neglecting sponsorship, the multiplier that costs real capital), teaching through review, giving away the interesting work to grow successors, and handling the hard human skills — feedback, difficult conversations, retention. Hiring means engineering the loop around the signals that predict success, with rubrics and calibration that make it consistent and fair, run to elicit the candidate's judgement. And all of it rests on culture, shaped by what senior people model. When you develop or hire, ask: am I spending my capital to grow people (not just advising), am I selecting against a consistent, fair, behaviour-based standard, and am I modelling the learning culture I want? Because the engineers you grow and hire are your most compounding, most lasting impact.
+The whole Part reduces to one hard truth: **a migration delivers its value only at 100%, when the old system is off — so finishing, not starting, is the goal.** Large migrations fail by stalling at 80% done forever, as the easy work completes and the unglamorous, political last 20% gets deferred. Everything in this Part serves finishing: measure completion not volume, schedule the deletion date, run it as a program, match the strategy to blast radius, decompose by data ownership, prove correctness with reconciliation, control risk with kill switches, actually turn the old system off, and sustain the people through the grind. When you run a migration, hold the deletion of the old system as the definition of done, and relentlessly drive the last 20% that everyone wants to skip — because that is where migrations go to die, and finishing them is where a principal earns their keep.
 
-Return to this reference when developing or selecting engineers; the reasoning behind each line is in the sections above.
+Return to this reference when planning or running a large migration; the reasoning behind each line is in the sections above.
 
 ## Senior Checklist — Part 84
 
@@ -264,28 +261,27 @@ Return to this reference when developing or selecting engineers; the reasoning b
 - [ ] I can choose between alternatives
 - [ ] I can explain the tradeoffs
 - [ ] I can answer senior-level interview questions
-- [ ] I develop people deliberately, matching mentoring, coaching, and sponsorship to the need
-- [ ] I sponsor people who are ready, spending real capital to create opportunities they can't access alone
-- [ ] I use code and design review to teach — explaining the why and asking questions, not just gatekeeping
-- [ ] I grow seniors into staff by giving away the interesting work and delegating real ownership
-- [ ] I run onboarding as a measured process, driving down time to first meaningful change
-- [ ] I design interview loops backward from the signals that predict role success, with no redundant stages
-- [ ] I write questions that elicit the signal and rubrics that define strong/mixed/weak by behaviour
-- [ ] I calibrate interviewers to a shared bar and use bar raisers to hold it under pressure
-- [ ] I run system design interviews to elicit the candidate's judgement, steering without leading
-- [ ] I build a blameless, learning, writing culture by modelling those behaviours as a senior person
+- [ ] I understand why migrations stall at 80% and I measure completion (old system off), not volume
+- [ ] I run a large migration as a program: single owner, full inventory, dashboard, cadence
+- [ ] I choose the migration strategy per component by blast radius and reversibility, and mix strategies
+- [ ] I use parallel run for correctness-critical migrations rather than trusting test confidence
+- [ ] I decompose monoliths by data ownership and never leave a permanent shared-database phase
+- [ ] I migrate data with backfill + CDC + multi-dimensional reconciliation, and reconcile on value, not just count
+- [ ] I keep a kill switch and rollback point for every migration step
+- [ ] I control blast radius with gradual ramps and per-tenant/per-region rollout
+- [ ] I use telemetry, deprecation notices and brownouts to actually turn the old system off
+- [ ] I define done as the old system deleted, and I schedule its deletion date early
 
 ## Part 84 — Key Takeaways
 
-- Growing and selecting engineers is a principal's highest-leverage work; a great engineer you grow or hire compounds far beyond any system you build.
-- Mentoring (give advice), coaching (ask questions to build judgement), and sponsorship (spend capital to create opportunities) are distinct; sponsorship is the most powerful and most neglected because it costs real capital.
-- Over-mentoring creates dependence; coach to build judgement and sponsor to create the opportunities that actually advance people.
-- Use code and design review to teach — explain the why, ask questions, distinguish blocking from preference, praise good judgement — turning the most frequent interaction into continuous growth.
-- Growing seniors into staff requires giving them ambiguous, cross-team, strategic stretch projects, delegating real ownership, and making the hard sacrifice of giving away the interesting work you'd rather keep.
-- Onboarding is a measurable, high-leverage process; drive down time to first meaningful change with ready access, scripted setup, a guided architecture tour, a buddy, and a real full-path starter task in week one.
-- Design interview loops backward from the signals that predict success in the specific role; cover every important signal, cut redundant stages, and avoid the bias-prone unstructured "culture fit" chat.
-- Write questions that elicit the signal and scale in difficulty, and rubrics that define strong/mixed/weak by concrete behaviours, so evaluation is against a standard rather than gut feel.
-- Calibrate interviewers to a shared bar, use bar raisers to hold it under hiring pressure, and write evidence-based feedback tied to the rubric — structure improves both quality and fairness by removing the room where bias operates.
-- Run system design interviews to elicit the candidate's judgement, not display your own: hand over the wheel, steer without leading, probe for depth, give room, and make it a good experience.
-- Build a blameless, learning, writing culture with psychological safety; culture is shaped most by what senior people model and tolerate, so model admitting mistakes, sharing struggles, asking questions, and writing things down.
-- A bad hire costs far more than an empty seat, and an unstructured process produces both worse hires and a more homogeneous team; invest in the instruments and process that make hiring fair, consistent, and sound.
+- Large migrations fail by stalling at 80% done forever, not by exploding; the easy 80% completes fast and the hard, political, unglamorous last 20% gets deferred, leaving two systems running permanently — full cost, no benefit.
+- A migration delivers its value only at 100%, when the old system is off; measure completion (is the old system still running) not volume, and schedule the deletion date early to force the last 20%.
+- Run a large migration as a program: a single accountable owner, a complete inventory, dated milestones, a live dashboard, and a relentless communication cadence — the technical plan is rarely what fails.
+- Choose the migration strategy per component by blast radius and reversibility — big bang only for low-risk reversible cases, strangler for live systems, parallel run for correctness-critical ones, branch-by-abstraction for shared components — and mix them in one migration.
+- Monolith decomposition is a data problem, not a code problem; split data ownership so each service owns its tables, and never let the temporary shared-database phase become permanent, or you build a distributed monolith that is worse than the original.
+- Migrate data at scale with a batched idempotent backfill plus CDC for ongoing changes plus reconciliation to prove correctness; reconcile on value (checksums), not just row counts, especially for money.
+- Dual writes silently diverge; prefer CDC, and use reconciliation as the backstop that catches divergence before cutover, affecting zero customers instead of becoming a data-loss incident.
+- Keep a kill switch and a rollback point for every step, control blast radius with gradual ramps and per-tenant/per-region rollout, and never take a step you cannot undo.
+- Actually turn the old system off: instrument usage telemetry from the start to find the real callers, use deprecation notices and escalating brownouts to evict them, and handle orphaned last callers with escalation and a rollback-ready shutdown.
+- Define done as the old system deleted and the code gone, never as "mostly migrated" or "returns 410", because a system still running is still the 80%-done-forever tax in disguise.
+- Resist the big-bang temptation that platform migrations (database engine, cloud, framework) create; their company-wide blast radius demands gradual, reversible strategies, not a confidence-based cutover.

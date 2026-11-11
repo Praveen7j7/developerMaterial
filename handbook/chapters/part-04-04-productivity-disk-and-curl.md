@@ -134,6 +134,59 @@ A senior is fast in the shell because they almost never type a full path: Tab, C
 
 On your machine: create the alias `ll` for `ls -lah` in your shell start-up file and reload it; use Ctrl+R to find the last `cd` command you ran; create a file `~/practice/app.env` with `nano` containing `PORT=3000` and `LOG_LEVEL=debug`, then change the log level to `info`, save and exit. Acceptance criteria: `type ll` shows your alias, `grep LOG_LEVEL ~/practice/app.env` prints `LOG_LEVEL=info`, and you can name the three `nano` shortcuts you used.
 
+#### Worked answer to the exercise
+
+**The alias.** First find out which shell you use, because that decides the file:
+
+```bash
+echo $SHELL                                # /bin/zsh (macOS default) or /bin/bash (most Linux)
+cp ~/.zshrc ~/.zshrc.bak 2>/dev/null       # back up first; use ~/.bashrc if you run bash
+echo "alias ll='ls -lah'" >> ~/.zshrc      # TWO > signs: append, do not overwrite
+source ~/.zshrc
+type ll
+```
+
+```text
+ll is an alias for ls -lah
+```
+
+In bash the same check prints ``ll is aliased to `ls -lah'``.
+
+**Ctrl+R.** Press Ctrl+R and type `cd`. The line shows the most recent matching command; press Ctrl+R again to step further back, Enter to run it, or the Right arrow to edit it first:
+
+```text
+(reverse-i-search)`cd': cd ~/practice
+```
+
+zsh shows the same search as `bck-i-search: cd_` under the prompt.
+
+**nano.**
+
+```bash
+nano ~/practice/app.env
+```
+
+1. Type `PORT=3000`, press Enter, type `LOG_LEVEL=debug`.
+2. Press **Ctrl+O** (write Out), then Enter to accept the file name. Press **Ctrl+X** to exit.
+3. Open it again with `nano ~/practice/app.env`, press **Ctrl+W** (Where is), type `LOG_LEVEL`, Enter. The cursor jumps to that line. Change `debug` to `info`.
+4. Ctrl+O, Enter, Ctrl+X.
+
+```text
+$ grep LOG_LEVEL ~/practice/app.env
+LOG_LEVEL=info
+$ cat ~/practice/app.env
+PORT=3000
+LOG_LEVEL=info
+```
+
+The three shortcuts: Ctrl+W to search, Ctrl+O then Enter to save, Ctrl+X to exit. (Recent macOS versions start `pico` when you type `nano`; the same keys work.)
+
+The trap most learners fall into is writing `echo "alias ..." > ~/.zshrc` with one `>`. That replaces your whole start-up file with one line, silently deleting everything else in it (your `PATH` changes, your Node version manager setup). That is why the answer makes a backup first. The second trap is editing the wrong file: adding the alias to `~/.bashrc` while your terminal runs zsh, so `type ll` says `ll not found` even though the line is clearly in the file.
+
+For scripts, where you cannot use an interactive editor, the same edit is one `sed` command. GNU and macOS `sed` differ on in-place editing, so this form, with an explicit backup suffix, works on both: `sed -i.bak 's/^LOG_LEVEL=debug$/LOG_LEVEL=info/' ~/practice/app.env`.
+
+Check it yourself: open a brand-new terminal window and run `type ll`. If the alias is still there, it was saved to the right start-up file, not just defined in the old session.
+
 ## 4.9 Is the server healthy? Disk, memory and load
 
 ### 4.9.1 Checking disk space, memory and CPU in a minute
@@ -220,10 +273,10 @@ Someone deployed with `LOG_LEVEL=debug` last night, and the app wrote every SQL 
 ```bash
 sudo truncate -s 0 /var/log/myapp/debug.log     # 4. empty the file in place (safe while the app has it open)
 df -h /                                         # 5. Use% 18%: space is back, writes succeed again
-sudo nano /etc/myapp/config.env                 # 6. set LOG_LEVEL=info, then restart the app (72.8)
+sudo nano /etc/myapp/config.env                 # 6. set LOG_LEVEL=info, then restart the app (4.8)
 ```
 
-Why `truncate` and not `rm`? If you delete a file that a running program still has open, the program keeps writing to it and the space is **not** freed until the program closes it: `df` still shows 100 %. Emptying the file in place frees the space immediately. The lasting fix is log rotation (the `logrotate` tool, or logging to stdout and letting the platform handle it, Part 77.2) and a disk-space alert at 80 %.
+Why `truncate` and not `rm`? If you delete a file that a running program still has open, the program keeps writing to it and the space is **not** freed until the program closes it: `df` still shows 100 %. Emptying the file in place frees the space immediately. The lasting fix is log rotation (the `logrotate` tool, or logging to stdout and letting the platform handle it, Part 43.2) and a disk-space alert at 80 %.
 
 #### Practical example — the "slow server" check
 
@@ -241,7 +294,7 @@ All three gauges are normal, so the machine is not the problem. The next step is
 
 - **Deleting an open log file** does not free space until the process closes it; use `truncate -s 0` or restart the process.
 - **Inodes can run out** before bytes do: millions of tiny files (session files, cache entries) fill the filesystem's file table. `df -i` shows inode usage; "No space left on device" with free bytes means this.
-- **Containers** have their own view: inside a container, `free` may show the host's memory, not the container's limit (Part 86.10 explains limits).
+- **Containers** have their own view: inside a container, `free` may show the host's memory, not the container's limit (Part 44.10 explains limits).
 - **`du` on a huge directory** can take minutes and add disk load; start high and narrow down instead of running it on `/` with no `-s`.
 - **Load average is not CPU percent**: processes waiting for slow disk also count, so a high load with idle CPUs points to disk or network waits.
 
@@ -266,6 +319,68 @@ A senior checks the gauges before the engine. When something breaks they spend t
 #### Practical exercise
 
 On your machine (or a small cloud server), find: the `Use%` of the filesystem your home directory is on, the three largest folders inside your home directory, the `available` memory, and the 1-minute load average compared with `nproc`. Then create a 200 MB test file with `fallocate -l 200M ~/practice/big.bin` (Linux) or `mkfile 200m ~/practice/big.bin` (macOS), see it in `du -sh ~/practice`, and delete it. Acceptance criteria: you write down all four numbers and explain in one sentence each whether that number would worry you on a production server.
+
+#### Worked answer to the exercise
+
+On Linux:
+
+```bash
+df -h ~                                                  # the filesystem your home directory is on
+du -sh ~/* ~/.[!.]* 2>/dev/null | sort -h | tail -n 3    # three largest items, hidden ones included
+free -h
+uptime
+nproc
+```
+
+```text
+$ df -h ~
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p2  468G  301G  144G  68% /
+$ du -sh ~/* ~/.[!.]* 2>/dev/null | sort -h | tail -n 3
+4.1G	/home/alice/.cache
+9.8G	/home/alice/projects
+22G	/home/alice/Downloads
+$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       5.6Gi       1.1Gi       410Mi       8.3Gi       9.1Gi
+Swap:          2.0Gi          0B       2.0Gi
+$ uptime
+ 11:02:44 up 3 days,  2:36,  1 user,  load average: 0.92, 0.75, 0.61
+$ nproc
+8
+```
+
+On macOS, `df`, `du` and `uptime` work the same, but there is no `free` and usually no `nproc`. Use `sysctl -n hw.ncpu` for the core count, and `top -l 1 | grep PhysMem` or `vm_stat` (or Activity Monitor) for memory.
+
+The four numbers, with one sentence each:
+
+| Number | Value | Would it worry me on a production server? |
+|---|---|---|
+| `Use%` of home filesystem | 68 % | No: there is plenty of room, but I would want an alert at about 80 % so I never find out at 100 %. |
+| Three largest folders | `Downloads` 22G, `projects` 9.8G, `.cache` 4.1G | Not on a laptop; on a server, an unexpectedly large folder under `/var/log` or a temp directory is exactly how a disk fills. |
+| `available` memory | 9.1Gi of 15Gi | No: `free` looks small (1.1Gi) only because Linux uses spare memory as disk cache, and `available` is the number that matters. |
+| 1-minute load vs cores | 0.92 on 8 cores | No: about 11 % of capacity; it would worry me if it stayed above 8, meaning work queues for the CPUs. |
+
+Now the test file:
+
+```bash
+fallocate -l 200M ~/practice/big.bin     # Linux: allocates instantly
+# mkfile 200m ~/practice/big.bin         # macOS equivalent
+du -sh ~/practice
+rm ~/practice/big.bin                    # one exact file, no wildcard
+du -sh ~/practice
+```
+
+```text
+248M	/home/alice/practice
+48M	/home/alice/practice
+```
+
+(The remaining 48M is mostly the `npm-demo` project from 4.6.)
+
+The trap most learners fall into is `du -sh ~/*`, which skips hidden folders, and on a developer machine those are often the biggest: `~/.cache`, `~/.npm`, `~/.docker`. That is why the answer adds `~/.[!.]*` (every name that starts with one dot, excluding `.` and `..`). The `2>/dev/null` hides "Permission denied" (Linux) and "Operation not permitted" (macOS, inside `~/Library`) messages, which would otherwise bury the answer. Also, `df -h` with no argument lists every filesystem, and on macOS there are many; `df -h ~` picks the one that holds your home directory.
+
+Check it yourself: `du -sh ~/practice` must grow by about 200M after `fallocate` and drop back after `rm`. Then compare your load average with your own core count, not with 1.
 
 ## 4.10 Talking to your API from the terminal
 
@@ -346,7 +461,7 @@ $ ps -p 4821 -o pid,etime,command          # what is it, and since when?
   PID  ELAPSED COMMAND
  4821  2-03:11 node dist/main.js            # an old copy of your API, running for 2 days
 
-$ kill 4821                                 # SIGTERM: ask it to stop (72.3)
+$ kill 4821                                 # SIGTERM: ask it to stop (4.3)
 $ npm run start:dev                         # now it starts
 ```
 
@@ -359,7 +474,7 @@ The old process was a copy started in another terminal two days ago and forgotte
 - **Self-signed certificates**: `curl -k` skips certificate checks; fine on a local test server, never as a habit against real servers.
 - **Secrets on the command line**: `curl -H 'Authorization: Bearer eyJ...'` lands in shell history; read the token from an environment variable instead: `-H "Authorization: Bearer $TOKEN"` (double quotes, so the shell expands the variable).
 - **`jq` errors on non-JSON**: an HTML error page from a proxy makes `jq` fail with "parse error"; look at it with `curl -i` first.
-- **`localhost` inside a container** is the container itself, not your laptop (Part 86.7).
+- **`localhost` inside a container** is the container itself, not your laptop (Part 44.7).
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -381,3 +496,72 @@ A senior reaches for `curl -i` before opening a browser, because it shows exactl
 #### Practical exercise
 
 Start any local HTTP server (for example the API from Part 6, or `npx http-server` in a folder). Using only the terminal: get the status code of `/` with the `-w` option, print the response headers, send a POST with a JSON body, and pretty-print a JSON response with `jq`. Then start the same server a second time to get "address already in use", find the first one with `lsof -i`, identify it with `ps`, and stop it with `kill`. Acceptance criteria: you can show each command and its output, and explain what `-s`, `-i`, `-o /dev/null` and `-w` each did.
+
+#### Worked answer to the exercise
+
+This answer uses the products API from Part 6 on port 3000, built once and started from the compiled code (`npm run build`, then `node dist/main.js` in terminal 1), so there is exactly one process to find later.
+
+In terminal 2:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000/
+curl -i http://localhost:3000/health
+curl -s -X POST http://localhost:3000/products \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Sonic toothbrush","priceCents":4999}' | jq
+curl -s 'http://localhost:3000/products?limit=2' | jq '.items[].name'
+```
+
+```text
+200
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Content-Type: application/json; charset=utf-8
+Content-Length: 15
+ETag: W/"f-VaSQ4oDUiZblZNAEkkN+sX+q3Sg"
+Date: Wed, 11 Nov 2026 11:20:01 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"status":"ok"}
+{
+  "name": "Sonic toothbrush",
+  "priceCents": 4999,
+  "currency": "USD",
+  "id": "3f2b8c1e-5d4a-4f6b-9a7e-2c1d0e9f8a7b",
+  "createdAt": "2026-11-11T11:20:04.512Z"
+}
+"Sonic toothbrush"
+"Dental Mirror"
+```
+
+(This output is from the API as 6.5 leaves it: the list is paginated and a product has no `sku` yet. From 6.6 on, the headers also include `X-Request-Id`, and the `POST` needs a `sku` field or it is rejected with `400`.)
+
+The four options, as the acceptance criteria ask:
+
+- `-s` (silent): no progress meter and no error messages from `curl` itself, so the output is only what the server sent. That matters whenever the output is piped into `jq` or read by a script.
+- `-i` (include): print the status line and the response headers before the body.
+- `-o /dev/null`: write the body to `/dev/null`, the "black hole" file that discards everything, because here we only want the status code.
+- `-w '%{http_code}\n'` (write-out): after the transfer, print the given format with `curl`'s variables filled in. Without the `\n`, your next prompt is glued to the `200`.
+
+Now the port clash. Start the API a second time in terminal 3 (`node dist/main.js`), then investigate:
+
+```text
+$ node dist/main.js
+Error: listen EADDRINUSE: address already in use :::3000
+$ lsof -i :3000
+COMMAND  PID  USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+node    4821 alice   23u  IPv6  58321      0t0  TCP *:3000 (LISTEN)
+$ ps -p 4821 -o pid,etime,command
+  PID     ELAPSED COMMAND
+ 4821       12:47 node dist/main.js
+$ kill 4821
+$ lsof -i :3000
+$
+```
+
+`lsof` names the PID that holds the port, `ps` confirms it is your API started 12 minutes ago (and not someone else's service), `kill` sends SIGTERM, and the empty second `lsof` proves the port is free. Terminal 1 shows that its server exited, and the second start now succeeds.
+
+The trap most learners fall into is `curl -i ... | jq`: the headers are not JSON, so `jq` fails with a parse error. Use `-i` to look at a response and `-s` without `-i` to pipe the body. A second trap is in the clash: under `npm run start:dev`, the process holding the port is a child of a watcher (`nest start --watch`). If you kill only the child, the watcher is still running in its terminal; stop it there with Ctrl+C, or look for the parent with `ps -o pid,ppid,command -p 4821`.
+
+Check it yourself: every command above should print what is shown (with your own IDs, PIDs and times), and `lsof -i :3000` must print nothing once the old server is stopped.

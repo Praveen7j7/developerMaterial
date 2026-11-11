@@ -2,7 +2,7 @@
 
 Every real software project uses version control, and in practice that means Git. Git records the history of your code: every change, who made it, when, and why. It lets many people work on the same codebase without overwriting each other, lets you undo mistakes, and lets you see how any line of code came to be. You cannot work on a team — or even safely on your own — without it.
 
-This Part is the beginner's on-ramp to Git. Part 47 covers Git deeply (internals, rebasing strategies, bisect, reflog recovery, advanced workflows); this Part teaches the foundation you need before that makes sense: what Git is and why, the core commands (`init`, `clone`, `add`, `commit`, `status`, `log`), branches and merging, remotes and pull requests, and how to resolve a conflict without panic. By the end you will be able to clone a repository, make a change on a branch, commit it, push it, open a pull request, and handle a merge conflict — the everyday loop of professional development.
+This Part is the beginner's on-ramp to Git. Part 48 covers Git deeply (internals, rebasing strategies, bisect, reflog recovery, advanced workflows); this Part teaches the foundation you need before that makes sense: what Git is and why, the core commands (`init`, `clone`, `add`, `commit`, `status`, `log`), branches and merging, remotes and pull requests, and how to resolve a conflict without panic. By the end you will be able to clone a repository, make a change on a branch, commit it, push it, open a pull request, and handle a merge conflict — the everyday loop of professional development.
 
 We teach the command line Git here, because it is universal and because understanding the commands makes the graphical tools make sense. Once you know the commands, use whatever interface you like.
 
@@ -90,7 +90,7 @@ Some files should never be committed: `node_modules/` (huge, rebuildable), `.env
 
 #### Edge cases & failure modes
 
-- **Committing secrets** (`.env`, API keys) puts them in history forever, even if deleted in a later commit; this is a security incident requiring secret rotation (Part 39 — Security, 39.32). Prevent it with `.gitignore`.
+- **Committing secrets** (`.env`, API keys) puts them in history forever, even if deleted in a later commit; this is a security incident requiring secret rotation (Part 40 — Security, 40.32). Prevent it with `.gitignore`.
 - **Committing `node_modules`** bloats the repository massively; always gitignore it.
 - **Huge commits** mixing many unrelated changes are hard to review and hard to revert cleanly; make focused commits.
 - **Useless messages** ("stuff", "wip", "fix") make history worthless for understanding why code is the way it is.
@@ -117,6 +117,73 @@ A senior treats commit history as documentation that future engineers (including
 #### Practical exercise
 
 Create a new Git repository, add a `.gitignore` that excludes `node_modules/` and `.env`, make two separate focused commits (one for a config file, one for a source file) with clear messages, and view the history with `git log --oneline`. Then run `git status` and `git diff` to confirm the working directory is clean. Acceptance criteria: history shows two focused commits with meaningful messages, and neither `node_modules` nor `.env` is tracked.
+
+#### Worked answer to the exercise
+
+The `.gitignore` is the config file, so it is the first commit, made before any secret exists:
+
+```bash
+mkdir practice-api && cd practice-api
+git init
+printf 'node_modules/\n.env\n' > .gitignore      # one pattern per line
+git add .gitignore
+git commit -m "Ignore node_modules and .env"
+```
+
+```text
+Initialized empty Git repository in /Users/asha/work/practice-api/.git/
+[main (root-commit) 451ab9a] Ignore node_modules and .env
+ 1 file changed, 2 insertions(+)
+ create mode 100644 .gitignore
+```
+
+Now the source file, plus a dummy `.env` and a `node_modules` folder, so we can prove they are ignored:
+
+```bash
+mkdir src node_modules
+echo "console.log('hello');" > src/index.ts
+echo "DATABASE_PASSWORD=change_me" > .env       # a dummy value, never a real secret
+touch node_modules/placeholder.js
+git status
+```
+
+```text
+On branch main
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	src/
+
+nothing added to commit but untracked files present (use "git add" to track)
+```
+
+`git status` lists only `src/`: `.env` and `node_modules/` are already invisible to it. Commit the source file and check the result:
+
+```bash
+git add src/index.ts
+git commit -m "Add entry point that logs a greeting"
+git log --oneline
+git status
+git diff                                         # prints nothing when there are no unstaged edits
+git ls-files                                     # exactly what Git tracks
+git check-ignore -v .env node_modules/placeholder.js
+```
+
+```text
+5779562 (HEAD -> main) Add entry point that logs a greeting
+451ab9a Ignore node_modules and .env
+On branch main
+nothing to commit, working tree clean
+.gitignore
+src/index.ts
+.gitignore:2:.env	.env
+.gitignore:1:node_modules/	node_modules/placeholder.js
+```
+
+`git ls-files` is the real proof for the acceptance criteria: only `.gitignore` and `src/index.ts` are tracked. `git check-ignore -v` names the line of `.gitignore` that ignores each file.
+
+**Why this is right.** Each commit does one thing and its message says what changed, so either one can be read or reverted on its own. The ignore rules were committed before `.env` existed, so the secret never had a chance to enter history.
+
+**The trap.** Creating `.env`, running `git add .`, and only then writing `.gitignore`. A `.gitignore` stops *untracked* files from being added; a file that is already tracked stays tracked whatever `.gitignore` says. If that happened to you, `git rm --cached .env` untracks it (5.7 shows the full fix), and if the commit was ever pushed, the values in it must be rotated.
 
 ## 5.2 Branches
 
@@ -175,14 +242,14 @@ Including the ticket number (like `TSB-4422`) links the branch to the task track
 
 ```bash
 git switch main                       # start from the stable branch
-git pull                              # get the latest from the remote (73.3)
+git pull                              # get the latest from the remote (5.3)
 git switch -c feat/add-coupons        # create your feature branch
 # ... edit code, make commits ...
 git add .
 git commit -m "Add coupon validation to checkout"
 # ... more work, more commits ...
-git push -u origin feat/add-coupons   # push your branch to the remote (73.3)
-# then open a pull request (73.3)
+git push -u origin feat/add-coupons   # push your branch to the remote (5.3)
+# then open a pull request (5.3)
 ```
 
 This is the loop you will run every working day: branch off up-to-date `main`, commit your work, push, open a pull request. Never work directly on `main`.
@@ -216,3 +283,78 @@ A senior keeps branches short-lived and focused — one branch per feature or fi
 #### Practical exercise
 
 From an up-to-date `main`, create a branch `feat/practice`, make two commits on it, switch back to `main` and confirm those commits are not there, then switch back to your branch. Try switching branches with an uncommitted change and observe Git's behavior, then use `git stash` to handle it. Acceptance criteria: you can explain why the commits appear only on your branch and demonstrate stashing to switch cleanly.
+
+#### Worked answer to the exercise
+
+Continuing in the repository from 5.1:
+
+```bash
+git switch main
+git pull                                         # only if the repository has a remote
+git switch -c feat/practice
+echo "export const greeting = 'hello';" > src/greeting.ts
+git add src/greeting.ts                          # a new file must be added explicitly
+git commit -m "Add greeting constant"
+# edit src/index.ts so it imports and logs greeting
+git commit -am "Log the greeting constant from index"   # -a stages files Git already tracks
+git log --oneline --graph --all
+```
+
+```text
+* 52cf9a6 (HEAD -> feat/practice) Log the greeting constant from index
+* 09284b5 Add greeting constant
+* 5779562 (main) Add entry point that logs a greeting
+* 451ab9a Ignore node_modules and .env
+```
+
+Switch back to `main` and look:
+
+```text
+$ git switch main
+Switched to branch 'main'
+$ git log --oneline
+5779562 (HEAD -> main) Add entry point that logs a greeting
+451ab9a Ignore node_modules and .env
+$ ls src
+index.ts
+```
+
+The explanation the exercise asks for: a branch is a pointer to a commit. Your two commits moved the `feat/practice` pointer forward; `main` still points at `5779562`. Switching branches rewrites your working directory to the snapshot the pointer names, so `greeting.ts` disappears from disk. It is not lost; it lives in commit `09284b5`.
+
+Now an uncommitted change:
+
+```text
+$ git switch feat/practice
+Switched to branch 'feat/practice'
+$ echo "// edit in progress" >> src/index.ts
+$ git switch main
+error: Your local changes to the following files would be overwritten by checkout:
+	src/index.ts
+Please commit your changes or stash them before you switch branches.
+Aborting
+```
+
+Git refuses because `src/index.ts` differs between the two branches, and switching would overwrite your edit. If the edited file were identical on both branches, Git would switch and quietly carry the edit along, which is the confusing case 5.2 warns about. Stash it instead:
+
+```text
+$ git stash push -m "index edit in progress"
+Saved working directory and index state On feat/practice: index edit in progress
+$ git status
+On branch feat/practice
+nothing to commit, working tree clean
+$ git switch main
+Switched to branch 'main'
+$ git switch feat/practice
+Switched to branch 'feat/practice'
+$ git stash pop
+On branch feat/practice
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   src/index.ts
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (cbff4654ca02a32fb99b09f902940e23cefb4183)
+```
+
+**The trap.** Running `git stash pop` before switching back. A stash applies to whichever branch you are on, so popping on `main` puts your feature edit on `main`. Check `git status` (it names the branch) before every pop, and `git stash list` afterwards should be empty.

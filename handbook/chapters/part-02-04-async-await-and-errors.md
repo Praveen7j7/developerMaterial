@@ -276,7 +276,7 @@ The request "succeeded", the `try/catch` caught nothing, and 10 ms later the rej
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior writes `async`/`await` as the default and uses `Promise.all` the instant two awaited operations are independent. They never use `await` inside `forEach`. They enable the "no floating promises" lint rule so a forgotten `await` is caught at build time rather than becoming a 2 a.m. unhandled rejection. They put `try/catch` where they can actually do something useful with the error (translate it, add context, decide to retry) and let it propagate otherwise, because catching an error only to re-log and rethrow it at every level just produces noise (Part 42 — Observability covers logging that helps).
+A senior writes `async`/`await` as the default and uses `Promise.all` the instant two awaited operations are independent. They never use `await` inside `forEach`. They enable the "no floating promises" lint rule so a forgotten `await` is caught at build time rather than becoming a 2 a.m. unhandled rejection. They put `try/catch` where they can actually do something useful with the error (translate it, add context, decide to retry) and let it propagate otherwise, because catching an error only to re-log and rethrow it at every level just produces noise (Part 43 — Observability covers logging that helps).
 
 #### Common mistakes
 
@@ -368,7 +368,7 @@ parallel: 3.3 ms for 500 files
 missing file: ENOENT: no such file or directory, open 'invoices/inv_9999.json'
 ```
 
-On a laptop SSD the parallel version was about 3 to 4 times faster, not 500 times: local reads are quick, and Node reads files with a small pool of 4 helper threads (Part 9.18), so only a few truly overlap. With network calls of 30 to 100 ms each, the gap is far bigger. And remember 2.3: `Promise.all` over a huge list against a shared service needs a concurrency limit.
+On a laptop SSD the parallel version was about 3 to 4 times faster, not 500 times: local reads are quick, and Node reads files with a small pool of 4 helper threads (Part 10.18), so only a few truly overlap. With network calls of 30 to 100 ms each, the gap is far bigger. And remember 2.3: `Promise.all` over a huge list against a shared service needs a concurrency limit.
 
 ## 2.5 Error handling and pitfalls in asynchronous code
 
@@ -494,7 +494,7 @@ Many tutorials show a shorter `withTimeout` without the `.finally(() => clearTim
 
 #### The result-type alternative to throwing
 
-For expected failures (a payment declined, a validation error), some teams return a discriminated union (a `Result` type, Part 129.7.2) instead of throwing, reserving exceptions for truly exceptional situations. Both approaches are valid; the key is consistency.
+For expected failures (a payment declined, a validation error), some teams return a discriminated union (a `Result` type, Part 1.7.2) instead of throwing, reserving exceptions for truly exceptional situations. Both approaches are valid; the key is consistency.
 
 ```ts
 type Result<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -511,7 +511,7 @@ async function charge(amountCents: number): Promise<Result<string>> {
 
 #### Practical example — retry with backoff and timeout
 
-Putting it together: call a flaky service with a per-attempt timeout and exponential backoff between attempts. This is the shape of nearly every resilient external call (Part 30 — Reliability Engineering goes deeper, especially 30.2 to 30.4).
+Putting it together: call a flaky service with a per-attempt timeout and exponential backoff between attempts. This is the shape of nearly every resilient external call (Part 31 — Reliability Engineering goes deeper, especially 31.2 to 31.4).
 
 ```ts
 async function sleep(ms: number) {

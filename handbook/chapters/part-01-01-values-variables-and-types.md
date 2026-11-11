@@ -1,6 +1,6 @@
 # Part 1 — Programming Fundamentals in JavaScript and TypeScript
 
-Welcome to Volume 0. This volume exists for one reader: the person who wants to become a backend engineer and is starting close to zero. Maybe you have written a little JavaScript in a browser, maybe you have followed a tutorial once, maybe you have never written a line. Either way, this volume takes you from "I can run `node file.js`" to "I can build a small, correct NestJS API backed by PostgreSQL". The rest of the book (Parts 7–66 and 78–85) assumes you already have that foundation. This volume builds it.
+Welcome to Volume 0. This volume exists for one reader: the person who wants to become a backend engineer and is starting close to zero. Maybe you have written a little JavaScript in a browser, maybe you have followed a tutorial once, maybe you have never written a line. Either way, this volume takes you from "I can run `node file.js`" to "I can build a small, correct NestJS API backed by PostgreSQL". The rest of the book (Parts 8–52, 54–68 and 81–88) assumes you already have that foundation. This volume builds it.
 
 This Part is about the language. Not toy JavaScript, and not clever tricks. We teach the parts of JavaScript and TypeScript that you will actually use every day in a backend: values and variables, the type system, functions, objects, arrays, control flow, modules, and error handling. We deliberately build toward the backend. The examples use orders, users, products and payments from the first page, because those are the nouns you will model for the rest of your career, not `foo` and `bar`.
 
@@ -97,6 +97,45 @@ A senior picks the representation that makes wrong states impossible. Money is i
 
 Write a function-free script (just variables and `console.log`) that computes the grand total of an order: subtotal 3499 cents, tax 280 cents, shipping 599 cents, minus a discount of 500 cents. Print the grand total in cents and also as a dollar string like `$38.78`. Acceptance criteria: the dollar string must always show exactly two decimal places, even for a total like 4000 cents (`$40.00`).
 
+#### Worked answer to the exercise
+
+```ts
+// grand-total.ts: no functions, just variables and console.log.
+const subtotalCents = 3499;
+const taxCents = 280;
+const shippingCents = 599;
+const discountCents = 500;
+
+// All the arithmetic happens in whole cents, so it is exact.
+const grandTotalCents = subtotalCents + taxCents + shippingCents - discountCents;
+
+// Divide by 100 only at the very end, for display, and force two decimals.
+const grandTotalDollars = `$${(grandTotalCents / 100).toFixed(2)}`;
+
+console.log(grandTotalCents);   // 3878
+console.log(grandTotalDollars); // $38.78
+
+// The acceptance check: a round total must still show two decimals.
+const roundTotalCents = 4000;
+console.log(`$${(roundTotalCents / 100).toFixed(2)}`); // $40.00
+console.log(`$${roundTotalCents / 100}`);              // $40 (what you get without toFixed)
+```
+
+Run it with `npx tsx grand-total.ts`:
+
+```text
+3878
+$38.78
+$40.00
+$40
+```
+
+Why it is right: every addition and subtraction works on whole numbers of cents, so there is no floating-point error to accumulate (3499 + 280 + 599 - 500 = 3878). Division by 100 happens exactly once, at the edge, only to make a string for a human. `toFixed(2)` always returns a string with exactly two digits after the decimal point, which is what turns `40` into `40.00`.
+
+The trap most learners fall into is the last line: printing `grandTotalCents / 100` directly. It looks fine for `38.78` and then shows `$40` or `$40.5` the first time the total is round. The second trap is doing the maths in dollars (`34.99 + 2.80 + ...`) and formatting at the end; that works for some numbers and is off by a fraction of a cent for others (remember `0.1 + 0.2`). Also remember that `toFixed` returns a string: format once, at the end, and never do more arithmetic on the result.
+
+Check it yourself: change `subtotalCents` to `3621`. The total becomes exactly 4000 cents, and the second line must print `$40.00`, not `$40`. In production you would usually format with `new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)`, which also adds thousands separators, but the rule stays the same: integer cents inside, formatting only at the edge.
+
 ### 1.1.2 Variables: let, const and the ghost of var
 
 #### Concept
@@ -188,6 +227,41 @@ Default to `const`. Reach for `let` only when a value genuinely must change, whi
 
 Take a buggy snippet that uses `var` inside a `for` loop to register three callbacks and prints `3, 3, 3` instead of `0, 1, 2`. Rewrite it with `let` so it prints `0, 1, 2`. Acceptance criteria: explain in one sentence why `let` fixes it (a fresh binding per iteration).
 
+#### Worked answer to the exercise
+
+```ts
+// Buggy: var creates ONE binding for the whole loop, shared by every callback.
+const buggy: Array<() => void> = [];
+for (var i = 0; i < 3; i++) {
+  buggy.push(() => console.log('var:', i));
+}
+buggy.forEach((callback) => callback()); // var: 3, var: 3, var: 3
+
+// Fixed: let creates a fresh binding for each iteration.
+const fixed: Array<() => void> = [];
+for (let j = 0; j < 3; j++) {
+  fixed.push(() => console.log('let:', j));
+}
+fixed.forEach((callback) => callback()); // let: 0, let: 1, let: 2
+```
+
+```text
+var: 3
+var: 3
+var: 3
+let: 0
+let: 1
+let: 2
+```
+
+The one sentence: with `let`, the loop creates a new binding of the loop variable for every iteration, so each callback closes over its own copy; with `var` there is a single function-wide binding, and by the time the callbacks run the loop has already pushed it to `3`.
+
+Notice that the callbacks do not run inside the loop. They run afterwards, which is exactly what happens with `setTimeout`, event handlers or promise callbacks in a real server. `for (var i = 0; i < 3; i++) setTimeout(() => console.log(i), 0)` prints `3, 3, 3` for the same reason.
+
+The trap: "fixing" it with `for (const i = 0; i < 3; i++)`. It looks consistent with "default to `const`", but `i++` reassigns the variable, so it throws `TypeError: Assignment to constant variable.` on the first increment. `const` is right in `for...of` (`for (const id of ids)`), where each iteration gets a new value and nothing is reassigned; a counting loop needs `let`.
+
+Check it yourself: run the file with `npx tsx`, then change `let j` to `var j` in the fixed half and watch it print `3, 3, 3` again. That one-word change is the whole difference.
+
 ### 1.1.3 Equality, truthiness and coercion
 
 #### Concept
@@ -269,6 +343,60 @@ A senior reads `if (!x)` as a smell and asks "what exactly is being tested — n
 #### Practical exercise
 
 Write a function `getPageSize(requested)` that returns `requested` if it is a number between 1 and 100, and `20` otherwise. It must accept `0`? No — `0` is invalid here, so it falls back. But it must not accidentally reject a valid `1`. Acceptance criteria: `getPageSize(0)` returns `20`, `getPageSize(1)` returns `1`, `getPageSize(500)` returns `20`, `getPageSize(undefined)` returns `20`.
+
+#### Worked answer to the exercise
+
+```ts
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+function getPageSize(requested: unknown): number {
+  // Say exactly what "valid" means; never rely on truthiness.
+  if (
+    typeof requested === 'number' &&
+    Number.isInteger(requested) && // also rejects NaN, Infinity and 2.5
+    requested >= 1 &&
+    requested <= MAX_PAGE_SIZE
+  ) {
+    return requested;
+  }
+  return DEFAULT_PAGE_SIZE;
+}
+
+console.log(getPageSize(0));         // 20
+console.log(getPageSize(1));         // 1
+console.log(getPageSize(100));       // 100
+console.log(getPageSize(500));       // 20
+console.log(getPageSize(undefined)); // 20
+console.log(getPageSize(NaN));       // 20
+console.log(getPageSize('50'));      // 20: a string is not a number
+```
+
+```text
+20
+1
+100
+20
+20
+20
+20
+```
+
+Why it is right: the condition states the rule in full, "a whole number from 1 to 100", and everything else falls through to the default. Taking `unknown` instead of `number` means the function is safe even when someone passes a string or `undefined` from a query string. `Number.isInteger` quietly handles the odd cases too: `NaN`, `Infinity` and `2.5` are all rejected, because a page size of 2.5 rows makes no sense.
+
+The trap most learners fall into is reaching for truthiness: `return requested || 20`. That happens to turn `0` into `20`, so it seems to pass the first test, but it lets `500` straight through and would let `-5` through as well. The second trap is checking only one bound (`requested > 0`) and forgetting the maximum, which in a real API is how a client asks for a million rows in one request.
+
+A real request delivers `?limit=50` as the string `'50'`, which this function rejects on purpose: converting and validating input is the job of the request boundary (in NestJS, a DTO with `class-validator`, shown in 6.5), and this helper only accepts a number that has already been parsed.
+
+Check it yourself: run the file and compare with the expected output, or replace the `console.log` lines with assertions so a wrong answer fails loudly:
+
+```ts
+import assert from 'node:assert/strict';
+assert.equal(getPageSize(0), 20);
+assert.equal(getPageSize(1), 1);
+assert.equal(getPageSize(500), 20);
+assert.equal(getPageSize(undefined), 20);
+```
 
 ## 1.2 TypeScript types: the second half of the language
 
@@ -357,6 +485,49 @@ A senior treats `any` as technical debt and `unknown` as the honest tool for unt
 
 Write a function `coerceStatus(input: unknown): 'pending' | 'paid' | 'cancelled'` that accepts an unknown value, checks it is one of the three allowed strings, and throws otherwise. Acceptance criteria: the return type is the exact union of three strings, and the function throws a clear error for any other input, including `'PAID'` in the wrong case.
 
-## 1.3 Summary of this file
+#### Worked answer to the exercise
 
-We covered values and the primitive types, why money lives in integer cents, variables with `const` and `let` (and why `var` is retired), equality and truthiness (and the `??` operator), and the opening ideas of TypeScript: annotations, inference, `any` versus `unknown`, and `strict` mode. The next file builds on this with functions, objects, arrays and the type tools that describe them — interfaces, generics and unions — which together let you model the nouns of a real backend.
+```ts
+const ORDER_STATUSES = ['pending', 'paid', 'cancelled'] as const;
+type OrderStatus = (typeof ORDER_STATUSES)[number]; // 'pending' | 'paid' | 'cancelled'
+
+function coerceStatus(input: unknown): OrderStatus {
+  if (typeof input !== 'string') {
+    throw new Error(`status must be a string, got ${typeof input}`);
+  }
+  // Find the allowed value that equals the input exactly (case-sensitive).
+  const match = ORDER_STATUSES.find((status) => status === input);
+  if (match === undefined) {
+    throw new Error(
+      `invalid status ${JSON.stringify(input)}; expected one of: ${ORDER_STATUSES.join(', ')}`,
+    );
+  }
+  return match; // already typed OrderStatus, no cast needed
+}
+
+for (const input of ['paid', 'PAID', 'shipped', 42, null]) {
+  try {
+    console.log('ok    ', coerceStatus(input));
+  } catch (err) {
+    console.log('error ', (err as Error).message);
+  }
+}
+```
+
+```text
+ok     paid
+error  invalid status "PAID"; expected one of: pending, paid, cancelled
+error  invalid status "shipped"; expected one of: pending, paid, cancelled
+error  status must be a string, got number
+error  status must be a string, got object
+```
+
+Why it is right: the list of allowed statuses is written once, as a read-only array (`as const`), and the type is derived from it, so the runtime check and the compile-time type can never drift apart. Adding `'refunded'` to the array updates both. `find` with `===` is case-sensitive, so `'PAID'` is rejected, and because `find` returns an element of the array, its type is already `OrderStatus`. The error message names the bad value and the allowed ones, which is what the person reading the log at 2 a.m. needs.
+
+The trap most learners fall into is the cast: `if (typeof input === 'string') return input as OrderStatus;`. It compiles, the return type looks right, and `'shipped'` sails straight into your database. `as` tells the compiler to stop checking; it proves nothing. A second, smaller trap: `ORDER_STATUSES.includes(input)` does not compile, because `includes` on this array only accepts the three literal strings, not any `string`. That is why the answer uses `find`. Lower-casing the input "to be helpful" is a product decision, not a fix: the exercise asks you to reject `'PAID'`.
+
+Check it yourself: run it and compare the five lines. Then hover over `coerceStatus` in your editor; the return type must read `'pending' | 'paid' | 'cancelled'`, not `string`.
+
+## 1.3 Checkpoint: what you have so far
+
+We covered values and the primitive types, why money lives in integer cents, variables with `const` and `let` (and why `var` is retired), equality and truthiness (and the `??` operator), and the opening ideas of TypeScript: annotations, inference, `any` versus `unknown`, and `strict` mode. The next sections build on this with functions, objects, arrays and the type tools that describe them — interfaces, generics and unions — which together let you model the nouns of a real backend.

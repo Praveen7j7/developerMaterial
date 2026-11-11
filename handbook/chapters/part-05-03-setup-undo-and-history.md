@@ -22,8 +22,8 @@ Imagine joining a company. On day one you get a name badge (your identity), a de
 git config --global user.name "Asha Rao"
 git config --global user.email "asha.rao@shop.example"       # use the email your Git host knows
 git config --global init.defaultBranch main                   # new repositories start on main
-git config --global core.editor "nano"                         # the editor Git opens for messages (72.8)
-git config --global pull.rebase false                          # git pull merges; see Part 47 before changing this
+git config --global core.editor "nano"                         # the editor Git opens for messages (4.8)
+git config --global pull.rebase false                          # git pull merges; see Part 48 before changing this
 git config --list --show-origin                                # see every setting and which file it comes from
 ```
 
@@ -62,7 +62,7 @@ git --version                                         # git version 2.4x: instal
 git config --global user.name "Asha Rao"
 git config --global user.email "asha.rao@shop.example"
 git config --global init.defaultBranch main
-ssh-keygen -t ed25519 -C "asha.rao@shop.example"      # 72.7; accept the default path, set a passphrase
+ssh-keygen -t ed25519 -C "asha.rao@shop.example"      # 4.7; accept the default path, set a passphrase
 cat ~/.ssh/id_ed25519.pub                             # add to GitHub as above
 ssh -T git@github.com                                 # authenticated
 git clone git@github.com:shop-example/shop-api.git
@@ -82,7 +82,7 @@ Then create a small commit on a branch (5.2) and `git push -u origin` it (5.3) t
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior sets up identity and SSH on day one and checks them with `git config --list --show-origin` and `ssh -T` before touching a real repository. They use a separate work identity per repository where needed, protect the SSH key with a passphrase (4.7), and many teams also sign commits (with an SSH or GPG key) so the host can show them as verified; Part 47 goes further.
+A senior sets up identity and SSH on day one and checks them with `git config --list --show-origin` and `ssh -T` before touching a real repository. They use a separate work identity per repository where needed, protect the SSH key with a passphrase (4.7), and many teams also sign commits (with an SSH or GPG key) so the host can show them as verified; Part 48 goes further.
 
 #### Common mistakes
 
@@ -99,6 +99,49 @@ A senior sets up identity and SSH on day one and checks them with `git config --
 #### Practical exercise
 
 On your machine, configure Git with your name, email, default branch `main` and `nano` as editor; add your SSH public key to a GitHub or GitLab account; and clone a repository with its SSH URL. Acceptance criteria: `git config --list --show-origin` shows your four settings from `~/.gitconfig`, `ssh -T` greets you by username, and `git remote -v` shows a `git@` URL.
+
+#### Worked answer to the exercise
+
+```bash
+git config --global user.name "Asha Rao"
+git config --global user.email "asha.rao@shop.example"
+git config --global init.defaultBranch main
+git config --global core.editor "nano"
+git config --list --show-origin | grep -E 'user\.|init\.|core\.editor'
+```
+
+```text
+file:/Users/asha/.gitconfig	user.name=Asha Rao
+file:/Users/asha/.gitconfig	user.email=asha.rao@shop.example
+file:/Users/asha/.gitconfig	init.defaultbranch=main
+file:/Users/asha/.gitconfig	core.editor=nano
+```
+
+All four lines come from `~/.gitconfig`, which is the first acceptance check. (Git prints key names in lower case, so `defaultBranch` shows as `defaultbranch`; it is the same setting.)
+
+Next, the key. If `ls ~/.ssh/id_ed25519.pub` finds nothing, create one as in 4.7 with `ssh-keygen -t ed25519 -C "asha.rao@shop.example"`. Copy the **public** half into GitHub (Settings, SSH and GPG keys, New SSH key) and test:
+
+```text
+$ cat ~/.ssh/id_ed25519.pub
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...(one long line)... asha.rao@shop.example
+$ ssh -T git@github.com
+Hi asha-rao! You've successfully authenticated, but GitHub does not provide shell access.
+```
+
+The first time, SSH asks whether you trust `github.com` and shows a key fingerprint. Compare it with the fingerprints GitHub publishes in its documentation before you type `yes`. Note that `ssh -T` exits with status 1 even on success, because GitHub refuses the shell; the greeting is what counts.
+
+Finally clone with the SSH URL and confirm:
+
+```text
+$ git clone git@github.com:shop-example/shop-api.git && cd shop-api
+$ git remote -v
+origin	git@github.com:shop-example/shop-api.git (fetch)
+origin	git@github.com:shop-example/shop-api.git (push)
+```
+
+**Why this is right.** Identity is set once, globally, before the first commit, so every commit carries the right author. The SSH key authenticates every push without passwords or tokens, and the `git@` URL makes Git use it.
+
+**The trap.** Two common ones. First, cloning with the HTTPS URL out of habit: `git remote -v` shows `https://...` and pushes ask for credentials. Fix it with `git remote set-url origin git@github.com:shop-example/shop-api.git`. Second, `Permission denied (publickey)` from `ssh -T`, which almost always means the public key was not saved on the host or the agent does not have the key loaded (`ssh-add ~/.ssh/id_ed25519`). Never "fix" it by pasting the private key anywhere.
 
 ## 5.7 Undoing things safely
 
@@ -179,13 +222,13 @@ You ran `git add .` and `git commit -m "Add order endpoints"`, then noticed `.en
 ```bash
 git show --stat HEAD                       # confirm: .env is listed in the commit
 git rm --cached .env                       # remove it from the repository, keep the file on disk
-echo ".env" >> .gitignore                  # make sure it never comes back (73.1)
+echo ".env" >> .gitignore                  # make sure it never comes back (5.1)
 git add .gitignore
 git commit --amend --no-edit               # rewrite the last commit without .env
 git show --stat HEAD                       # .env is gone; .gitignore is there
 ```
 
-If it **was pushed**, amending your local copy does not remove it from the remote or from anyone who pulled. Treat the values in it as leaked: rotate every secret (Part 39 — Security, 39.32), then remove the file with a normal commit. Rewriting the shared history to erase it is possible (Part 47) but needs the whole team's coordination and does not un-leak anything.
+If it **was pushed**, amending your local copy does not remove it from the remote or from anyone who pulled. Treat the values in it as leaked: rotate every secret (Part 40 — Security, 40.32), then remove the file with a normal commit. Rewriting the shared history to erase it is possible (Part 48) but needs the whole team's coordination and does not un-leak anything.
 
 #### Practical example — a commit broke `main`
 
@@ -206,8 +249,8 @@ History now shows what happened honestly: the change, and its reversal. When the
 #### Edge cases & failure modes
 
 - **`git reset --hard` and `git restore` delete uncommitted work permanently**; the reflog cannot bring back what was never committed.
-- **Amending or resetting pushed commits** makes your branch disagree with the remote; `git push` is then rejected, and forcing it rewrites history for everyone (Part 47 covers `--force-with-lease` and when it is acceptable on your own branch).
-- **Reverting a merge commit** needs `git revert -m 1 <sha>` to say which parent to keep; Part 90.8 explains it.
+- **Amending or resetting pushed commits** makes your branch disagree with the remote; `git push` is then rejected, and forcing it rewrites history for everyone (Part 48 covers `--force-with-lease` and when it is acceptable on your own branch).
+- **Reverting a merge commit** needs `git revert -m 1 <sha>` to say which parent to keep; Part 48.8 explains it.
 - **`HEAD~1` with uncommitted changes**: `reset --hard` throws those away too; run `git status` first.
 - **The reflog is per machine** and expires; it is a rescue tool, not a backup.
 
@@ -232,6 +275,87 @@ A senior picks the undo by asking one question first: "has anyone else seen thes
 #### Practical exercise
 
 In a practice repository, perform each undo once: discard an unstaged edit with `restore`; unstage a file with `restore --staged`; change the last commit's message with `--amend`; undo two local commits with `reset --soft HEAD~2` and recommit them as one; revert a commit; then do `reset --hard HEAD~1` and recover the commit with `reflog`. Acceptance criteria: `git log --oneline` after each step shows what you expected, and you can say for each command whether it rewrote history or added to it.
+
+#### Worked answer to the exercise
+
+Do this on a local practice repository with nothing pushed; steps 3, 4 and 6 rewrite history and must never be done on commits others have pulled. Start from one commit, `f751fd5 Add module a`.
+
+**1 and 2. restore and restore --staged** (no history involved):
+
+```text
+$ echo "junk" >> src/a.ts
+$ git status --short
+ M src/a.ts
+$ git restore src/a.ts                  # the edit is gone; status is clean again
+$ echo "export const b = 2;" > src/b.ts && git add src/b.ts
+$ git status --short
+A  src/b.ts
+$ git restore --staged src/b.ts         # unstaged, file kept
+$ git status --short
+?? src/b.ts
+```
+
+**3. Amend the last message** (rewrites the last commit; it gets a new hash):
+
+```text
+$ git add src/b.ts && git commit -m "add b modul"
+$ git commit --amend -m "Add module b"
+$ git log --oneline
+ce73ecf (HEAD -> main) Add module b
+f751fd5 Add module a
+```
+
+**4. Squash two local commits into one** (rewrites):
+
+```text
+$ git log --oneline -2
+651e3d0 (HEAD -> main) Add module d
+af7f24b Add module c
+$ git reset --soft HEAD~2
+$ git status --short
+A  src/c.ts
+A  src/d.ts
+$ git commit -m "Add modules c and d"
+$ git log --oneline
+a1021d8 (HEAD -> main) Add modules c and d
+ce73ecf Add module b
+f751fd5 Add module a
+```
+
+**5. Revert** (adds a commit; history is untouched):
+
+```text
+$ git revert --no-edit HEAD
+[main 1db84d0] Revert "Add modules c and d"
+ 2 files changed, 2 deletions(-)
+ delete mode 100644 src/c.ts
+ delete mode 100644 src/d.ts
+```
+
+**6. reset --hard, then rescue it from the reflog** (rewrites, then undoes the rewrite):
+
+```text
+$ git reset --hard HEAD~1
+HEAD is now at a1021d8 Add modules c and d
+$ git reflog -3
+a1021d8 (HEAD -> main) HEAD@{0}: reset: moving to HEAD~1
+1db84d0 HEAD@{1}: revert: Revert "Add modules c and d"
+a1021d8 (HEAD -> main) HEAD@{2}: commit: Add modules c and d
+$ git reset --hard 1db84d0
+HEAD is now at 1db84d0 Revert "Add modules c and d"
+```
+
+`git log --oneline` now shows the revert again on top: the "lost" commit is back.
+
+| Command | Rewrote history or added to it? |
+|---|---|
+| `restore`, `restore --staged` | Neither: only the working directory and staging area |
+| `commit --amend` | Rewrote: the old commit is replaced by a new one |
+| `reset --soft HEAD~2` + commit | Rewrote: two commits became one |
+| `revert` | Added: a new commit that undoes an old one |
+| `reset --hard` | Rewrote: moved the branch pointer back |
+
+**The trap.** Using `reset --hard` with uncommitted edits in the working directory. The reflog rescued the *commit* above, but it has no record of edits that were never committed, so those are gone for good. Run `git status` first and make sure it says the working tree is clean.
 
 ## 5.8 Reading history: log, show, diff and blame
 
@@ -314,7 +438,7 @@ The "weird" string type is deliberate, and the commit message says why. Without 
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior reads history before changing strange code, and before debugging a regression they list what changed in the area since it last worked. They search history by text (`-S`), by ticket (`--grep`) and by path, and they read the commit and the pull request behind a line before deciding it is a bug. For regressions with no obvious suspect, Part 90.9 shows `git bisect`, which finds the breaking commit by binary search. And they write commit messages with this future reader in mind.
+A senior reads history before changing strange code, and before debugging a regression they list what changed in the area since it last worked. They search history by text (`-S`), by ticket (`--grep`) and by path, and they read the commit and the pull request behind a line before deciding it is a bug. For regressions with no obvious suspect, Part 48.9 shows `git bisect`, which finds the breaking commit by binary search. And they write commit messages with this future reader in mind.
 
 #### Common mistakes
 
@@ -333,3 +457,64 @@ A senior reads history before changing strange code, and before debugging a regr
 #### Practical exercise
 
 In any real repository you have cloned (an open-source NestJS project works well): list the last 10 commits as a graph; find the commits that touched one specific file; pick one and show its diff; find the commit that last changed one line with `blame`; and find when a specific function name first appeared with `log -S`. Acceptance criteria: for one line of code, you can state who changed it, when, in which commit, and quote the reason from the commit message or pull request.
+
+#### Worked answer to the exercise
+
+The commands are identical on any repository; the sample output below comes from the `shop-api` repository used in this section, so you can compare shapes rather than exact hashes.
+
+```bash
+git log --oneline --graph --decorate -10
+git log --oneline -- src/orders/order.entity.ts
+git show 9a1d4e7
+git blame -L 18,18 src/orders/order.entity.ts
+git log -S "capDiscount" --oneline --reverse
+```
+
+```text
+*   7b1c9d2 (HEAD -> main, origin/main) Merge pull request #142 from feat/coupons
+|\
+| * 3f9c1a2 Apply delivery fee after discount (TSB-4510)
+| * 8b77e01 Rename CartTotals fields
+|/
+* 5e0f311 Add coupon endpoint
+* 6d2e8a1 Cap coupon discounts at the order subtotal (TSB-4301)
+* 4c0e9b3 Add status column to orders
+* 9a1d4e7 Store money as integer minor units in a string
+* 2b8f6d0 Add checkout totals service
+* 1f7a2c8 Add Order entity
+```
+
+The file's own history, then one commit opened:
+
+```text
+$ git log --oneline -- src/orders/order.entity.ts
+4c0e9b3 Add status column to orders
+9a1d4e7 Store money as integer minor units in a string
+1f7a2c8 Add Order entity
+$ git blame -L 18,18 src/orders/order.entity.ts
+9a1d4e7d (Ravi K 2026-03-02 10:14:55 +0530 18)   @Column({ type: 'bigint' }) totalMinor!: string;
+$ git show --stat 9a1d4e7
+commit 9a1d4e7d3b52c8f0e6a14d97b2c5e8f1a0d63b4c
+Author: Ravi K <ravi.k@shop.example>
+Date:   Mon Mar 2 10:14:55 2026 +0530
+
+    Store money as integer minor units in a string
+
+    JavaScript numbers lose precision above 2^53, and PostgreSQL bigint
+    arrives in node-postgres as a string. Keep it a string end to end.
+
+ src/orders/order.entity.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+```
+
+And the first appearance of a function name: `-S` lists every commit that changed how many times the text occurs, and `--reverse` puts the oldest first, so the first line is the commit that introduced it:
+
+```text
+$ git log -S "capDiscount" --oneline --reverse
+6d2e8a1 Cap coupon discounts at the order subtotal (TSB-4301)
+3f9c1a2 Apply delivery fee after discount (TSB-4510)
+```
+
+**The statement the acceptance criteria ask for.** "Line 18 of `order.entity.ts` was last changed by Ravi K on 2 March 2026 in commit `9a1d4e7`, because JavaScript numbers lose precision above 2^53 and PostgreSQL `bigint` arrives as a string, so the total stays a string end to end." On an open-source project, a squash-merge message usually ends with a pull request number such as `(#1234)`; open that pull request for the discussion behind the change.
+
+**The trap.** Blame pointing at a commit like "Run Prettier on the whole repo". That commit only reformatted the line. Use `git blame -w` (ignore whitespace) or `git blame --ignore-rev <sha>` to see the change before it, and `git log --follow -- <path>` when the file was renamed.
