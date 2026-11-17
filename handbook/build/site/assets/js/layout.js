@@ -237,6 +237,8 @@
     if (a && a.getAttribute('href') === location.hash && a.getAttribute('href').length > 1) { pinHash(); holdPin(); }
   });
   if (isVol) pinHash();
+  BH.unpin = unpin;  // xref.js: returning to a reference must not snap back to the address-bar hash
+  BH.goHash = function () { pinHash(); holdPin(); };
   function holdPin() {
     if (!pin || Date.now() > pinUntil) { pin = null; return; }
     var off = pin.getBoundingClientRect().top - topbarH() - 16;

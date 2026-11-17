@@ -664,7 +664,7 @@ An early version of the UoW forgot `runner.release()` on the rollback path. Ever
 
 - Single-statement operations; the statement is already atomic.
 - Read-only queries; a transaction adds nothing (except when you need a consistent snapshot across several reads, where `REPEATABLE READ` inside a UoW is exactly right).
-- Operations that span services; there is no cross-service transaction. Use a saga (Part 33.3).
+- Operations that span services; there is no cross-service transaction. Use a **saga** instead: each service runs its own small local transaction in turn, and each step has a **compensating** step (cancel, refund, release) that undoes it if a later step fails. Part 33 covers sagas in depth (33.3).
 - Batch jobs processing millions of rows; one giant transaction bloats the WAL and holds locks for hours. Chunk into many small units.
 
 #### Common mistakes

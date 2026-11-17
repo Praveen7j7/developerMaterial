@@ -6,6 +6,7 @@ const { slugify, escapeHtml, inlineMd, plainMd, duration, num } = require('../ut
 const { icon } = require('../icons');
 const { cover } = require('../covers');
 const { renderPart } = require('../markdown');
+const { linkRefs } = require('../xrefs');
 const { shell } = require('../components');
 
 const plural = (n, one, many = one + 's') => `${num(n)} ${n === 1 ? one : many}`;
@@ -86,7 +87,7 @@ function oldAnchorMap(v) {
 function volumePage(v, book) {
   let main = volumeHead(v);
   for (const p of v.parts) {
-    const body = renderPart(p, (id) => partHeader(p, v, id));
+    const body = linkRefs(renderPart(p, (id) => partHeader(p, v, id)), p, book.refIdx);
     main += `<section class="part" id="part-${p.num}" data-part="${p.num}" data-title="${escapeHtml(plainMd(p.title))}"><div class="prose">${body}</div>${partEnd(p)}</section>\n`;
   }
   const m = oldAnchorMap(v);

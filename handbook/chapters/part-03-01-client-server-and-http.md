@@ -35,7 +35,7 @@ sequenceDiagram
 ```
 
 1. The client builds a request: a method (what it wants to do), a URL (what it wants to act on), headers (extra information), and sometimes a body (data it is sending).
-2. The request travels over the internet to the server (Part 14 explains how — DNS in 14.3, TCP in 14.4, TLS in 14.12).
+2. The request travels over the internet to the server. In short: the client first asks **DNS** to turn the name (`shop.example.com`) into an IP address, like looking up a contact's number. It then opens a **TCP** connection to that address, a reliable pipe that delivers the bytes whole and in order. For `https`, **TLS** encrypts that pipe so nobody in between can read or change it. That is all you need for now; Part 14 goes deep on each step (DNS in 14.3, TCP in 14.4, TLS in 14.12).
 3. The server reads the request, does its work (query a database, call another service), and builds a response.
 4. The response travels back: a status code (how it went), headers, and usually a body (the data).
 5. The client uses the response — the browser renders it, the mobile app updates the screen, another server continues its logic.
@@ -174,14 +174,14 @@ Two headers you did not write appeared by themselves. Node added `Date`, and bec
 
 #### Production scenario
 
-A product API server handles 3,000 requests per second. Each request is independent: it arrives, the server reads it, queries PostgreSQL, builds a response and sends it, all in a few milliseconds, then forgets about it. Because each request is self-contained, the business can run twenty identical copies of the server behind a load balancer (Part 50.7), and any copy can handle any request — there is no "your" server that remembers you. This is only possible because of the stateless request-response model.
+A product API server handles 3,000 requests per second. Each request is independent: it arrives, the server reads it, queries PostgreSQL, builds a response and sends it, all in a few milliseconds, then forgets about it. Because each request is self-contained, the business can run twenty identical copies of the server behind a **load balancer** (a server in front of them that hands each incoming request to one of the copies; Part 50.7 covers it in depth), and any copy can handle any request — there is no "your" server that remembers you. This is only possible because of the stateless request-response model.
 
 #### Edge cases & failure modes
 
 - **The request never arrives** (network drops). The client sees a timeout and may retry.
-- **The response never arrives** even though the server did the work. The client cannot tell "did it fail?" from "did the reply get lost?" — which is exactly why writes need idempotency (Part 18.12 and Part 33 — Distributed Transactions).
+- **The response never arrives** even though the server did the work. The client cannot tell "did it fail?" from "did the reply get lost?" — which is exactly why writes need idempotency: sending the same write twice must have the same effect as sending it once, so the client can safely retry (3.2.1 shows how; Part 18.12 and Part 33 — Distributed Transactions go deeper).
 - **The server is slow**, so the client waits. A client should have a timeout (Part 2).
-- **A large body** (a big upload or a huge response) takes time and memory; servers stream large bodies rather than loading them whole (Part 13.23).
+- **A large body** (a big upload or a huge response) takes time and memory; servers stream large bodies, handling them a piece at a time as the bytes arrive, rather than loading them whole (Part 13.23).
 - **A client sends a request to the wrong port or the server is not running.** `fetch` rejects with `TypeError: fetch failed` and curl prints `Failed to connect`. That is a connection error, not an HTTP error: there is no status code because no response ever came.
 
 #### How a Senior Backend Engineer thinks about this

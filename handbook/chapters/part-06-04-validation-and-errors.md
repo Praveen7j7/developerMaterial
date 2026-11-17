@@ -496,7 +496,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
 }
 ```
 
-Two things to notice. The duplicate check is done by the **database**, not by a `SELECT` before the `INSERT`: two requests at the same moment could both pass a `SELECT`, but only one can pass a unique constraint (Part 24 explains why). And the `500` branch logs the stack trace but returns only `INTERNAL_ERROR` and the request ID: stack traces and SQL in responses help attackers, not users.
+Two things to notice. The duplicate check is done by the **database**, not by a `SELECT` before the `INSERT`: two requests at the same moment could both pass a `SELECT`, but only one can pass a unique constraint. The database checks the constraint as part of the insert itself. If the first insert of a SKU is already committed, a second one fails at once with a unique-violation error. If the first is still in progress, the second waits for it to finish, then fails if the first committed or goes through if the first rolled back. Either way there is no gap between "check" and "write" for another request to slip into (Part 24 explains this in depth). And the `500` branch logs the stack trace but returns only `INTERNAL_ERROR` and the request ID: stack traces and SQL in responses help attackers, not users.
 
 Wiring it all in one place, so tests (6.7) can use exactly the same setup as `main.ts`:
 

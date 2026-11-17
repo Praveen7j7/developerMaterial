@@ -292,7 +292,7 @@ Note that `await Promise.resolve()` would *not* yield: it is a microtask, so the
 
 #### Practical example
 
-An admin "Orders" screen loads 5,000 orders in one 6.2 MB JSON response and renders them into a table. On an office laptop: `JSON.parse` 35 ms, React render 410 ms, layout 180 ms, one 625 ms long task. Typing in the search box above the table lags by half a second per keystroke because each keystroke filters and re-renders 5,000 rows. Three changes fix it: the API paginates to 50 rows with a cursor, the table virtualises rows (Part 77 — React Fundamentals for Backend Engineers), and filtering happens on the server. The longest task drops to 38 ms.
+An admin "Orders" screen loads 5,000 orders in one 6.2 MB JSON response and renders them into a table. On an office laptop: `JSON.parse` 35 ms, React render 410 ms, layout 180 ms, one 625 ms long task. Typing in the search box above the table lags by half a second per keystroke because each keystroke filters and re-renders 5,000 rows. Three changes fix it: the API paginates to 50 rows with a cursor, the table virtualises rows (it renders only the 30 or so rows visible in the scroll area and swaps them as you scroll; Part 77 — React Fundamentals for Backend Engineers covers this in 77.9), and filtering happens on the server. The longest task drops to 38 ms.
 
 #### React / Next.js example
 

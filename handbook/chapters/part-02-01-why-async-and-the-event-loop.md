@@ -152,7 +152,7 @@ A NestJS endpoint handles 2,000 requests per second on a single Node process. Ea
 
 #### Failure scenario
 
-At 14:20 an endpoint that validates uploaded CSV files starts timing out for **all** users, not just the ones uploading. The cause: a new feature parsed each uploaded file with a synchronous loop that, for a large file, ran for 800 milliseconds of pure computation. During those 800 ms the one thread was held, so every other request — logins, product pages, checkouts — queued behind it. The dashboard showed the whole service degraded whenever anyone uploaded a big file. The fix was to move the parsing off the main thread (a worker thread, Part 13.20) and to stream the file instead of loading it whole. The lesson: on Node, one slow synchronous operation harms everyone.
+At 14:20 an endpoint that validates uploaded CSV files starts timing out for **all** users, not just the ones uploading. The cause: a new feature parsed each uploaded file with a synchronous loop that, for a large file, ran for 800 milliseconds of pure computation. During those 800 ms the one thread was held, so every other request — logins, product pages, checkouts — queued behind it. The dashboard showed the whole service degraded whenever anyone uploaded a big file. The fix was to move the parsing off the main thread and to stream the file (read and handle it a piece at a time) instead of loading it whole. A **worker thread** is a second JavaScript thread inside the same Node process, with its own event loop; the heavy parsing runs there while the main thread keeps answering everyone else. Part 13 covers worker threads in depth (13.20). The lesson: on Node, one slow synchronous operation harms everyone.
 
 #### Edge cases & failure modes
 
@@ -162,7 +162,7 @@ At 14:20 an endpoint that validates uploaded CSV files starts timing out for **a
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior carries one rule from this section into everything: **do not block the event loop.** They know Node's superpower is handling many concurrent waits cheaply and its weakness is CPU-bound work, so they keep request handlers light on computation, push heavy work to background workers (Part 39 — Background Jobs and Schedulers), and measure event-loop lag as a first-class metric (Part 13.27). When someone proposes doing image processing or large-file parsing inside a request handler, the senior's first question is "how long does that hold the thread, and whom does it block while it runs?"
+A senior carries one rule from this section into everything: **do not block the event loop.** They know Node's superpower is handling many concurrent waits cheaply and its weakness is CPU-bound work, so they keep request handlers light on computation, push heavy work to background workers (the handler only puts a "to do" message on a queue and answers at once; a separate worker process picks it up and does the slow part later, as Part 39 — Background Jobs and Schedulers explains), and measure event-loop lag as a first-class metric (Part 13.27). When someone proposes doing image processing or large-file parsing inside a request handler, the senior's first question is "how long does that hold the thread, and whom does it block while it runs?"
 
 #### Common mistakes
 

@@ -143,7 +143,7 @@ SELECT datname, numbackends, xact_commit, xact_rollback, deadlocks,
 FROM pg_stat_database WHERE datname = current_database();
 ```
 
-`deadlocks` should be near zero and any increase is a code problem (24.7). `temp_files` and `temp_bytes` growing means queries are spilling `work_mem` to disk; pair with `log_temp_files = 0` to see which ones. `conflicts` is non-zero only on replicas and counts queries cancelled by recovery conflicts. `cache_hit_pct` below about 98 percent on an OLTP database usually means the working set does not fit in `shared_buffers`, though it is a blunt instrument: a single big report can drag it down while every OLTP query is served from memory.
+`deadlocks` should be near zero and any increase is a code problem (Part 24, 24.7). `temp_files` and `temp_bytes` growing means queries are spilling `work_mem` to disk; pair with `log_temp_files = 0` to see which ones. `conflicts` is non-zero only on replicas and counts queries cancelled by recovery conflicts. `cache_hit_pct` below about 98 percent on an OLTP database usually means the working set does not fit in `shared_buffers`, though it is a blunt instrument: a single big report can drag it down while every OLTP query is served from memory.
 
 **Bloat.** Dead tuples that vacuum has reclaimed as free space but not returned to the operating system make tables and indexes bigger than their data, which makes every scan read more pages.
 

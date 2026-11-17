@@ -87,7 +87,7 @@ git switch main && git pull                   # bring the merged change into you
 
 #### Edge cases & failure modes
 
-- **Pushing to the wrong branch** or force-pushing over others' work (`git push --force`) can destroy commits; avoid force-push on shared branches (Part 52 covers the safe `--force-with-lease`).
+- **Pushing to the wrong branch** or force-pushing over others' work (`git push --force`) can destroy commits; avoid force-push on shared branches. The safer `--force-with-lease` refuses to push if someone else has pushed to the branch since you last fetched, so you cannot wipe out work you have not seen (Part 52 covers it).
 - **A stale local `main`**: forgetting to `git pull` before branching means you build on old code and hit conflicts; always start from up-to-date `main`.
 - **A huge PR** (thousands of lines) is nearly impossible to review well; reviewers rubber-stamp it and bugs slip through. Keep PRs small.
 - **Merging your own PR without review** skips the quality gate that catches mistakes; follow the team's review requirement.
@@ -418,7 +418,7 @@ git revert <commit>              # make a new commit that undoes an old one (saf
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior has internalized this loop so thoroughly that it costs no thought, which frees their attention for the actual work. They know the small set of "undo" commands for the common mistakes (discard a change, unstage a file, revert a commit) and know that for anything scarier, `git reflog` (Part 52) can recover almost anything, so they are never afraid of Git. They favor the safe tools on shared history — `git revert` rather than rewriting published commits — because the history others depend on is not theirs to rewrite. Above all they keep the loop small and frequent: short branches, small commits, small PRs, frequent merges, which keeps the whole team moving smoothly.
+A senior has internalized this loop so thoroughly that it costs no thought, which frees their attention for the actual work. They know the small set of "undo" commands for the common mistakes (discard a change, unstage a file, revert a commit) and know that for anything scarier, `git reflog` can recover almost anything, so they are never afraid of Git. (The **reflog** is Git's local record of every commit your `HEAD` has pointed to recently, so a commit you "lost" with a bad reset can still be found and restored; 5.7 shows it in action, and Part 52 goes further.) They favor the safe tools on shared history — `git revert` rather than rewriting published commits — because the history others depend on is not theirs to rewrite. Above all they keep the loop small and frequent: short branches, small commits, small PRs, frequent merges, which keeps the whole team moving smoothly.
 
 #### Common mistakes
 

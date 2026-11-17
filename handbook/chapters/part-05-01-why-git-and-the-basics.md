@@ -90,7 +90,7 @@ Some files should never be committed: `node_modules/` (huge, rebuildable), `.env
 
 #### Edge cases & failure modes
 
-- **Committing secrets** (`.env`, API keys) puts them in history forever, even if deleted in a later commit; this is a security incident requiring secret rotation (Part 44 — Security, 44.32). Prevent it with `.gitignore`.
+- **Committing secrets** (`.env`, API keys) puts them in history forever, even if deleted in a later commit; this is a security incident requiring secret rotation: create a new key or password, switch the app to it, and cancel the old one so the leaked copy stops working (Part 44 — Security, 44.32). Prevent it with `.gitignore`.
 - **Committing `node_modules`** bloats the repository massively; always gitignore it.
 - **Huge commits** mixing many unrelated changes are hard to review and hard to revert cleanly; make focused commits.
 - **Useless messages** ("stuff", "wip", "fix") make history worthless for understanding why code is the way it is.

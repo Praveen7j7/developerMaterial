@@ -230,7 +230,7 @@ The consumer treats an unknown `type` as "not for me", never as a failure; a new
 
 #### PostgreSQL example
 
-The outbox table (Part 34) that produces these events carries the version so the relay never has to guess, and an archive of consumed events keyed by id gives idempotency.
+The outbox table (Part 33) that produces these events carries the version so the relay never has to guess, and an archive of consumed events keyed by id gives idempotency.
 
 ```sql
 CREATE TABLE outbox (

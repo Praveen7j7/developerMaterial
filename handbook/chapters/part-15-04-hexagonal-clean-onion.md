@@ -305,7 +305,7 @@ A team adopts hexagonal architecture but lets the TypeORM `OrderEntity` double a
 - **Leaky ports.** `OrderRepository.queryBuilder(): SelectQueryBuilder<OrderEntity>` is not a port; it is TypeORM with an interface hat on.
 - **Port explosion.** One interface per method. Group by capability, not per method.
 - **Mapping drift.** Domain gains a field, the adapter mapper forgets it, data is silently dropped on save. Round-trip tests catch this.
-- **Transactions across ports.** Two `save()` calls through two repositories are two transactions unless a Unit of Work (Part 16) wraps them.
+- **Transactions across ports.** Two `save()` calls through two repositories are two transactions unless a **Unit of Work** wraps them. A Unit of Work opens one transaction for the whole use case, lets every repository write through it, and then commits all of it or rolls all of it back. Part 16 builds one (16.22).
 - **Over-abstracting infrastructure that will never change.** You are not going to swap PostgreSQL for MongoDB. The value of the port is testability and clarity, not "database independence".
 
 #### How a Senior Backend Engineer thinks about this

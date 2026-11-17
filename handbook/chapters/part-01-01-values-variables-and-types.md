@@ -386,7 +386,7 @@ Why it is right: the condition states the rule in full, "a whole number from 1 t
 
 The trap most learners fall into is reaching for truthiness: `return requested || 20`. That happens to turn `0` into `20`, so it seems to pass the first test, but it lets `500` straight through and would let `-5` through as well. The second trap is checking only one bound (`requested > 0`) and forgetting the maximum, which in a real API is how a client asks for a million rows in one request.
 
-A real request delivers `?limit=50` as the string `'50'`, which this function rejects on purpose: converting and validating input is the job of the request boundary (in NestJS, a DTO with `class-validator`, shown in 6.5), and this helper only accepts a number that has already been parsed.
+A real request delivers `?limit=50` as the string `'50'`, which this function rejects on purpose: converting and validating input is the job of the request boundary (in NestJS, a DTO with `class-validator`: a small class listing the expected fields with a rule on each, checked automatically on every request, shown in 6.5), and this helper only accepts a number that has already been parsed.
 
 Check it yourself: run the file and compare with the expected output, or replace the `console.log` lines with assertions so a wrong answer fails loudly:
 

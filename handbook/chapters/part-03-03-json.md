@@ -127,7 +127,7 @@ function parseOrderRequest(bodyText: string): { productId: string; quantity: num
 }
 ```
 
-In a real NestJS backend you do not write this by hand — you use DTOs with `class-validator` (Part 6), which does exactly this validation declaratively. But understanding what the framework does for you is the point: parse, then validate, then trust.
+In a real NestJS backend you do not write this by hand — you use DTOs with `class-validator`, which does exactly this validation declaratively. A **DTO** (data transfer object) is a small class that describes the body you expect, with a rule above each field such as `@IsInt()` or `@Min(1)`; NestJS checks every request against it and answers `400` before your code runs. Part 6 builds one step by step. But understanding what the framework does for you is the point: parse, then validate, then trust.
 
 #### Where the body text comes from
 

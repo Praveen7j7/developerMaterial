@@ -184,7 +184,7 @@ At 02:14 the on-call got paged: "orders with zero items". A deploy had introduce
 
 #### How a Senior Backend Engineer thinks about this
 
-The senior question is not "is this ACID?" but "what is the unit of work, and which of its steps are inside the database?". Anything outside the database (an HTTP call to Stripe, a Kafka publish, an email) cannot be rolled back, so it must be either idempotent and retried, or moved after the commit via an outbox (section 24.8 and Part 33 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency). Explaining to a product manager: "The database guarantees we never sell what we do not have. It cannot guarantee the email goes out; for that we have a retry queue."
+The senior question is not "is this ACID?" but "what is the unit of work, and which of its steps are inside the database?". Anything outside the database (an HTTP call to Stripe, a Kafka publish, an email) cannot be rolled back, so it must be either idempotent and retried, or moved after the commit via an **outbox**: you write a "to do" row in the same transaction, and a separate worker performs the call after the commit, retrying until it succeeds (section 24.8 and Part 33 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency). Explaining to a product manager: "The database guarantees we never sell what we do not have. It cannot guarantee the email goes out; for that we have a retry queue."
 
 #### Common mistakes
 

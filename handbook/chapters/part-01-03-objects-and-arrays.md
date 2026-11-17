@@ -313,7 +313,7 @@ At 09:00 a reporting endpoint starts returning the wrong order of results interm
 - `sort` without a comparator sorts **as strings**, so `[10, 2, 1].sort()` gives `[1, 10, 2]`. Always pass `(a, b) => a - b` for numbers.
 - `find` returns `undefined` when nothing matches; using the result without checking throws.
 - `reduce` with no initial value throws on an empty array; always pass the initial accumulator.
-- `map` over a huge array builds a whole second array in memory; for millions of rows, stream instead (Part 13).
+- `map` over a huge array builds a whole second array in memory; for millions of rows, stream instead. To **stream** is to handle the data in small pieces as they arrive (read a few hundred rows, process them, let them go, read the next few hundred), so only a little sits in memory at once, like drinking from a tap instead of filling a bathtub first. Part 13 covers streams in depth (13.23).
 
 #### How a Senior Backend Engineer thinks about this
 
@@ -422,7 +422,7 @@ const unique = [...new Set(['a', 'b', 'a', 'c'])]; // ['a', 'b', 'c']
 
 #### How a Senior Backend Engineer thinks about this
 
-Reaching the right collection is a small decision with a real performance consequence. Checking `array.includes(x)` scans the whole array every time (slow for large lists); a `Set.has(x)` is near-instant. Building a lookup by scanning an array inside a loop is accidentally quadratic; building a `Map` once and looking up is linear. For the data structures behind these (hash tables), see Part 10; here, the habit is: list of things to iterate is an array, lookup by key is a `Map`, uniqueness or membership is a `Set`.
+Reaching the right collection is a small decision with a real performance consequence. Checking `array.includes(x)` scans the whole array every time (slow for large lists); a `Set.has(x)` is near-instant. Building a lookup by scanning an array inside a loop is accidentally **quadratic** (10,000 items means about 10,000 × 10,000 = 100 million steps); building a `Map` once and looking up is **linear** (about 10,000 steps). `Map` and `Set` are fast because they use a **hash table**: the key is turned into a number that says where to look, so there is no scanning. Part 10 explains hash tables in depth; here, the habit is: list of things to iterate is an array, lookup by key is a `Map`, uniqueness or membership is a `Set`.
 
 #### Interview questions
 

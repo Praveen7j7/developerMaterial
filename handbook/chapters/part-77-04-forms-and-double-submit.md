@@ -63,7 +63,7 @@ flowchart LR
 - `z.object({...})` describes the shape; `.safeParse()` returns `{ success, data | error }`; `z.infer<typeof Schema>` gives the type, so form values and the API request share one type; `.refine` / `.superRefine` add cross-field rules.
 - Inputs always produce strings. Use `z.coerce.number()` or RHF's `valueAsNumber` for numeric fields.
 
-**React 19 forms.** **Actions** let you write `<form action={fn}>`, where `fn` receives the `FormData`, may be async and runs in a transition. `useActionState(action, initialState)` returns `[state, formAction, isPending]` (named `useFormState` in the canary build Next.js 14 bundles); `useFormStatus()` from `react-dom` gives a nested button `{ pending }`; uncontrolled fields reset after success. They suit simple forms and Next.js Server Actions (Part 79); RHF remains the usual choice for complex client forms.
+**React 19 forms.** **Actions** let you write `<form action={fn}>`, where `fn` receives the `FormData`, may be async and runs in a transition. `useActionState(action, initialState)` returns `[state, formAction, isPending]` (named `useFormState` in the canary build Next.js 14 bundles); `useFormStatus()` from `react-dom` gives a nested button `{ pending }`; uncontrolled fields reset after success. They suit simple forms and Next.js Server Actions (functions that run on the server and that a form can call directly as its `action`; Part 79 covers them); RHF remains the usual choice for complex client forms.
 
 #### Practical example
 

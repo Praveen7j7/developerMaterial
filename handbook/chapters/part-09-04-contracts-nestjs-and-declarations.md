@@ -43,7 +43,7 @@ export class CreateOrderDto {
 }
 ```
 
-The decorators and the TypeScript type sit on the same line, which keeps them close, but nothing forces them to agree: `@IsInt() quantity!: string` compiles. The global `ValidationPipe` with `whitelist: true` and `transform: true` (6.5) turns the raw body into a `CreateOrderDto` instance. `@nestjs/swagger` can read these classes to generate an OpenAPI description, which is how Part 80 — Frontend–Backend Contracts (80.2) produces typed clients for the frontend.
+The decorators and the TypeScript type sit on the same line, which keeps them close, but nothing forces them to agree: `@IsInt() quantity!: string` compiles. The global `ValidationPipe` with `whitelist: true` and `transform: true` (6.5) turns the raw body into a `CreateOrderDto` instance. `@nestjs/swagger` can read these classes to generate an OpenAPI description: a machine-readable file listing every endpoint with its request and response shapes, from which tools can generate typed client code. That is how Part 80 — Frontend–Backend Contracts (80.2) produces typed clients for the frontend.
 
 **Approach 2: a schema library such as zod.** The schema is the runtime rule, and the type is **inferred** from it, so they cannot disagree.
 

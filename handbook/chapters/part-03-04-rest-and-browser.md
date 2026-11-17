@@ -54,7 +54,7 @@ Offset pagination:  ?page=2&limit=20   (simple; slow and unstable deep in large 
 Cursor pagination:  ?cursor=eyJ...&limit=20  (stable and fast; the professional default)
 ```
 
-Part 18.5 covers why cursor pagination is preferred for large tables; for now, remember that every list endpoint is paginated and returns a bounded page plus a way to get the next one.
+The short reason cursor pagination wins on large tables: with `?page=5000`, the database still has to walk past all the earlier rows to skip them, and a row added meanwhile shifts every page, so items repeat or go missing. A **cursor** is a bookmark ("continue after order 98,231"), so the database jumps straight there. That jump relies on an **index** on the cursor column (a sorted lookup list the database keeps, like the index at the back of a book); without one, the database would still have to scan. Part 18.5 covers it in depth; for now, remember that every list endpoint is paginated and returns a bounded page plus a way to get the next one.
 
 #### Practical example — a consistent response shape
 
@@ -98,7 +98,7 @@ An early API grew without conventions: `POST /getProducts`, `GET /product_delete
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior uses REST as a strong default because its predictability lowers the cost for everyone who consumes the API, but they are not dogmatic — when an operation is genuinely an action rather than a CRUD operation, they model it pragmatically rather than contorting it. They paginate every list from day one, keep response shapes consistent, use status codes honestly, and treat every published endpoint as a long-lived contract. They also know when REST is the wrong tool: a mobile app that needs to fetch deeply nested data in one round trip may be better served by GraphQL, and internal service-to-service calls may be better as gRPC (Part 19).
+A senior uses REST as a strong default because its predictability lowers the cost for everyone who consumes the API, but they are not dogmatic — when an operation is genuinely an action rather than a CRUD operation, they model it pragmatically rather than contorting it. They paginate every list from day one, keep response shapes consistent, use status codes honestly, and treat every published endpoint as a long-lived contract. They also know when REST is the wrong tool: a mobile app that needs to fetch deeply nested data in one round trip may be better served by **GraphQL** (one endpoint where the client writes a query naming exactly the fields it wants), and internal service-to-service calls may be better as **gRPC** (typed function calls between services, sent in a compact binary format instead of JSON). Part 19 compares them in depth.
 
 #### Common mistakes
 
@@ -249,7 +249,7 @@ Content-Type: application/json
 
 #### Cookies and tokens
 
-The browser stores cookies the server sets (via `Set-Cookie`) and automatically attaches them to future requests to that domain (via `Cookie`). This is how a server remembers a logged-in session across the stateless request-response model. Modern APIs often use a token in the `Authorization` header instead (Part 44.3). Either way, the thing the backend engineer must know: the browser handles cookies automatically, which is convenient but also why cookie security settings (`HttpOnly`, `Secure`, `SameSite`) matter (Part 14.8 and Part 44).
+The browser stores cookies the server sets (via `Set-Cookie`) and automatically attaches them to future requests to that domain (via `Cookie`). This is how a server remembers a logged-in session across the stateless request-response model. Modern APIs often use a signed token in the `Authorization` header instead (the idea from 3.3.2; Part 44.3). Either way, the thing the backend engineer must know: the browser handles cookies automatically, which is convenient but also why cookie security settings matter. In short: `HttpOnly` stops the page's JavaScript from reading the cookie, so a script injected by an attacker cannot steal it; `Secure` sends it only over `https`; `SameSite` stops the browser attaching it to requests that another website starts. Part 14.8 and Part 44 cover them in depth.
 
 #### Practical example — why a page is slow
 

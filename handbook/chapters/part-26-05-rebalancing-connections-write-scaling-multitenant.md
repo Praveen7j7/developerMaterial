@@ -288,7 +288,7 @@ Imagine a bank teller who must write every coin drop into the ledger by hand. Ba
 #### How it works
 
 1. **Batching.** Collect writes for up to N ms or M rows and insert in one statement (`INSERT ... VALUES (...), (...), ...` or `COPY`). One transaction with 500 rows costs one fsync instead of 500. Throughput per second goes from thousands to hundreds of thousands of rows. Cost: a few milliseconds of latency and the need to handle a partial-batch failure (fall back to per-row inserts to find the bad row).
-2. **Async write queues.** The request path publishes an event (BullMQ, RabbitMQ, Kafka); a worker consumes and writes in batches. Cost: the write is eventually consistent, and the queue must be durable and the consumer idempotent (Part 34).
+2. **Async write queues.** The request path publishes an event (BullMQ, RabbitMQ, Kafka); a worker consumes and writes in batches. Cost: the write is eventually consistent, and the queue must be durable and the consumer idempotent, because a queue can deliver the same message twice (Part 31 covers idempotent consumers).
 3. **CQRS read models.** Keep the write model normalised and small; build denormalised read tables (or Elasticsearch, or Redis) from the change stream. Writes get cheaper because they no longer maintain the counters and denormalised columns that reads want. Cost: two models to keep consistent, and read-your-own-writes again.
 4. **Move high-write data elsewhere.** Click events, request logs, metrics, notification delivery receipts: append-only, huge, queried by time. They belong in ClickHouse, S3 plus Athena, a time-series database, or at least a separate PostgreSQL instance with partitioning. Cost: another system to run, but one designed for that shape.
 5. **Delete chatter.** `UPDATE users SET last_seen = now()` on every request is the classic. Write it to Redis and flush hourly, or only update when the previous value is more than 5 minutes old.
@@ -444,7 +444,7 @@ A SaaS with 20,000 tenants: 19,900 on shared-schema with RLS across 4 hash shard
 
 - **RLS bypassed by a superuser or table owner** without `FORCE`; connect as a non-owner role.
 - **Missing `set_config`** in some code path: with RLS the query returns zero rows rather than leaking, which is the safe failure, but it looks like a data-loss bug. Log the tenant setting on empty results in staging.
-- **Migrations across N databases** half-applied: tenants on different schema versions; the app must be N-1 compatible (Part 28) and the pipeline resumable.
+- **Migrations across N databases** half-applied: tenants on different schema versions; the app must be N-1 compatible (each app version works with the schema version before its own as well as its own, so half-migrated tenants keep working; Part 28 states the rule in 28.3) and the pipeline resumable.
 - **Per-tenant connection pools** explode with database-per-tenant: 500 databases × pool 5 = 2,500 connections; use PgBouncer with per-database pools, or a lazy pool that opens on demand.
 - **Tenant deletion**: shared schema means a big `DELETE` (do it in batches); database per tenant means `DROP DATABASE`.
 - **Cross-tenant analytics**: trivial with shared schema, painful with database per tenant; feed a warehouse by CDC.

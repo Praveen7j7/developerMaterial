@@ -160,7 +160,7 @@ At 09:05 on the morning after the admin site moved from `https://shop-admin.exam
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior treats CORS as configuration with an owner, not as an error to silence. The allow list is explicit, per environment, validated at start-up and covered by a test. They never ship `*` for an API that uses cookies, never ship `origin: true`, and never confuse CORS with access control: an attacker with `curl` ignores CORS entirely, so every endpoint still needs authentication and authorization. And they prefer architectures where the question disappears: serving the frontend and API from one origin (7.8) or behind one domain with a reverse proxy removes preflights and CORS configuration altogether. Part 14 (14.13) covers CORS in depth and Part 81 covers cookies, credentials and CSRF.
+A senior treats CORS as configuration with an owner, not as an error to silence. The allow list is explicit, per environment, validated at start-up and covered by a test. They never ship `*` for an API that uses cookies, never ship `origin: true`, and never confuse CORS with access control: an attacker with `curl` ignores CORS entirely, so every endpoint still needs authentication and authorization. And they prefer architectures where the question disappears: serving the frontend and API from one origin (7.8) or behind one domain with a reverse proxy (a server in front, such as nginx, that sends `/api` requests to the API and everything else to the frontend files) removes preflights and CORS configuration altogether. Part 14 (14.13) covers CORS in depth and Part 81 covers cookies, credentials and CSRF.
 
 #### Common mistakes
 
@@ -264,7 +264,7 @@ The same walkthrough catches the other usual suspects:
 - **Opening DevTools after the page loaded** misses the first requests; reload with the Network panel open.
 - **Red "Failed to load resource: ... status of 409" lines** appear in Chrome's Console for every `4xx` and `5xx` response, even ones your code handles correctly, and for a missing `favicon.ico`; they are network logs, not script errors.
 - **A CORS-blocked response hides its body** from the page and largely from DevTools; check the server log for what actually happened.
-- **Production code is minified**: line 1, column 48,213 tells you nothing without source maps (Part 76, 76.7, and Part 84, 84.6).
+- **Production code is minified** (squeezed into a few long lines with short names, to download faster): line 1, column 48,213 tells you nothing without source maps. A **source map** is a separate file that maps each spot in the minified code back to your original file and line, and DevTools uses it automatically when it is served (Part 76, 76.7, and Part 84, 84.6).
 
 #### How a Senior Backend Engineer thinks about this
 

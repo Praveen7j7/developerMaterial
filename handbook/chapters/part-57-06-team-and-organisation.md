@@ -120,7 +120,7 @@ Two pieces of published evidence are worth knowing, as reasons for humility rath
 - Rotate reviewers, and cap the number of reviews per person per day where volume is high.
 - Spend human review on the risky parts; let deterministic checks and bots handle the rest.
 
-**Code nobody understands** is the long-term side. A sign of it: during an incident, nobody on the team can explain why a function does what it does, and the commit message says "implement feature". Defences are old ones: the author must be able to explain every line before merge, design decisions go into PR descriptions and ADRs (Part 88), and complex modules have a named owner.
+**Code nobody understands** is the long-term side. A sign of it: during an incident, nobody on the team can explain why a function does what it does, and the commit message says "implement feature". Defences are old ones: the author must be able to explain every line before merge, design decisions go into PR descriptions and ADRs (architecture decision records: one short page per decision saying what was chosen, what was rejected and why; Part 88 covers them), and complex modules have a named owner.
 
 #### Failure scenario
 

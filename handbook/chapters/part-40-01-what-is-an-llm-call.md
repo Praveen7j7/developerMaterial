@@ -47,7 +47,7 @@ messages: the conversation so far        usage: input/output token counts
 max_tokens: output cap                   (sometimes) which model served it
 ```
 
-The **stop reason** tells you why generation ended: finished naturally, hit the `max_tokens` cap (output was truncated — a bug to detect), the model wanted to call a tool (Part 41), or the model declined. Always check it; treating a truncated response as complete is a classic mistake.
+The **stop reason** tells you why generation ended: finished naturally, hit the `max_tokens` cap (output was truncated — a bug to detect), the model wanted to call a tool (it asks your code to run one of the functions you offered it and send back the result; 40.3 shows how, and Part 41 builds agents on it), or the model declined. Always check it; treating a truncated response as complete is a classic mistake.
 
 #### Latency profile
 
@@ -227,7 +227,7 @@ A team routed support tickets with a `switch` on the raw model output: `case 'sh
 #### Edge cases & failure modes
 
 - **Same prompt, different answer across runs**: expected; measure agreement and route ambiguous cases explicitly.
-- **Model upgrade changes behavior** even with an identical prompt: pin the model id, and re-run your evaluation set (Part 41) before switching.
+- **Model upgrade changes behavior** even with an identical prompt: pin the model id, and re-run your **evaluation set** before switching. An evaluation set is a test suite for model behavior: many representative inputs, each with a way to grade the output (exact match, a rubric or a judge), run together to give one score you can compare. Part 41 builds one in depth (41.4).
 - **Provider-side changes** to sampling or defaults: some current models no longer accept sampling parameters at all and return a `400` if you send them; keep sampling settings in one place (your LLM service) so a provider change is a one-line fix.
 - **Caching on output**: never use a generated string as a cache key or an idempotency key; it is not stable.
 - **Snapshot tests on generated text** are flaky by design; test your code with a mocked client and test the model's behavior with evaluations.

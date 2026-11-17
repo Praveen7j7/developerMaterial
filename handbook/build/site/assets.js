@@ -14,7 +14,7 @@ const BUNDLES = {
   'home.css': ['home.css'],
   'roadmap.css': ['roadmap.css'],
   'site.js': ['core.js', 'layout.js', 'search.js', 'roadmap.js', 'keys.js'],
-  'read.js': ['content.js', 'diagrams.js'],
+  'read.js': ['content.js', 'diagrams.js', 'xref.js'],
 };
 
 // The sources stay commented and readable; the published copies are squeezed with two

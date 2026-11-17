@@ -29,10 +29,12 @@ const { volumePage } = require('./site/pages/volume');
 const { roadmapPage } = require('./site/pages/roadmap');
 const { searchIndex } = require('./site/search');
 const { writeAssets } = require('./site/assets');
+const { buildRefIndex, refsJson } = require('./site/xrefs');
 
 const t0 = Date.now();
 fs.mkdirSync(PATHS.SITE_ASSETS, { recursive: true });
 const book = loadBook();
+book.refIdx = buildRefIndex(book);
 const stages = parseRoadmap(findRoadmapPart(book.parts), book.parts);
 const write = (name, html) => { fs.writeFileSync(path.join(PATHS.SITE, name), html); return Buffer.byteLength(html); };
 
@@ -43,6 +45,9 @@ for (const v of book.volumes) {
   sizes[v.file] = write(v.file, volumePage(v, book));
   console.log(`Volume ${v.n} ${v.title.padEnd(26)} ${String(v.parts.length).padStart(2)} parts  ${(sizes[v.file] / 1024).toFixed(0).padStart(5)} KB`);
 }
+const refs = refsJson(book.refIdx);
+sizes['refs.json'] = write('refs.json', JSON.stringify(refs));
+console.log(`Cross-references: ${Object.keys(refs.s).length} sections + ${Object.keys(refs.p).length} Parts in refs.json, ${(sizes['refs.json'] / 1024).toFixed(0)} KB`);
 const idx = searchIndex(book);
 fs.writeFileSync(path.join(PATHS.SITE, 'search-index.json'), JSON.stringify(idx));
 const a = writeAssets();

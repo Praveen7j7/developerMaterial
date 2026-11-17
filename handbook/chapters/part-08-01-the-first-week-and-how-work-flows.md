@@ -88,7 +88,7 @@ Questions for Priya:
   - what happens if the outbox worker is down?
 ```
 
-Those two questions show she read the code and thought about failure, which is precisely the habit the rest of this book builds. Priya's answers ("we reserve first so we never charge for something out of stock; the outbox catches up when the worker returns, see Part 33") teach her more than an hour of reading would.
+Those two questions show she read the code and thought about failure, which is precisely the habit the rest of this book builds. Priya's answers ("we reserve first so we never charge for something out of stock; the outbox catches up when the worker returns") teach her more than an hour of reading would. The **outbox** is a table: the "order.created" message is saved there in the same database transaction as the order itself, so the two succeed or fail together, and a worker publishes the saved messages later. If the worker is down, messages simply wait in the table. Part 33 covers the pattern in depth (33.10).
 
 #### Common mistakes
 
@@ -159,7 +159,7 @@ it('returns a customer order history newest first', async () => {
 });
 ```
 
-Before opening the pull request she asks one more question in the team channel: "Is there an index on `orders (customer_id, created_at)`? Sorting without one could be slow for customers with many orders." There is (Part 23 — Database Indexing). Asking showed she knows sorting has a cost, and it took ten seconds.
+Before opening the pull request she asks one more question in the team channel: "Is there an index on `orders (customer_id, created_at)`? Sorting without one could be slow for customers with many orders." There is. An **index** is a separate, sorted lookup structure the database keeps up to date, like the index at the back of a book: with one on `(customer_id, created_at)`, PostgreSQL can jump to one customer's orders already in date order instead of reading and sorting them all (Part 23 — Database Indexing covers it in depth). Asking showed she knows sorting has a cost, and it took ten seconds.
 
 #### How a Senior Backend Engineer thinks about this
 

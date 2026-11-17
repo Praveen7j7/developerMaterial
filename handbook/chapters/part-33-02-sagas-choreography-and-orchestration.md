@@ -560,7 +560,7 @@ export class SagaRunner {
 }
 ```
 
-Exponential backoff with jitter, capped at 60 s (Part 34 section 34.2). `FOR UPDATE SKIP LOCKED` means twenty pods can run this tick concurrently and never collide.
+Exponential backoff with jitter, capped at 60 s (Part 34 section 34.4). `FOR UPDATE SKIP LOCKED` means twenty pods can run this tick concurrently and never collide.
 
 #### `@nestjs/cqrs` sagas versus a plain service
 

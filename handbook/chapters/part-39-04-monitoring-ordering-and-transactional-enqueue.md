@@ -143,7 +143,7 @@ groups:
         labels: { severity: ticket }
 ```
 
-The threshold in the first alert is a *business* number, not a technical one. Ask the product owner: "how late can an order confirmation email be before a customer contacts support?" The answer is usually 5 to 15 minutes. That answer is your queue SLO, and it belongs in the alert. This is exactly the SLI/SLO thinking of Part 53 — Site Reliability Engineering, applied to asynchronous work.
+The threshold in the first alert is a *business* number, not a technical one. Ask the product owner: "how late can an order confirmation email be before a customer contacts support?" The answer is usually 5 to 15 minutes. That answer is your queue SLO, and it belongs in the alert. An **SLI** (service level indicator) is the number you measure, here the age of the oldest waiting job; an **SLO** (service level objective) is the target you hold it to, such as "under 10 minutes". This is exactly the SLI/SLO thinking of Part 53 — Site Reliability Engineering, applied to asynchronous work.
 
 Also graph, on the same dashboard: worker replica count, event loop lag per worker pod, Redis memory, and the p95 of `job_duration_seconds` per job name. When the backlog alarm fires, those four panels answer "not enough workers", "workers are blocked", "Redis is about to die" and "one job type got slow" in about fifteen seconds.
 

@@ -271,7 +271,7 @@ Each derived store is eventually consistent; the app tolerates the lag.
 
 Migrations go both ways, for real reasons:
 
-- **NoSQL to PostgreSQL** happens when a team discovers they need transactions, joins or query flexibility they gave up — the common "we modeled relational data in a document store by default" realization (29.2). The migration re-normalizes documents into relational tables, often via a dual-write or backfill-and-cutover (Part 91 on large migrations).
+- **NoSQL to PostgreSQL** happens when a team discovers they need transactions, joins or query flexibility they gave up — the common "we modeled relational data in a document store by default" realization (29.2). The migration re-normalizes documents into relational tables, often via a dual-write (the app writes every change to both stores for a while) or backfill-and-cutover (copy the existing data across, then switch reads and writes to the new store); Part 91 covers large migrations in depth.
 - **PostgreSQL to NoSQL** happens when a specific workload genuinely outgrows the relational model — write scale past a single primary, or an access pattern that fits a key-value model at massive scale. The migration denormalizes into the target's access-pattern-first model.
 
 Both are large migrations with the usual pitfalls (Part 91): they fail when underestimated, so they use incremental strategies, dual writes or CDC-based sync, backfills, and reconciliation to verify nothing was lost. The reasons must be specific; migrating stores is expensive and risky, so it is justified by a concrete requirement, not a preference.

@@ -233,7 +233,7 @@ A senior introduces a semantic layer when there are several consumers of the sam
 
 #### Why does it exist?
 
-A central data team works well until it does not. At some size, every new dataset, every source change and every new question queues behind one team that understands neither the source systems (the domains do) nor the business questions (the consumers do). The central team becomes the bottleneck Conway's Law predicts (see Part 92 — Org Design, Conway's Law and Platform Engineering, 92.1). Data mesh applies the same remedy that microservices and platform teams applied to software: push ownership to the domains, and give them a platform that makes ownership cheap.
+A central data team works well until it does not. At some size, every new dataset, every source change and every new question queues behind one team that understands neither the source systems (the domains do) nor the business questions (the consumers do). The central team becomes the bottleneck **Conway's Law** predicts: organisations build systems that mirror how their teams are divided and talk to each other, so one central team produces one central pipeline that everything must pass through. Part 92 — Org Design, Conway's Law and Platform Engineering covers it in depth (92.1). Data mesh applies the same remedy that microservices and platform teams applied to software: push ownership to the domains, and give them a platform that makes ownership cheap.
 
 #### Mental model
 
@@ -267,7 +267,7 @@ flowchart TB
     o1 --> fin
 ```
 
-Mapping to team types (see Part 92 — Org Design, Conway's Law and Platform Engineering, 92.2): domain teams are stream-aligned and own their data products; the data platform team is a platform team offering X-as-a-service; a small enabling team helps domains learn to model and test data; governance is a federated group with representatives from domains, security and legal.
+Mapping to team types (the four types from the book *Team Topologies*: **stream-aligned** teams own one flow of product work end to end, **platform** teams provide them with self-service tools "as a service", **enabling** teams coach other teams in new skills, and complicated-subsystem teams own a hard specialist component; Part 92 — Org Design, Conway's Law and Platform Engineering covers them in 92.2): domain teams are stream-aligned and own their data products; the data platform team is a platform team offering X-as-a-service; a small enabling team helps domains learn to model and test data; governance is a federated group with representatives from domains, security and legal.
 
 | Factor | Favours a central team | Favours data mesh |
 |---|---|---|

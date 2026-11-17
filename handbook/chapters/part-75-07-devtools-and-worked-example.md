@@ -210,7 +210,7 @@ flowchart LR
 
 #### Reading it, letter by letter
 
-**[A] First byte at 720 ms.** About 340 ms is connection setup (DNS 40, TCP 150, TLS 150) before the request leaves. Then half a round trip each way (150 ms total) plus 230 ms of server time. `Server-Timing` says 190 of those 230 ms were API calls from Next.js to NestJS. The NestJS trace shows three sequential calls: product (60 ms), price (70 ms), related items (60 ms). They do not depend on each other. **Backend fix:** run them with `Promise.all` in the page, or add one aggregated BFF endpoint (Part 79 — Next.js and Rendering Strategies). Expected server time: about 100 ms.
+**[A] First byte at 720 ms.** About 340 ms is connection setup (DNS 40, TCP 150, TLS 150) before the request leaves. Then half a round trip each way (150 ms total) plus 230 ms of server time. `Server-Timing` says 190 of those 230 ms were API calls from Next.js to NestJS. The NestJS trace shows three sequential calls: product (60 ms), price (70 ms), related items (60 ms). They do not depend on each other. **Backend fix:** run them with `Promise.all` in the page, or add one aggregated **BFF** (backend-for-frontend) endpoint: a server-side endpoint built for this one page that makes the three calls itself and returns one response shaped for the screen (Part 79 — Next.js and Rendering Strategies covers the pattern in 79.8). Expected server time: about 100 ms.
 
 **[B] CSS at 1,030 ms, FCP at 1,090 ms.** The preload scanner found the stylesheet in the first HTML chunk and fetched it on the existing HTTP/2 connection, so no new handshake. CSS is render-blocking (75.1), so FCP waits for it: CSS end plus about 60 ms of style, layout and paint on a throttled CPU. Healthy.
 

@@ -176,7 +176,7 @@ Joining a team means inheriting tens of thousands of lines you did not write. No
 3. **Trace one real request end to end.** Pick an important endpoint (`POST /orders`) and follow it: controller, service, repository, database, any events published. This is question 3 of the method, applied to code. Write the path down.
 4. **Run it and break it.** Start the app locally, call the endpoint, put a breakpoint or a log in the service, change one line and watch a test fail. Running code teaches more in ten minutes than reading does in an hour.
 5. **Read the tests:** executable documentation of what the authors thought mattered.
-6. **Use history and ask why.** `git log --follow` and `git blame` (Part 5 — Git Basics and the Development Workflow, 5.8) usually lead to the commit that explains a strange line, which is often a fix for an incident you have not heard of.
+6. **Use history and ask why.** `git log --follow` and `git blame` usually lead to the commit that explains a strange line, which is often a fix for an incident you have not heard of. In short: Git keeps every saved change as a **commit** with a message; `git blame` shows, for each line of a file, which commit last changed it, and `git log --follow` lists a file's commits even across renames. Part 5 — Git Basics and the Development Workflow teaches these from scratch (5.8).
 
 ```text
 README / package.json / CI file

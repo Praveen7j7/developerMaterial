@@ -143,7 +143,7 @@ This exact shape protects a real checkout page. When the pricing service (normal
 #### Edge cases & failure modes
 
 - **Retrying non-retryable errors.** A `404 product not found` will not get better on attempt 2. A real version only retries timeouts, network errors and `5xx` responses.
-- **Retrying writes.** Retrying a price read is safe. Retrying "charge the card" is not, unless the call carries an idempotency key (Part 33 — Distributed Transactions).
+- **Retrying writes.** Retrying a price read is safe. Retrying "charge the card" is not, unless the call carries an idempotency key: a unique ID for this one payment, sent with every attempt, so the provider recognises a repeat and charges only once (the idea from 1.8.6; Part 33 — Distributed Transactions covers it in depth).
 - **Stale cache.** A week-old fallback price may be wrong. Real systems store the time the price was cached and refuse very old ones.
 - **Unref'd timers.** `AbortSignal.timeout` does not keep the process alive by itself. A server keeps itself alive, but a script whose only pending work is such a timeout exits early with a "Detected unsettled top-level await" warning, which is why the mock's "hung" mode uses a real one-minute timer.
 
@@ -200,7 +200,7 @@ Name the cause and the fix for each, using the table.
 
 1. The rows are saved inside a `forEach(async ...)` (or a `.then` that does not return), so the count is read before the inserts finish. Use `for...of` with `await`, or `await Promise.all(rows.map(save))`.
 2. The callback logged the error but did not `return`, so it carried on and used the missing `user`. Write `if (err) return console.error(...)`.
-3. The spreadsheet is parsed synchronously on the main thread, blocking the event loop for everyone. Parse it in a worker thread (Part 13.20) or a background job (Part 39), and stream it instead of loading 40 MB at once.
+3. The spreadsheet is parsed synchronously on the main thread, blocking the event loop for everyone. Parse it in a worker thread (a second JavaScript thread, as in 2.1; Part 13.20) or a background job that a separate worker process runs later (Part 39), and stream it instead of loading 40 MB at once.
 
 ## Senior Checklist — Part 2
 

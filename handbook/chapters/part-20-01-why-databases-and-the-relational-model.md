@@ -44,7 +44,7 @@ At the highest level, when your NestJS service runs `INSERT INTO orders ...` and
 7. The dirty data page is written to disk later, lazily, by the background writer or checkpointer. If the server crashes before that, recovery replays the WAL and rebuilds the page.
 8. Constraints (`NOT NULL`, `CHECK`, `UNIQUE`, foreign keys) are checked before the row is accepted. A violation aborts the statement and, by default, the whole transaction.
 
-Part 24 (Database Transactions) and Part 25 (PostgreSQL Internals) go deeper into WAL and MVCC. Here the point is: every one of those steps is a guarantee that a file does not give you.
+Part 22 (PostgreSQL Internals) and Part 24 (Database Transactions) go deeper into WAL and MVCC. Here the point is: every one of those steps is a guarantee that a file does not give you.
 
 #### Practical example
 
@@ -124,9 +124,9 @@ At 02:14 the on-call engineer was paged: "orders.json is corrupt". A legacy inte
 #### Edge cases & failure modes
 
 - Durability is only as good as `fsync`. With `synchronous_commit = off`, a crash can lose the last few hundred milliseconds of "committed" transactions. Know your setting.
-- Durability on one machine is not durability across a data-center failure. That needs replication (Part 26 — Database Scaling).
+- Durability on one machine is not durability across a data-center failure. That needs **replication**: the database streams every change to live copies on other machines, so a copy survives when one machine or site is lost. Part 26 — Database Scaling covers it in depth.
 - A database guarantees the rules you declared. If you never declare `CHECK (quantity > 0)`, a negative quantity is perfectly valid to the database.
-- Connection exhaustion: every guarantee is behind a connection, and PostgreSQL connections are expensive processes. Pooling is mandatory (Part 25).
+- Connection exhaustion: every guarantee is behind a connection, and PostgreSQL connections are expensive processes. Pooling is mandatory: a **connection pool** keeps a small, fixed set of connections open and lends one to each query in turn, instead of opening a new connection per request. Part 22 covers pooling in depth (22.2).
 - A transaction that is left open (application bug, forgotten `await`) holds locks and blocks vacuum. The database keeps its promises, but at a cost to everyone else.
 
 #### How a Senior Backend Engineer thinks about this

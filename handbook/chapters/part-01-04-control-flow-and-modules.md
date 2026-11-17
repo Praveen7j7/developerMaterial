@@ -269,11 +269,11 @@ A counted `for` loop is the right tool here because we need the attempt number a
 - **Infinite loops.** A `while (true)` with no `break`, or a `for` whose condition never becomes false, hangs the process. On a single-threaded Node server, an infinite loop freezes the entire server for every user, not just one request (Part 13).
 - **`for...in` over arrays** iterates indices as strings and includes inherited properties; use `for...of` for array values.
 - **Modifying an array while iterating it** with a classic `for` can skip or repeat elements. Build a new array instead.
-- **`await` inside a loop** runs iterations one after another (serial). If they are independent, that is needlessly slow; use `Promise.all` (Part 2) to run them together.
+- **`await` inside a loop** runs iterations one after another (serial). If they are independent, that is needlessly slow; use `Promise.all` to run them together. In short: a function marked `async` can `await` a slow operation (a database call, an HTTP request), which pauses that function until the result arrives; `Promise.all` starts all the operations at once and waits for the whole set. That is all you need for now; Part 2 teaches `async`/`await` and `Promise.all` from the beginning.
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior defaults to array methods for data transformation and reserves explicit loops for early exit, index math, and side effects that read more clearly as a loop. They are acutely aware that on Node a long synchronous loop blocks the event loop and therefore every concurrent request (Part 13), so a loop over a million rows gets rewritten to stream or to yield control. They watch for the accidental-serial-`await`-in-a-loop pattern, one of the most common causes of a slow endpoint.
+A senior defaults to array methods for data transformation and reserves explicit loops for early exit, index math, and side effects that read more clearly as a loop. They are acutely aware that on Node a long synchronous loop blocks the event loop and therefore every concurrent request, so a loop over a million rows gets rewritten to stream or to yield control. The **event loop** is how Node's single thread juggles work: it runs one piece of JavaScript to the end, then picks up the next waiting job (a new request, a finished database call). While your loop runs, nothing else gets a turn. Part 2 introduces the event loop and Part 13 goes deep. They watch for the accidental-serial-`await`-in-a-loop pattern, one of the most common causes of a slow endpoint.
 
 #### Common mistakes
 

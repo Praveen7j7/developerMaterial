@@ -290,7 +290,7 @@ The everyday DOM toolkit:
 
 #### Failure scenario
 
-At 10:40 on a Monday, support reports that the admin product page "flickers and then logs everyone out". In DevTools the on-call engineer sees requests to an unknown domain in the Network panel and an `<img>` element in one product card that should not exist. A product imported on Friday has an HTML payload as its name, and the card was built with `innerHTML` and a template string. The API did nothing wrong: it stored a string. The team rotates sessions, rewrites the card with `createElement` and `textContent`, adds a Content Security Policy (Part 44, 44.33), and adds a test that creates a product named `<img src=x onerror=alert(1)>` and asserts the page shows it as text. Escaping belongs where data meets HTML, in every client.
+At 10:40 on a Monday, support reports that the admin product page "flickers and then logs everyone out". In DevTools the on-call engineer sees requests to an unknown domain in the Network panel and an `<img>` element in one product card that should not exist. A product imported on Friday has an HTML payload as its name, and the card was built with `innerHTML` and a template string. The API did nothing wrong: it stored a string. The team rotates sessions, rewrites the card with `createElement` and `textContent`, adds a Content Security Policy (a response header that tells the browser which sources the page may load scripts and images from, so an injected script calling an unknown domain is blocked; Part 44, 44.33), and adds a test that creates a product named `<img src=x onerror=alert(1)>` and asserts the page shows it as text. Escaping belongs where data meets HTML, in every client.
 
 #### Edge cases & failure modes
 

@@ -480,7 +480,7 @@ DETAIL:  Key (courier_id, during)=(41, ["2026-09-09 15:00:00+00","2026-09-09 17:
          conflicts with existing key (courier_id, during)=(41, ["2026-09-09 14:00:00+00","2026-09-09 16:00:00+00")).
 ```
 
-Two concurrent transactions attempting overlapping inserts: the second waits on the first and then fails. No application lock, no race, no lost booking. Compare that to the read-check-insert pattern, which loses under concurrency every time (Part 24 — Database Transactions covers why).
+Two concurrent transactions attempting overlapping inserts: the second waits on the first and then fails. No application lock, no race, no lost booking. Compare that to the read-check-insert pattern, which loses under concurrency every time: both transactions read at the same moment, both see no overlap, and both insert, because neither can see the other's uncommitted row. Part 24 — Database Transactions covers why in depth.
 
 The overlap query itself:
 

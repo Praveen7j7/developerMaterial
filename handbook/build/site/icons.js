@@ -5,7 +5,7 @@
 const DATA = require('./icons-data');
 
 // icons that site.js creates at run time, so every page must carry them
-const JS_ICONS = ['copy', 'clipboard-check', 'zoom-in', 'zoom-out', 'rotate-ccw', 'x', 'check', 'circle-check', 'chevron-right', 'repeat'];
+const JS_ICONS = ['copy', 'clipboard-check', 'zoom-in', 'zoom-out', 'rotate-ccw', 'x', 'check', 'circle-check', 'chevron-right', 'repeat', 'arrow-right', 'undo-2'];
 
 function icon(name, cls = '') {
   if (!DATA[name]) throw new Error('Unknown icon: ' + name);

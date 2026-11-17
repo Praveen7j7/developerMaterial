@@ -208,7 +208,7 @@ flowchart LR
 ```
 
 1. The **query cache** decides whether to call the query function at all (78.3).
-2. `fetch()` goes through a **service worker** if one is registered (Part 84 covers them).
+2. `fetch()` goes through a **service worker** if one is registered: a script the site installs in the browser that sits between the page and the network and can answer requests from its own cache (Part 84 covers them).
 3. The **browser HTTP cache** applies `Cache-Control` from the last response. With `max-age=60`, any `fetch` within 60 s is served from disk without contacting the server, and JavaScript sees an ordinary `200`. With `no-cache`, the browser always revalidates, sending `If-None-Match` with the stored `ETag`; on `304` it serves the stored body, and again JavaScript sees a `200` with the full body (Part 14.11).
 4. A **CDN** stores responses marked `public` or with `s-maxage`. Per-user API data must be `private` so shared caches never store it.
 5. **Redis** in the API (Part 30.2) serves cache-aside reads with a TTL.

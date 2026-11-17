@@ -2,7 +2,7 @@
 
 An API is a contract you will be held to for years. The database schema behind it can change every sprint; the API cannot, because mobile apps stuck on last year's release and partner integrations nobody remembers are calling it right now. That asymmetry is why API design deserves more care than almost any other backend decision.
 
-This part covers REST thoroughly, with NestJS code for everything: resource modeling, URIs, verbs, status codes, pagination, filtering, bulk operations, partial updates, versioning, errors, validation, idempotency, rate limiting, contracts, long-running operations and webhooks. It ends with a complete `OrdersController` and an API design review checklist. GraphQL and gRPC are covered in Part 20; the principles here (resources, idempotency, errors, versioning) carry over.
+This part covers REST thoroughly, with NestJS code for everything: resource modeling, URIs, verbs, status codes, pagination, filtering, bulk operations, partial updates, versioning, errors, validation, idempotency, rate limiting, contracts, long-running operations and webhooks. It ends with a complete `OrdersController` and an API design review checklist. GraphQL and gRPC are covered in Part 19; the principles here (resources, idempotency, errors, versioning) carry over.
 
 ## 18.1 Resource modeling
 

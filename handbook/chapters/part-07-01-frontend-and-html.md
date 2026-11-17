@@ -275,7 +275,7 @@ Try it against the Part 6 API with `<form method="post" action="http://localhost
 
 (Messages abridged.) Three lessons in one response. The form sends field names, not DTO names: `price` is not in `CreateProductDto`, so `forbidNonWhitelisted` rejects it. A URL-encoded body has only strings, so even a field named `priceCents` would arrive as `"1299"` and fail `@IsInt()`. And the user has left your page for a wall of JSON. This is why a frontend for a JSON API intercepts the submit, converts the values, and sends JSON with `fetch` (7.5).
 
-Notice also what did **not** happen: the browser did not block this cross-origin `POST`. A plain form submission is a navigation, not a script reading a response, so CORS (7.6) does not stop it. The server received the request and ran it. That is exactly the gap Cross-Site Request Forgery exploits once cookies are involved; Part 44 (44.22) and Part 81 (81.6) cover the defences.
+Notice also what did **not** happen: the browser did not block this cross-origin `POST`. A plain form submission is a navigation, not a script reading a response, so CORS (7.6) does not stop it. The server received the request and ran it. That is exactly the gap Cross-Site Request Forgery exploits once cookies are involved. In **CSRF**, an evil page submits a form like this one to your API, the browser attaches your user's login cookie by itself, and the server cannot tell the user never meant to send it. `SameSite` cookies (3.6) and checking where a request came from are the usual defences; Part 44 (44.22) and Part 81 (81.6) cover them in depth.
 
 #### Edge cases & failure modes
 

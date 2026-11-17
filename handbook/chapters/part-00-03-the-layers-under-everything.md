@@ -39,7 +39,7 @@ Read the last column slowly. If reading from the CPU's cache takes a second, rea
 
 - **Why caches win.** A Redis lookup in the same data centre (about 0.2 to 1 ms, mostly network) beats a PostgreSQL query that reads pages from disk (several ms); a value in your process's memory (about 100 ns) beats both by thousands of times. PostgreSQL keeps hot pages in RAM (shared buffers) for the same reason.
 - **Why round trips dominate.** 20 sequential queries at 1 ms each cost 20 ms of waiting even if each does no work. The N+1 query problem is a memory-hierarchy problem before it is an ORM problem.
-- **Why data layout matters.** An array's elements sit side by side, so one 64-byte cache line brings the next few along; a linked structure scattered across memory pays a RAM trip per element. Part 10 — Computer Science Fundamentals: Data Structures returns to this.
+- **Why data layout matters.** The CPU never copies a single value from RAM into its cache; it copies a small block of neighbouring bytes, called a **cache line** (64 bytes). An array's elements sit side by side, so one cache line brings the next few elements along for free; a linked structure scattered across memory pays a RAM trip per element. Part 10 — Computer Science Fundamentals: Data Structures returns to this.
 
 ```mermaid
 flowchart LR
@@ -81,7 +81,7 @@ To store negative numbers, almost every computer uses **two's complement**. The 
 When a calculation goes past the top of the range, it **overflows**. What happens next depends on the system, and this is exactly the kind of fact the ten questions should dig out:
 
 - **Java and Go integers wrap around silently.** `Integer.MAX_VALUE + 1` in Java is -2,147,483,648. A counter or a money total can turn negative with no error.
-- **PostgreSQL refuses.** Inserting past the range of an `integer` column raises `ERROR: integer out of range`. Right for data, but a table with an `integer` primary key stops accepting rows at about 2.1 billion; teams with a `serial` key on a busy events table have hit this as a full outage, fixed by a slow migration to `bigint` (see Part 20 — Databases and the Relational Model, 20.4.1).
+- **PostgreSQL refuses.** Inserting past the range of an `integer` column raises `ERROR: integer out of range`. Right for data, but a table with an `integer` primary key (the column that uniquely numbers each row) stops accepting rows at about 2.1 billion; teams with a `serial` key (an `integer` that counts up 1, 2, 3 by itself) on a busy events table have hit this as a full outage, fixed by a slow migration to `bigint` (see Part 20 — Databases and the Relational Model, 20.4.1).
 - **JavaScript is different again.** Every `number` is a 64-bit floating-point value (next section), which represents integers exactly only up to `Number.MAX_SAFE_INTEGER` = 2^53 - 1 = 9,007,199,254,740,991. Past that, integers silently lose precision. And JavaScript's bitwise operators convert to 32-bit signed integers first, so `(2 ** 31) | 0` is -2147483648.
 
 ```ts

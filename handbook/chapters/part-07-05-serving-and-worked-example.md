@@ -70,11 +70,11 @@ flowchart LR
 3. **Import paths are URLs.** Write `import { api } from './api.js'` with the `./` and the `.js` extension. Bare names like `import x from 'lodash'` fail without a bundler or an import map, because the browser has no `node_modules` lookup.
 4. **The server must send JavaScript's MIME type** (`text/javascript`). A server that returns an HTML 404 page for a mistyped path produces "Failed to load module script: Expected a JavaScript module script but the server responded with a MIME type of text/html".
 
-Each module is one HTTP request. Two or three files are nothing; three hundred are why bundlers exist (Part 76, 76.1 and 76.3).
+Each module is one HTTP request. Two or three files are nothing; three hundred are why bundlers exist. A **bundler** (Vite is a common one) reads all your modules before deployment and joins them into a few files, so the browser makes a handful of requests instead of hundreds (Part 76, 76.1 and 76.3).
 
 #### Edge cases & failure modes
 
-- **Stale files after an edit**: the browser cached the old `app.js`; tick Disable cache in DevTools while developing, and use versioned file names in production (Part 84, 84.3).
+- **Stale files after an edit**: the browser cached the old `app.js`; tick Disable cache in DevTools while developing, and use versioned file names in production: the build puts a fingerprint of the content in each name (`app.3f9a1c.js`), so every change gets a new name, the browser can cache old files forever and still never runs a stale one (Part 84, 84.3).
 - **ServeStatic without `serveRoot`** puts a catch-all next to the API, and an unknown API path can return `index.html` with status `200`.
 - **Releasing the frontend with the API** couples their deploys: a CSS fix needs an API release. Fine for an internal tool, a real cost for a busy product.
 - **Security headers** such as Content Security Policy now apply to the page too; Part 44 (44.33) and Part 84 (84.9) cover what to send.

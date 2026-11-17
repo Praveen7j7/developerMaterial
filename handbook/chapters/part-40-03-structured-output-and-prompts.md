@@ -188,7 +188,7 @@ A prompt — the system prompt and the templates you fill with data — is part 
 
 #### Why does it exist?
 
-A vague prompt produces vague, inconsistent, expensive output. A prompt edited carelessly can silently change a feature's behavior across every call. Because the prompt drives everything the model does, it deserves the same engineering discipline as the code around it: it lives in the repository, goes through code review, is covered by tests (Part 41 on evaluation), and changes through pull requests so you can see what changed and roll it back.
+A vague prompt produces vague, inconsistent, expensive output. A prompt edited carelessly can silently change a feature's behavior across every call. Because the prompt drives everything the model does, it deserves the same engineering discipline as the code around it: it lives in the repository, goes through code review, is covered by tests (an evaluation set: sample inputs whose outputs are graded automatically into a score; Part 41 covers evaluation in depth), and changes through pull requests so you can see what changed and roll it back.
 
 #### Mental model
 

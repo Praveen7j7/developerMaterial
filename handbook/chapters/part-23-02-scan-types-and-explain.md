@@ -286,7 +286,7 @@ Planning Time: 0.142 ms
 Execution Time: 18428.812 ms
 ```
 
-Reading it: 165 million of 200 million rows match (`55,212,004 x 3` workers). That is 83 percent of the table. There is no index that helps; any index scan would read every heap page anyway plus the index. The estimate (69,066,488 per worker) versus actual (55,212,004) is off by 25 percent, which is fine. **`Rows Removed by Filter: 11,454,663`** per worker sounds huge but is only 17 percent, so a partial index would not pay. This plan is correct. 18 seconds is the honest price of aggregating 165 million rows, and the fix is architectural (a materialised rollup table, Part 26 — Database Scaling), not an index.
+Reading it: 165 million of 200 million rows match (`55,212,004 x 3` workers). That is 83 percent of the table. There is no index that helps; any index scan would read every heap page anyway plus the index. The estimate (69,066,488 per worker) versus actual (55,212,004) is off by 25 percent, which is fine. **`Rows Removed by Filter: 11,454,663`** per worker sounds huge but is only 17 percent, so a partial index would not pay. This plan is correct. 18 seconds is the honest price of aggregating 165 million rows, and the fix is architectural, not an index: a **materialised rollup table**, a small table of totals computed ahead of time (refreshed on a schedule or as orders arrive), so the report reads a few thousand pre-summed rows instead of 165 million. Part 20 (20.8.1) already showed one as a materialized view; Part 42 covers pre-aggregated tables and materialized views in depth (42.6.1).
 
 **Plan 2: index scan, the ideal shape.**
 

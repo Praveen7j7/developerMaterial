@@ -485,7 +485,7 @@ docker compose down                            # stop everything; the db-data vo
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior wants the whole system to start from a clean machine with one command, because that is what makes onboarding, CI and production boring. They build small images with multi-stage builds, run as a non-root user, keep secrets out of images, and gate start-up on real health checks. They treat migrations as code: generated, read, completed by hand where needed, committed and reviewed. And they know this Compose file is a development and test setup; production adds managed databases, secrets from a secret manager and an orchestrator (Parts 49, 50).
+A senior wants the whole system to start from a clean machine with one command, because that is what makes onboarding, CI and production boring. They build small images with multi-stage builds, run as a non-root user, keep secrets out of images, and gate start-up on real health checks. They treat migrations as code: generated, read, completed by hand where needed, committed and reviewed. And they know this Compose file is a development and test setup; production adds managed databases (PostgreSQL run, patched and backed up by the cloud provider), secrets from a secret manager (4.5) and an orchestrator such as Kubernetes, which starts your containers across many machines and replaces any that crash (Parts 49, 50).
 
 #### Common mistakes
 

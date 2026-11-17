@@ -114,7 +114,7 @@ For a "create order" endpoint, list the status code you would return for each of
 | No auth token | `401 Unauthorized` | We do not know who the caller is |
 | Normal user creating an order for another user | `403 Forbidden` | We know who they are; they are not allowed to do this |
 | Unknown product id in the body | `422 Unprocessable Entity` | The request is well formed and the URL `/v1/orders` exists; the content breaks a rule ("the product must exist"). Some teams use `400` or `404` here; whichever you choose, be consistent and say so in the error body |
-| Negative quantity | `422 Unprocessable Entity` (or `400`) | Valid JSON, invalid value. Many NestJS apps return `400` for all validation failures, because that is what `ValidationPipe` does by default (Part 6); that is also acceptable if it is consistent |
+| Negative quantity | `422 Unprocessable Entity` (or `400`) | Valid JSON, invalid value. Many NestJS apps return `400` for all validation failures, because that is what `ValidationPipe`, NestJS's built-in checker for incoming data, does by default (Part 6); that is also acceptable if it is consistent |
 | Unexpected database error | `500 Internal Server Error` | Our fault, not the client's; log it with the request id and alert on the rate |
 
 The justification the exercise asked for: `401` and `403` differ in **whether we know who you are**; `400` and `422` differ in **whether we could understand the request at all**.
@@ -213,7 +213,7 @@ client sees: 201 {
 ```
 
 1. **Header names ignore case.** The client wrote `X-User-Id`; Node's `req.headers` stores it as `x-user-id`. The client asked for `CONTENT-TYPE`; `res.headers.get` found `Content-Type`. Always read request headers in lowercase in Node.
-2. **Any client can send any header.** The server happily received `x-user-id: usr_1`. Nothing checked it. If your code trusted that header, anyone with curl could become user 1 by typing `curl -H "X-User-Id: usr_1" ...`. Identity must come from something the server can verify, like a signed token (Part 44.3).
+2. **Any client can send any header.** The server happily received `x-user-id: usr_1`. Nothing checked it. If your code trusted that header, anyone with curl could become user 1 by typing `curl -H "X-User-Id: usr_1" ...`. Identity must come from something the server can verify, like a signed token. In short: after a user logs in, the server hands them a **token** that says who they are and is **signed** with a secret only the server knows; the client sends it back in the `Authorization` header on every request, and any change to it breaks the signature, so it cannot be forged. Part 44 covers tokens (JWTs) in depth (44.3).
 3. **The request id travels both ways.** The server echoed the client's `X-Request-Id`, or made a new one with `randomUUID()` if there was none. Log that id on every line, and you can follow one request through every service it touches.
 
 #### Practical example

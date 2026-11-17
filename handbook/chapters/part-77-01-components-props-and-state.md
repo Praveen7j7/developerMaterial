@@ -182,7 +182,7 @@ Three backend habits make component code simpler:
 
 - **Send derived business facts, not raw inputs to rules.** `allowedActions`, `isReturnable`, `estimatedDeliveryAt`. The UI should never re-implement your cancellation window.
 - **Send money as strings in minor units, with the currency.** The component formats; it never adds. Part 80 — Frontend–Backend Contracts covers money, dates and IDs on the wire.
-- **One endpoint per screen region that loads together.** If `OrderPage` must call five endpoints before it can render, you have built a network waterfall. A view endpoint, or a BFF (Part 79), turns it into one round trip.
+- **One endpoint per screen region that loads together.** If `OrderPage` must call five endpoints before it can render, you have built a network waterfall. A view endpoint, or a BFF (backend-for-frontend: a thin server layer built for one frontend that gathers several backend calls into one response shaped for the screen; Part 79 covers it), turns it into one round trip.
 
 #### Production scenario
 
@@ -202,7 +202,7 @@ The fix was the pattern above: the server computes `allowedActions`, the UI rend
 
 - **`{count && ...}` renders `0`** on the page when the count is zero.
 - **Unknown enum values** from the API (a new status) fall through `switch` statements and render nothing, or the wrong thing. Always have a default branch (Part 80 covers unknown enums).
-- **Impure render**: `Date.now()` or `Math.random()` in render gives different output each call and causes hydration mismatches in server rendering (Part 79).
+- **Impure render**: `Date.now()` or `Math.random()` in render gives different output each call and causes hydration mismatches in server rendering. **Hydration** is the step where React in the browser re-runs your components over the HTML the server already sent, to attach event handlers; it needs the browser's first render to match the server's output exactly, and a clock or random number never matches (Part 79 covers hydration in 79.10).
 - **Mutating props** (`props.items.sort()`) changes the parent's data in place; React will not notice, and other components see a reordered array. Copy first: `[...items].sort(...)` or `items.toSorted(...)`.
 
 #### How a Senior Full-Stack Engineer thinks about this
@@ -356,7 +356,7 @@ export function QuantityStepper({ sku, quantity, maxQuantity, onChange }: Props)
 }
 ```
 
-Notice what is *not* in state: the quantity. It comes from the server via props, so the stepper never shows a number the server did not confirm (Part 78 shows optimistic updates as a deliberate alternative).
+Notice what is *not* in state: the quantity. It comes from the server via props, so the stepper never shows a number the server did not confirm (Part 78 shows **optimistic updates** as a deliberate alternative: the UI shows the new value at once, before the server confirms, and rolls back if the request fails; see 78.6).
 
 **Lazy initial state.** `useState(expensive())` calls `expensive()` on every render and throws the result away after the first. Pass a function to run it once: `useState(() => JSON.parse(sessionStorage.getItem('draft') ?? '{}'))`.
 
@@ -423,7 +423,7 @@ function addNote(text: string) {
 
 #### How a Senior Full-Stack Engineer thinks about this
 
-A senior keeps state minimal and close to where it is used, asking of each value: who owns it? Server-owned data goes in a server cache (Part 78), computable data is computed, shared data is lifted to the nearest common parent (77.10). They design for re-renders being cheap rather than trying to prevent them everywhere.
+A senior keeps state minimal and close to where it is used, asking of each value: who owns it? Server-owned data goes in a **server cache** (a data library such as TanStack Query that fetches server data, keeps a copy in memory and refetches it when it may be stale; Part 78 covers it), computable data is computed, shared data is lifted to the nearest common parent (77.10). They design for re-renders being cheap rather than trying to prevent them everywhere.
 
 #### Common mistakes
 

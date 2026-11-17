@@ -59,7 +59,7 @@ In `psql`, create the table, insert two products, select them back, update one p
 
 #### How a Senior Backend Engineer thinks about this
 
-A senior always understands the SQL their ORM generates, because the ORM is a convenience over SQL, not a replacement for understanding it, and performance problems live at the SQL level (Part 23 on indexes and query plans). They push invariants into the database as constraints (`NOT NULL`, `CHECK`, unique indexes, foreign keys) rather than relying only on application checks, because the database is the last line of defense and enforces the rule for every writer, including future code and manual fixes. They treat parameterization as non-negotiable and would flag any string-concatenated query in review instantly.
+A senior always understands the SQL their ORM generates, because the ORM is a convenience over SQL, not a replacement for understanding it, and performance problems live at the SQL level (Part 23 on indexes and query plans). They push invariants into the database as constraints (`NOT NULL`, `CHECK`, unique indexes, foreign keys; a **unique index** forbids two rows with the same value, such as two accounts with one email, and a **foreign key** makes every order point at a customer row that really exists) rather than relying only on application checks, because the database is the last line of defense and enforces the rule for every writer, including future code and manual fixes. They treat parameterization as non-negotiable and would flag any string-concatenated query in review instantly.
 
 #### Common mistakes
 
@@ -281,8 +281,8 @@ Restarting the server and still seeing the product is the moment persistence bec
 
 - **`synchronize: true` in production** can drop columns and destroy data on a schema change; use migrations (Part 27) and `synchronize: false`.
 - **No database connection** (wrong config, database down) makes the app fail to start or every request error; validate config and handle connection errors (Part 22 on connections).
-- **Connection pool exhaustion** under load if too many queries run at once (Part 22.2 on pooling); the pool has a limit and requests queue beyond it.
-- **N+1 queries** when loading related data naively (Part 25) — a classic ORM performance trap.
+- **Connection pool exhaustion** under load if too many queries run at once. Opening a database connection is slow, so the app keeps a **pool**: a small, fixed set of open connections that each query borrows and gives back. The pool has a limit and requests queue beyond it (Part 22.2 covers pooling).
+- **N+1 queries** when loading related data naively — a classic ORM performance trap: one query loads 100 orders, then the code runs one more query per order to load its items, 101 round trips where one or two would do (Part 25 shows the fixes).
 - **Returning the raw entity** exposes every column; map to a response shape if any field is internal (Part 16.23).
 - **Large `findAll` with no pagination** can try to load millions of rows; always paginate list endpoints (Part 3, Part 18.5; 6.5 adds it).
 
@@ -376,7 +376,7 @@ To take this products API from "works on my laptop" toward production, the natur
 3. **Migrations** (Part 27; first one in 6.8) — replace `synchronize` with versioned schema changes.
 4. **Error handling and logging** (Part 18.9, Part 47.2; first version in 6.6) — structured logs, a consistent error format, a request id.
 5. **Authentication** (Part 44 — Security: 44.1 to 44.3, and a complete NestJS module in 44.36) — who can create products?
-6. **Caching** (Part 30) — cache hot reads in Redis.
+6. **Caching** (Part 30) — keep copies of often-read data in Redis, a very fast in-memory store, so most reads skip the database.
 7. **Containerization and deployment** (Parts 48–51; a first Docker setup in 6.8) — Docker image, CI/CD pipeline, run it on real infrastructure.
 8. **Observability** (Part 47) — metrics, traces and dashboards so you can see how it behaves in production.
 

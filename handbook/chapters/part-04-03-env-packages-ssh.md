@@ -44,7 +44,7 @@ NODE_ENV=development
 PORT=3000
 ```
 
-The `.env` file must be in `.gitignore` so it is never committed — it contains secrets. A committed `.env.example` with placeholder values documents which variables are needed without leaking the real ones. In production, secrets usually come from a secret manager (AWS Secrets Manager, Part 50.11) rather than a file on disk.
+The `.env` file must be in `.gitignore` so it is never committed — it contains secrets. A committed `.env.example` with placeholder values documents which variables are needed without leaking the real ones. In production, secrets usually come from a secret manager rather than a file on disk: a cloud service that stores secrets encrypted, controls who may read each one, and hands them to the app when it starts (AWS Secrets Manager is one; Part 50.11 covers it).
 
 #### Reading them in Node
 
@@ -338,7 +338,7 @@ The private key is the most sensitive file you own — anyone with it can log in
 
 #### Practical example — a deploy over SSH
 
-A simple manual deploy (real deploys use CI/CD, Part 51, but this shows the primitives):
+A simple manual deploy (real deploys use **CI/CD**, a pipeline that automatically tests, builds and ships every change merged into the main branch, as Part 51 shows; but this shows the primitives):
 
 ```bash
 # Build locally, then copy the build up and restart the service on the server:

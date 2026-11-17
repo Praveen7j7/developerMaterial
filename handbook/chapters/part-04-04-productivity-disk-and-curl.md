@@ -276,7 +276,7 @@ df -h /                                         # 5. Use% 18%: space is back, wr
 sudo nano /etc/myapp/config.env                 # 6. set LOG_LEVEL=info, then restart the app (4.8)
 ```
 
-Why `truncate` and not `rm`? If you delete a file that a running program still has open, the program keeps writing to it and the space is **not** freed until the program closes it: `df` still shows 100 %. Emptying the file in place frees the space immediately. The lasting fix is log rotation (the `logrotate` tool, or logging to stdout and letting the platform handle it, Part 47.2) and a disk-space alert at 80 %.
+Why `truncate` and not `rm`? If you delete a file that a running program still has open, the program keeps writing to it and the space is **not** freed until the program closes it: `df` still shows 100 %. Emptying the file in place frees the space immediately. The lasting fix is log rotation and a disk-space alert at 80 %. **Log rotation** means regularly starting a fresh log file and compressing or deleting old ones, so logs never fill the disk; the `logrotate` tool does it, or the app logs to stdout and the platform keeps the logs (Part 47.2).
 
 #### Practical example — the "slow server" check
 
@@ -294,7 +294,7 @@ All three gauges are normal, so the machine is not the problem. The next step is
 
 - **Deleting an open log file** does not free space until the process closes it; use `truncate -s 0` or restart the process.
 - **Inodes can run out** before bytes do: millions of tiny files (session files, cache entries) fill the filesystem's file table. `df -i` shows inode usage; "No space left on device" with free bytes means this.
-- **Containers** have their own view: inside a container, `free` may show the host's memory, not the container's limit (Part 48.10 explains limits).
+- **Containers** have their own view: inside a container, `free` may show the host's memory, not the container's limit. (A **container** is your app packaged with everything it needs and run in its own walled-off space on the machine, with its own files and network and, often, a memory cap. Part 6 runs PostgreSQL in one with Docker; Part 48.10 explains limits.)
 - **`du` on a huge directory** can take minutes and add disk load; start high and narrow down instead of running it on `/` with no `-s`.
 - **Load average is not CPU percent**: processes waiting for slow disk also count, so a high load with idle CPUs points to disk or network waits.
 
@@ -445,7 +445,7 @@ tail -n 20 /var/log/myapp/application.log | grep -i error
 # ERROR [ExceptionsHandler] relation "products" does not exist
 ```
 
-The API is up, the products endpoint fails, and the log says the database table is missing: the migration did not run (Part 6 shows migrations). The frontend was never the problem.
+The API is up, the products endpoint fails, and the log says the database table is missing: the migration did not run. (A **migration** is a small versioned script that creates or changes database tables; each environment must run it before the code that needs the table. Part 6 shows migrations.) The frontend was never the problem.
 
 #### Practical example — "address already in use"
 

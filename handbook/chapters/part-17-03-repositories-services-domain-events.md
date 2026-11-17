@@ -629,7 +629,7 @@ sequenceDiagram
 ```
 
 1. The aggregate method calls `this.raise(new OrderPlaced(...))`. Events accumulate in memory on the root.
-2. The repository, on `save`, may also write each event into an **outbox table** in the same transaction (the transactional outbox; see Part 33 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency for the full pattern).
+2. The repository, on `save`, may also write each event into an **outbox table** in the same transaction. Because the event row commits together with the order, the event cannot be lost if the process crashes just after the commit; a separate relay sends it on later (step 4). This is the **transactional outbox**; Part 33 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency covers the full pattern.
 3. The unit of work commits.
 4. After commit, the unit of work pulls the events from the aggregate and hands them to a publisher. In a monolith this is `EventEmitter2` from `@nestjs/event-emitter`. Across services, an outbox relay reads the outbox table and publishes to Kafka/RabbitMQ.
 5. Handlers run in their own transactions. If a handler fails, the original commit is unaffected; the handler is retried (in-process retry, or the broker redelivers).

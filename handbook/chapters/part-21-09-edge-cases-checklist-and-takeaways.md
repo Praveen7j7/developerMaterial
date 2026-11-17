@@ -22,7 +22,7 @@ Every item here has caused a real incident. For each: what goes wrong, why, and 
 
 - **`UPDATE`/`DELETE` without `WHERE`.** Every row changes, every row is locked until commit, every other writer on that table queues, replication lag spikes, and the fix is a restore. Fix: transactions with an explicit `ROLLBACK` habit in `psql` (`BEGIN; UPDATE ...; SELECT count(*) ...; COMMIT`), `statement_timeout`, a linter rule for ORM `update()` without `where`, and no `DELETE` in production without a row-count check.
 
-- **Long-running reporting queries holding back vacuum.** A 40-minute report on the primary keeps its snapshot open; `VACUUM` cannot remove tuples deleted after the snapshot started; hot tables bloat; `n_dead_tup` climbs; every query on those tables slows. Fix: run reports on a replica (with `hot_standby_feedback` considerations, Part 26), set `statement_timeout` and `idle_in_transaction_session_timeout`, and materialize heavy reports.
+- **Long-running reporting queries holding back vacuum.** A 40-minute report on the primary keeps its snapshot open; `VACUUM` cannot remove tuples deleted after the snapshot started; hot tables bloat; `n_dead_tup` climbs; every query on those tables slows. Fix: run reports on a replica (with `hot_standby_feedback` considerations: without it, the primary may vacuum rows the replica's long report still reads and the report is cancelled; with it, the replica tells the primary which rows to keep, and the bloat comes back on the primary; Part 26 covers both), set `statement_timeout` and `idle_in_transaction_session_timeout`, and materialize heavy reports.
 
 - **Lock waits from a wide `UPDATE`.** `UPDATE products SET is_active = false WHERE category_id = 7` on 2 million products locks 2 million rows for the transaction's duration and blocks every checkout touching those products. Fix: batch by primary key range (5,000 rows per transaction), short transactions, `lock_timeout` on interactive sessions.
 
@@ -66,7 +66,7 @@ Every item here has caused a real incident. For each: what goes wrong, why, and 
 
 - **Stale statistics after a bulk load.** A 20-million-row import, no `ANALYZE`, and the planner still believes the table has 1,000 rows; every plan is wrong until autovacuum catches up. Fix: `ANALYZE table` after bulk loads (Part 23).
 
-- **Replica reads after writes.** Insert on the primary, immediately read on a replica: not found. Fix: read-your-writes routing (Part 26).
+- **Replica reads after writes.** Insert on the primary, immediately read on a replica: not found, because the replica copies changes a moment later. Fix: **read-your-writes** routing, which sends a user's reads to the primary for a short time after that user writes (Part 26 covers it in depth).
 
 - **Unbounded results.** `SELECT ... FROM notifications WHERE user_id = $1` with no `LIMIT` for a user with 3 million rows: the pod is OOMKilled assembling the array. Fix: every list query has a `LIMIT`; stream with a cursor for exports.
 

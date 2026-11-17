@@ -234,7 +234,7 @@ Notice the `JSON.stringify` output. A `private` field is an ordinary property at
 
 #### How a Senior Backend Engineer thinks about this
 
-The default is `private readonly` for collaborators, `private` for state, and public only for what callers need. `private` is a design tool, not a security boundary, so secrets are kept out of logs and responses by an explicit response DTO (6.2) and log redaction, never by a modifier. `#private` is for when runtime privacy genuinely matters, such as a library used from plain JavaScript. NestJS code conventionally uses TypeScript `private`, partly because parameter properties (1.8.4) only exist in that form.
+The default is `private readonly` for collaborators, `private` for state, and public only for what callers need. `private` is a design tool, not a security boundary, so secrets are kept out of logs and responses by an explicit response DTO (a class listing only the fields you choose to send back; 6.2) and log redaction (masking secret fields before a log line is written), never by a modifier. `#private` is for when runtime privacy genuinely matters, such as a library used from plain JavaScript. NestJS code conventionally uses TypeScript `private`, partly because parameter properties (1.8.4) only exist in that form.
 
 #### Common mistakes
 
@@ -302,7 +302,7 @@ insufficient funds: short by 3200 cents 3200
 
 Why it is right: the only writes to `#balanceCents` are inside `deposit` and `withdraw`, and the runtime forbids any other code from touching it, so the balance can only change through the rules. `withdraw` validates and checks the balance **before** subtracting, so a failed withdrawal changes nothing (1,800 is 3,000 minus 1,200; the 5,000 attempt left it alone). The error carries `shortfallCents` as data, so a caller can show "you need 32.00 more" without parsing the message.
 
-The trap most learners fall into is subtracting first and checking afterwards (`this.#balanceCents -= cents; if (this.#balanceCents < 0) throw ...`), which leaves the wallet negative after the throw. In a real system the balance lives in PostgreSQL, and this same rule becomes a `CHECK (balance_cents >= 0)` constraint plus a row lock (Part 24 — Database Transactions and Concurrency Control); the class is the first line of defence, not the last.
+The trap most learners fall into is subtracting first and checking afterwards (`this.#balanceCents -= cents; if (this.#balanceCents < 0) throw ...`), which leaves the wallet negative after the throw. In a real system the balance lives in PostgreSQL, and this same rule becomes a `CHECK (balance_cents >= 0)` constraint plus a row lock. A **`CHECK` constraint** is a rule the database itself enforces on every write, whoever sends it; a **row lock** makes two withdrawals from the same wallet take turns, so they cannot both read the old balance and both succeed. Part 24 — Database Transactions and Concurrency Control covers both in depth. The class is the first line of defence, not the last.
 
 ### 1.8.4 Parameter properties: the constructor form NestJS uses
 
@@ -577,7 +577,7 @@ result card_ord_42
 
 Why it is right: every class implements the same `PaymentProcessor` interface, and each wrapper holds an inner one. Because they all fit the same contract, they stack in any order with no new classes. Order matters and is now visible in one line: logging **inside** retry logs every attempt (what the acceptance criteria asked for); `new LoggingProcessor(new RetryingProcessor(...))` would log only the final outcome. This shape has a name, the Decorator pattern (Part 16, 16.16).
 
-The trap most learners fall into is keeping one class with flags (`{ retry: true, log: true }`) and `if` statements inside `pay`: every new behaviour edits the same method. The second trap: retrying a payment is only safe if the provider call is idempotent, so a real retry sends the same idempotency key every time (Part 33 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency).
+The trap most learners fall into is keeping one class with flags (`{ retry: true, log: true }`) and `if` statements inside `pay`: every new behaviour edits the same method. The second trap: retrying a payment is only safe if the provider call is idempotent, so a real retry sends the same idempotency key every time. **Idempotent** means doing it twice has the same effect as doing it once. The **idempotency key** is a unique ID you create for this one payment and send with every attempt; the provider sees the repeat and returns the first result instead of charging the card again. Part 33 — Distributed Transactions: Sagas, Outbox, Inbox and Idempotency covers it in depth.
 
 ### 1.8.7 Static members, getters and setters
 
@@ -863,7 +863,7 @@ describe('OrdersService.status', () => {
 
 Why it is right: because `OrdersService` asks for its collaborators in the constructor instead of creating them, the test simply builds it with fakes, which is dependency inversion paying off. The fake repository answers from an in-memory rule, so the test runs in milliseconds with no PostgreSQL. `rejects.toBeInstanceOf(NotFoundException)` checks the type of the error, which is what the controller layer turns into a `404`.
 
-The trap most learners fall into is reaching for `Test.createTestingModule` and a real database for a test like this. That is the right tool for an integration test (Part 45 — Testing Backend Systems with Jest and NestJS), but for one service method it is slow and tests the framework's wiring rather than your rule. The other trap is a service that does `private repo = new OrderRepository()` internally: then there is no way to pass a fake, and the test has to hit a real database.
+The trap most learners fall into is reaching for `Test.createTestingModule` and a real database for a test like this. That is the right tool for an **integration test**, one that checks several real pieces working together (Nest building the module, a real database answering), as Part 45 — Testing Backend Systems with Jest and NestJS shows; but for one service method it is slow and tests the framework's wiring rather than your rule. The other trap is a service that does `private repo = new OrderRepository()` internally: then there is no way to pass a fake, and the test has to hit a real database.
 
 ## Senior Checklist — Part 1
 
