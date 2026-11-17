@@ -216,7 +216,7 @@ card.innerHTML = '<div class="xc-top"><p class="xc-crumb">' + esc(crumb) + '</p>
 (e[2] ? '<p class="xc-g">' + esc(e[2]) + '</p>' : '') +
 '<div class="xc-bar"><a class="btn btn-small btn-primary xc-go" href="' + esc(same ? '#' + e[0].split('#')[1] : e[0]) + '">' +
 '<span>' + (isSec ? 'Go to section ' + esc(key) : 'Go to Part ' + esc(key)) + '</span>' + svg('arrow-right') + '</a>' +
-'<span class="xc-note">' + (same ? 'On this page' : 'Volume page') + '</span></div>';
+'<span class="xc-note">' + (same ? 'On this page' : 'In Volume ' + (/^vol-(\d+)/.exec(file) || [0, '?'])[1]) + '</span></div>';
 return true;
 }
 function place(a) {

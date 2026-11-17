@@ -1,7 +1,7 @@
 // End-to-end check of cross-reference previews: node xref-check.js (from build/, with site/ served on 127.0.0.1:8761)
 const puppeteer = require('puppeteer-core');
 const OUT = require('path').resolve(__dirname, '../_work/flow/shots') + '/';
-const BASE = 'http://127.0.0.1:8761/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8761/';  // BASE=https://praveen7j7.github.io/developerMaterial/ checks the live site
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 (async () => {
